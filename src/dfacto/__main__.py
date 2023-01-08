@@ -6,8 +6,8 @@ import sys
 from sqlalchemy import insert, select, update, delete, ScalarResult
 
 from dfacto.models import db
-from dfacto.models.vat_rate import VatRate, VatRateModel
-from dfacto.models.service import Service, ServiceModel, _Service
+from dfacto.models import vat_rate
+from dfacto.models import service
 from dfacto.models.model import Client, Invoice
 
 # from dcfs_editor.models.initdb import initDb
@@ -29,35 +29,40 @@ def main():
     db.create_schema()
     #    initDb()
 
-    vat_rate_model = VatRateModel()
+    vat_rate.init()
 
-    vat_rates = vat_rate_model.list_vat_rates()
+    print(vat_rate.get_default())
+
+    vat_rates = vat_rate.list_all()
     print(vat_rates)
 
-    v = vat_rate_model.get_vat_rate(vat_rate_model.DEFAULT_RATE_ID + 1)
+    v = vat_rate.get(vat_rate.DEFAULT_RATE_ID + 1)
     print(v)
 
-    v = vat_rate_model.update_vat_rate(vat_rate_model.DEFAULT_RATE_ID + 1, 10)
+    v = vat_rate.update(vat_rate.DEFAULT_RATE_ID + 1, 10)
     print(v)
 
-    v = vat_rate_model.add_vat_rate(30)
+    v = vat_rate.add(30)
     print(v)
 
     try:
-        vat_rate_model.delete_vat_rate(vat_rate_model.DEFAULT_RATE_ID + 2)
+        vat_rate.delete(vat_rate.DEFAULT_RATE_ID + 2)
     except db.RejectedCommand as exc:
         print(exc)
 
-    vat_rate_model.reset_vat_rates()
-    vat_rates = vat_rate_model.list_vat_rates()
+    vat_rate.reset()
+    vat_rates = vat_rate.list_all()
     print(vat_rates)
 
-    s1 = _Service("Service 1", 100.0)
+    s1 = service._Service("Service 1", 100.0)
     db.Session.add(s1)
     db.Session.commit()
 
-    s = ServiceModel.get_service(s1.id)
+    s = service.get(s1.id)
     print(s)
+
+    services = service.list_all()
+    print(services)
 
     # for s, p, v in (("Service 1", 25.0, None), ("Service 2", 250.0, 3)):
     #     # v = v or 1
