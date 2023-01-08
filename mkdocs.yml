@@ -1,0 +1,103 @@
+site_name: Dfacto
+site_description: Dfacto: manage your invoices
+site_url: https://Elmeric.github.io/dfacto
+repo_url: https://github.com/Elmeric/dfacto
+repo_name: Elmeric/dfacto
+site_dir: "site"
+
+copyright: Copyright &copy; 2023 Eric Lemoine
+
+nav:
+  - Welcome to Dfacto: index.md
+  - Getting started: tutorials.md
+  - User's Guide: how-to-guides.md
+  - API Reference: reference.md
+  - Additional notes: explanation.md
+  - About:
+    - Changelog: changelog.md
+    - Credits: credits.md
+    - License: license.md
+
+watch:
+  - src/dfacto
+
+theme:
+  name: "material"
+  icon:
+    logo: material/book-open-page-variant
+    repo: fontawesome/brands/github
+  features:
+  - navigation.tabs
+  - navigation.tabs.sticky
+  - navigation.top
+  palette:
+  - media: "(prefers-color-scheme: light)"
+    scheme: default
+    primary: blue
+    accent: purple
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to dark mode
+  - media: "(prefers-color-scheme: dark)"
+    scheme: slate
+    primary: black
+    accent: lime
+    toggle:
+      icon: material/weather-night
+      name: Switch to light mode
+
+extra_css:
+    - css/extra.css
+    - css/material.css
+    - css/mkdocstrings.css
+
+markdown_extensions:
+  - admonition
+  - callouts
+  - pymdownx.emoji
+  - pymdownx.magiclink:
+      repo_url_shorthand: true
+  - pymdownx.snippets:
+      check_paths: true
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.details
+  - toc:
+      permalink: "\u261B"
+  - sane_lists
+  - attr_list
+  - def_list
+  - md_in_html
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            paths: [src]
+            docstring_section_style: spacy
+            members_order: source
+            show_root_heading: false
+            show_root_full_path: false
+            line_length: 80
+            show_if_no_docstring: false
+            show_signature_annotations: false
+            separate_signature: true
+            show_bases: true
+            show_source: false
+
+extra:
+#  generator: false
+  social:
+  - icon: fontawesome/brands/github
+    link: https://github.com/Elmeric
+  - icon: material/email
+    link: "mailto:erik.lemoine@gmail.com"
+  # to enable disqus, uncomment the following and put your disqus id below
+  # disqus: disqus_id
+# uncomment the following and put your google tracking id below to enable GA
+#google_analytics:
+  #- UA-xxx
+  #- auto
