@@ -1,13 +1,12 @@
 import datetime
 import logging
 import logging.config
+import random
 import sys
 
-from sqlalchemy import insert, select, update, delete, ScalarResult
+from sqlalchemy import ScalarResult, delete, insert, select, update
 
-from dfacto.models import db
-from dfacto.models import vat_rate
-from dfacto.models import service
+from dfacto.models import db, service, vat_rate
 from dfacto.models.model import Client, Invoice
 
 # from dcfs_editor.models.initdb import initDb
@@ -39,30 +38,53 @@ def main():
     v = vat_rate.get(vat_rate.DEFAULT_RATE_ID + 1)
     print(v)
 
-    v = vat_rate.update(vat_rate.DEFAULT_RATE_ID + 1, 10)
+    v = vat_rate.update(vat_rate.DEFAULT_RATE_ID + 1, 5.5)
     print(v)
 
     v = vat_rate.add(30)
     print(v)
 
-    try:
-        vat_rate.delete(vat_rate.DEFAULT_RATE_ID + 2)
-    except db.RejectedCommand as exc:
-        print(exc)
+    # try:
+    #     vat_rate.delete(vat_rate.DEFAULT_RATE_ID + 2)
+    # except db.RejectedCommand as exc:
+    #     print(exc)
 
-    vat_rate.reset()
+    # vat_rate.reset()
     vat_rates = vat_rate.list_all()
     print(vat_rates)
 
-    s1 = service._Service("Service 1", 100.0)
-    db.Session.add(s1)
-    db.Session.commit()
+    try:
+        s1 = service.add(f"Service {random.randint(1, 1000)}", 100.0)
+    except db.RejectedCommand as exc:
+        print(exc)
+        return
+    else:
+        print(s1)
 
     s = service.get(s1.id)
     print(s)
 
+    # s2 = service.update(s.id, name="New service")
+    # print(s2)
+    s2 = service.update(1, unit_price=50)
+    print(s2)
+    s2 = service.update(2, vat_rate_id=3)
+    print(s2)
+    s2 = service.update(2, name="Great service", unit_price=75, vat_rate_id=4)
+    print(s2)
+
+    try:
+        service.delete(5)
+    except db.RejectedCommand as exc:
+        print(exc)
+
     services = service.list_all()
     print(services)
+
+    try:
+        vat_rate.delete(4)
+    except db.RejectedCommand as exc:
+        print(exc)
 
     # for s, p, v in (("Service 1", 25.0, None), ("Service 2", 250.0, 3)):
     #     # v = v or 1

@@ -9,8 +9,8 @@ from typing import Annotated
 
 import sqlalchemy as sa
 import sqlalchemy.event as sa_evt
-import sqlalchemy.orm as sa_orm
 import sqlalchemy.exc as sa_exc
+import sqlalchemy.orm as sa_orm
 
 intpk = Annotated[int, sa_orm.mapped_column(primary_key=True)]
 
@@ -62,7 +62,7 @@ def create_schema():
 @contextmanager
 def command_context():
     try:
-        print(f'Creating cmdCtxt: {engine}, {id(engine)}, {Session}')
+        print(f"Creating cmdCtxt: {engine}, {id(engine)}, {Session}")
         yield Session
         Session.commit()
     except sa_exc.SQLAlchemyError as e:

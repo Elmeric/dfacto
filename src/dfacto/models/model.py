@@ -5,17 +5,17 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from datetime import date
 from dataclasses import dataclass
+from datetime import date
 from typing import Annotated, Optional
 
-from sqlalchemy import ForeignKey, String, ScalarResult, select, insert, update, delete
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import ForeignKey, ScalarResult, String, delete, insert, select, update
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models import db
-from dfacto.models.vat_rate import _VatRate
 from dfacto.models.service import _Service
+from dfacto.models.vat_rate import _VatRate
 
 
 class Client(db.BaseModel):
@@ -83,7 +83,9 @@ class Invoice(db.BaseModel):
     due_date: Mapped[date]
     status: Mapped[InvoiceStatus]
     #    status: Mapped[InvoiceStatus] = mapped_column(Enum(create_constraint=True, validate_strings=True))
-    client_id: Mapped[Optional[int]] = mapped_column(ForeignKey("client.id"), init=False)
+    client_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("client.id"), init=False
+    )
 
     client: Mapped["Client"] = relationship(back_populates="invoices", default=None)
     items: Mapped[list["Item"]] = relationship(
@@ -98,7 +100,9 @@ class Basket(db.BaseModel):
     raw_amount: Mapped[float] = mapped_column(default=0.0)
     vat: Mapped[float] = mapped_column(default=0.0)
     net_amount: Mapped[float] = mapped_column(default=0.0)
-    client_id: Mapped[Optional[int]] = mapped_column(ForeignKey("client.id"), init=False)
+    client_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("client.id"), init=False
+    )
 
     client: Mapped["Client"] = relationship(back_populates="basket", default=None)
     items: Mapped[list["Item"]] = relationship(
@@ -107,5 +111,7 @@ class Basket(db.BaseModel):
 
 
 class ServiceModel:
-    def add_service(self, id_: int, name: str, unit_price: float, vat_rate_id: Optional[int] = None) -> None:
+    def add_service(
+        self, id_: int, name: str, unit_price: float, vat_rate_id: Optional[int] = None
+    ) -> None:
         pass
