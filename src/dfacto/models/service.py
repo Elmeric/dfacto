@@ -23,9 +23,7 @@ class _Service(db.BaseModel):
     id: sa.orm.Mapped[db.intpk] = sa.orm.mapped_column(init=False)
     name: sa.orm.Mapped[str] = sa.orm.mapped_column(unique=True)
     unit_price: sa.orm.Mapped[float]
-    vat_rate_id: sa.orm.Mapped[int] = sa.orm.mapped_column(
-        sa.ForeignKey("vat_rate.id"), nullable=False
-    )
+    vat_rate_id: sa.orm.Mapped[int] = sa.orm.mapped_column(sa.ForeignKey("vat_rate.id"))
 
     vat_rate: sa.orm.Mapped["_VatRate"] = sa.orm.relationship(init=False)
 
@@ -124,12 +122,12 @@ def delete(service_id: int) -> None:
         db.Session.execute(sa.delete(_Service).where(_Service.id == service_id))
     except sa.exc.IntegrityError:
         # in_use = db.Session.scalars(
-        #     sa.select(Item.id)
-        #     .join(Item.service)
-        #     .where(Item.service_id == service_id)
+        #     sa.select(_Item.id)
+        #     .join(_Item.service)
+        #     .where(_Item.service_id == service_id)
         # ).first()
         raise db.RejectedCommand(
-            f"Service with id {service_id} is used" f" by at least one invoice's item!"
+            f"Service with id {service_id} is used by at least one invoice's item!"
         )
     else:
         db.Session.commit()

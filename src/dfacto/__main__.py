@@ -6,8 +6,8 @@ import sys
 
 from sqlalchemy import ScalarResult, delete, insert, select, update
 
-from dfacto.models import db, service, vat_rate
-from dfacto.models.model import Client, Invoice
+from dfacto.models import basket, client, db, service, vat_rate
+from dfacto.models.model import Invoice, _Client
 
 # from dcfs_editor.models.initdb import initDb
 # from dcfs_editor import dcfsconstants as dc
@@ -86,30 +86,60 @@ def main():
     except db.RejectedCommand as exc:
         print(exc)
 
-    # for s, p, v in (("Service 1", 25.0, None), ("Service 2", 250.0, 3)):
-    #     # v = v or 1
-    #     print(f"Creating service: {s}, {p}, {v}")
-    #     service = _Service(s, p)
-    #     if v is not None:
-    #         vat_rate = db.Session.get(_VatRate, v)
-    #         service.vat_rate = vat_rate
-    #     db.Session.add(service)
-    # db.Session.commit()
-    #
-    # c1 = Client(
-    #     name="John Doe",
-    #     code="CL0001",
-    #     address="1 rue du coin",
-    #     zip_code="12345",
-    #     city="ICI",
-    #     active=True,
-    # )
-    # db.Session.add(c1)
-    # db.Session.commit()
-    #
-    # client = db.Session.scalars(select(Client).filter_by(name="John Doe").limit(1)).first()
-    # service = db.Session.get(_Service, 2)
-    # print(client, service)
+    cl: _Client = db.Session.get(_Client, 1)
+    if cl.has_emitted_invoices:
+        print(f"Client {cl.name} has emitted invoices")
+    else:
+        print(f"Client {cl.name} has no emitted invoices")
+
+    cl: _Client = db.Session.execute(
+        select(_Client).filter(_Client.has_emitted_invoices)
+    ).scalar()
+    print(f"Client with emitted invoices: {cl.name}, {cl.invoices[0].code}")
+
+    try:
+        client.delete(cl.id)
+    except db.RejectedCommand as exc:
+        print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
+
+    db.Session.commit()
+    db.Session.remove()
+    return
+
+    try:
+        c1 = client.add(
+            name="John Doe",
+            address="1 rue du coin",
+            zip_code="12345",
+            city="ICI",
+        )
+    except db.RejectedCommand as exc:
+        print(exc)
+        return
+    else:
+        print(c1)
+
+    client.rename(c1.id, "Foo Bar")
+    client.change_address(
+        c1.id, client.Address("3 imapasse ouverte", "33000", "LA-BAS")
+    )
+    client.on_hold(c1.id)
+
+    cl = client.get(c1.id)
+    print(cl)
+    print(cl.basket.content)
+
+    it = basket.add_item(cl.basket.id, s2.id, 2)
+    print(it)
+    print(cl.basket.content)
+
+    s = service.get(1)
+    it = basket.add_item(cl.basket.id, s.id, 2)
+    print(it)
+    print(cl.basket.content)
+    print(f"{cl.basket.raw_amount}, {cl.basket.vat}, {cl.basket.net_amount}")
     #
     #
     # i1 = Invoice(
@@ -139,14 +169,14 @@ def main():
     # db.Session.commit()
     #
     # print("*" * 10)
-    # stmt = select(Client).where(Client.name.in_(["John Doe", "Foo", "Bar"]))
+    # stmt = select(_Client).where(_Client.name.in_(["John Doe", "Foo", "Bar"]))
     # for client in db.Session.scalars(stmt):
     #     print(client)
     #     if client.name == "John Doe":
     #         client.invoices = []
     #     if client.name == "Bar":
     #         bar_id = client.id
-    # bar = db.Session.get(Client, bar_id)
+    # bar = db.Session.get(_Client, bar_id)
     # print(">> ", bar_id, bar)
     # db.Session.delete(bar)
     # db.Session.commit()
