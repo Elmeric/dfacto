@@ -4,10 +4,10 @@ import logging.config
 import random
 import sys
 
-from sqlalchemy import ScalarResult, delete, insert, select, update
+from sqlalchemy import select
 
-from dfacto.models import basket, client, db, service, vat_rate
-from dfacto.models.model import Invoice, _Client
+from dfacto.models import basket, client, db, invoice, service, vat_rate
+from dfacto.models.model import InvoiceStatus, _Client
 
 # from dcfs_editor.models.initdb import initDb
 # from dcfs_editor import dcfsconstants as dc
@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 def main():
     db.create_schema()
     #    initDb()
+
+    start_time = datetime.datetime.now()
 
     vat_rate.init()
 
@@ -53,9 +55,17 @@ def main():
     vat_rates = vat_rate.list_all()
     print(vat_rates)
 
+    for vr in vat_rates:
+        try:
+            vat_rate.delete(vr.id)
+        except db.RejectedCommand as exc:
+            print(exc)
+        except db.FailedCommand as exc:
+            print(exc)
+
     try:
         s1 = service.add(f"Service {random.randint(1, 1000)}", 100.0)
-    except db.RejectedCommand as exc:
+    except db.FailedCommand as exc:
         print(exc)
         return
     else:
@@ -77,6 +87,8 @@ def main():
         service.delete(5)
     except db.RejectedCommand as exc:
         print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
 
     services = service.list_all()
     print(services)
@@ -85,6 +97,23 @@ def main():
         vat_rate.delete(4)
     except db.RejectedCommand as exc:
         print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
+
+    clients = client.list_all()
+    if not any(c.name == "John Doe" for c in clients):
+        try:
+            c1 = client.add(
+                name="John Doe",
+                address="1 rue du coin",
+                zip_code="12345",
+                city="ICI",
+            )
+        except db.RejectedCommand as exc:
+            print(exc)
+            return
+        else:
+            print(c1)
 
     cl: _Client = db.Session.get(_Client, 1)
     if cl.has_emitted_invoices:
@@ -92,10 +121,11 @@ def main():
     else:
         print(f"Client {cl.name} has no emitted invoices")
 
-    cl: _Client = db.Session.execute(
+    c: _Client = db.Session.execute(
         select(_Client).filter(_Client.has_emitted_invoices)
     ).scalar()
-    print(f"Client with emitted invoices: {cl.name}, {cl.invoices[0].code}")
+    if c is not None:
+        print(f"Client with emitted invoices: {c.name}, {c.invoices[0].code}")
 
     try:
         client.delete(cl.id)
@@ -104,8 +134,80 @@ def main():
     except db.FailedCommand as exc:
         print(exc)
 
+    try:
+        c1 = client.add(
+            name="John Doe",
+            address="1 rue du coin",
+            zip_code="12345",
+            city="ICI",
+        )
+    except db.FailedCommand as exc:
+        print(exc)
+    else:
+        print(c1)
+
+    cl: _Client = db.Session.get(_Client, 1)
+    try:
+        inv = invoice.create_from_basket(cl.basket.id)
+    except db.RejectedCommand as exc:
+        print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
+    else:
+        print(inv)
+
+    it = basket.add_item(cl.basket.id, s2.id, 2)
+    print(it)
+
+    try:
+        inv = invoice.create_from_basket(cl.basket.id)
+        # inv = invoice.create_from_basket(cl.basket.id, clear_basket=False)
+    except db.RejectedCommand as exc:
+        print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
+    else:
+        print(inv)
+
+    it1 = basket.add_item(cl.basket.id, 3, 3)
+    it2 = basket.add_item(cl.basket.id, 4, 4)
+    for it in cl.basket.items:
+        print(it.service.name)
+    basket.remove_item(it1.id)
+    for it in cl.basket.items:
+        print(it.service.name)
+
+    try:
+        invoice.remove_item(inv.content[0].id)
+    except db.RejectedCommand as exc:
+        print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
+
+    invoice.add_item(inv.id, 2, 4)
+    invoice.update_status(inv.id, InvoiceStatus.PAID)
+    try:
+        invoice.update_status(inv.id, InvoiceStatus.DRAFT)
+    except db.RejectedCommand as exc:
+        print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
+    print(inv.status)
+
+    inv = invoice.create_from_basket(cl.basket.id)
+    try:
+        invoice.delete(inv.id)
+    except db.RejectedCommand as exc:
+        print(exc)
+    except db.FailedCommand as exc:
+        print(exc)
+
     db.Session.commit()
     db.Session.remove()
+
+    end_time = datetime.datetime.now()
+    print(f"exec time: {end_time - start_time}")
+
     return
 
     try:

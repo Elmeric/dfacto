@@ -23,7 +23,7 @@ class Item:
     quantity: int = 1
 
 
-def get(item_id: Optional[int] = None) -> Item:
+def get(item_id: int) -> Item:
     item: Optional[model._Item] = db.Session.get(model._Item, item_id)
     if item is None:
         raise db.FailedCommand(f"ITEM-GET - Item {item_id} not found.")
@@ -70,7 +70,7 @@ def add(
         )
 
     if invoice_id is not None:
-        invoice = db.Session.get(model.Invoice, invoice_id)
+        invoice = db.Session.get(model._Invoice, invoice_id)
         if invoice.status != model.InvoiceStatus.DRAFT:
             raise db.RejectedCommand(
                 f"ITEM-ADD - Cannot add items to a non-draft invoice."
@@ -106,7 +106,7 @@ def update(
 ) -> Item:
     item: model._Item = db.Session.get(model._Item, item_id)
     if item is None:
-        raise db.RejectedCommand(f"ITEM-UPDATE - Item {item_id} not found.")
+        raise db.FailedCommand(f"ITEM-UPDATE - Item {item_id} not found.")
 
     invoice = item.invoice
     if invoice is not None and invoice.status != model.InvoiceStatus.DRAFT:
@@ -158,12 +158,11 @@ def update(
 
 
 def delete(item_id: int) -> None:
+    db.Session.execute(sa.delete(model._Item).where(model._Item.id == item_id))
     try:
-        db.Session.execute(sa.delete(model._Item).where(model._Item.id == item_id))
+        db.Session.commit()
     except sa.exc.SQLAlchemyError:
         raise db.FailedCommand(
             f"ITEM_DELETE - Item with id {item_id} is used"
             f" by at least one client's basket or invoice!"
         )
-    else:
-        db.Session.commit()

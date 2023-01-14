@@ -38,10 +38,10 @@ class Client:
         return []
 
 
-def get(client_id: Optional[int] = None) -> Client:
+def get(client_id: int) -> Client:
     client: model._Client = db.Session.get(model._Client, client_id)
     if client is None:
-        raise db.RejectedCommand(f"CLIENT-GET - Client {client_id} not found.")
+        raise db.FailedCommand(f"CLIENT-GET - Client {client_id} not found.")
     return Client(
         client.id,
         client.name,
@@ -75,7 +75,7 @@ def add(
         db.Session.commit()
     except sa.exc.SQLAlchemyError as exc:
         db.Session.rollback()
-        raise db.FailedCommand(f"Cannot add client {name}: {exc}")
+        raise db.FailedCommand(f"CLIENT-ADD - Cannot add client {name}: {exc}")
     else:
         return Client(
             client.id,
@@ -89,7 +89,7 @@ def add(
 def on_hold(client_id: int, hold: bool = True) -> None:
     client: model._Client = db.Session.get(model._Client, client_id)
     if client is None:
-        raise db.RejectedCommand(f"CLIENT-ON_HOLD - Client {client_id} not found.")
+        raise db.FailedCommand(f"CLIENT-ON_HOLD - Client {client_id} not found.")
 
     if hold and client.is_active:
         client.is_active = False
@@ -100,7 +100,7 @@ def on_hold(client_id: int, hold: bool = True) -> None:
         db.Session.commit()
     except sa.exc.SQLAlchemyError as exc:
         db.Session.rollback()
-        raise db.RejectedCommand(
+        raise db.FailedCommand(
             f"CLIENT-ON_HOLD - Cannot set {client.name} active status to {hold}: {exc}"
         )
 
@@ -108,7 +108,7 @@ def on_hold(client_id: int, hold: bool = True) -> None:
 def rename(client_id: int, name: str) -> None:
     client: model._Client = db.Session.get(model._Client, client_id)
     if client is None:
-        raise db.RejectedCommand(f"CLIENT-RENAME - Client {client_id} not found.")
+        raise db.FailedCommand(f"CLIENT-RENAME - Client {client_id} not found.")
 
     if name != client.name:
         client.name = name
@@ -117,7 +117,7 @@ def rename(client_id: int, name: str) -> None:
         db.Session.commit()
     except sa.exc.SQLAlchemyError as exc:
         db.Session.rollback()
-        raise db.RejectedCommand(
+        raise db.FailedCommand(
             f"CLIENT-RENAME - Cannot rename client {client.name} to {name}: {exc}"
         )
 
@@ -125,7 +125,7 @@ def rename(client_id: int, name: str) -> None:
 def change_address(client_id: int, address: Address) -> None:
     client: model._Client = db.Session.get(model._Client, client_id)
     if client is None:
-        raise db.RejectedCommand(f"CLIENT-ADDRESS - Client {client_id} not found.")
+        raise db.FailedCommand(f"CLIENT-ADDRESS - Client {client_id} not found.")
     client.address = address.address
     client.zip_code = address.zip_code
     client.city = address.city
@@ -134,7 +134,7 @@ def change_address(client_id: int, address: Address) -> None:
         db.Session.commit()
     except sa.exc.SQLAlchemyError as exc:
         db.Session.rollback()
-        raise db.RejectedCommand(
+        raise db.FailedCommand(
             f"CLIENT-ADDRESS - Cannot change address of client {client.name}: {exc}"
         )
 
@@ -143,7 +143,7 @@ def delete(client_id: int) -> None:
     client: model._Client = db.Session.get(model._Client, client_id)
 
     if client is None:
-        raise db.RejectedCommand(f"CLIENT-DELETE - Client {client_id} not found.")
+        raise db.FailedCommand(f"CLIENT-DELETE - Client {client_id} not found.")
 
     if client.has_emitted_invoices:
         raise db.RejectedCommand(
@@ -157,11 +157,11 @@ def delete(client_id: int) -> None:
             f" basket and cannot be deleted."
         )
 
+    db.Session.delete(client)
     try:
-        db.Session.delete(client)
+        db.Session.commit()
     except sa.exc.SQLAlchemyError:
+        db.Session.rollback()
         raise db.FailedCommand(
             f"CLIENT-DELETE - SQL error while deleting client {client.name}."
         )
-    else:
-        db.Session.commit()

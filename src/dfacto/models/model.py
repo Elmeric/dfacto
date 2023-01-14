@@ -5,30 +5,33 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from dataclasses import dataclass
 from datetime import date
-from typing import Annotated, Optional
+from typing import Optional
 
-from sqlalchemy import (
-    ForeignKey,
-    ScalarResult,
-    String,
-    and_,
-    case,
-    delete,
-    exists,
-    insert,
-    select,
-    update,
-)
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy import ForeignKey, String, and_, case, exists, select
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import Mapped, column_property, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import CheckConstraint
 
 from dfacto.models import db
-from dfacto.models.service import _Service
-from dfacto.models.vat_rate import _VatRate
+
+
+class _VatRate(db.BaseModel):
+    __tablename__ = "vat_rate"
+
+    id: Mapped[db.intpk] = mapped_column(init=False)
+    rate: Mapped[float]
+
+
+class _Service(db.BaseModel):
+    __tablename__ = "service"
+
+    id: Mapped[db.intpk] = mapped_column(init=False)
+    name: Mapped[str] = mapped_column(unique=True)
+    unit_price: Mapped[float]
+    vat_rate_id: Mapped[int] = mapped_column(ForeignKey("vat_rate.id"))
+
+    vat_rate: Mapped["_VatRate"] = relationship(init=False)
 
 
 class _Client(db.BaseModel):
@@ -42,12 +45,12 @@ class _Client(db.BaseModel):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     basket: Mapped["_Basket"] = relationship(
-        init=False,
-        back_populates="client",
+        init=False, back_populates="client", cascade="all, delete-orphan"
     )
-    invoices: Mapped[list["Invoice"]] = relationship(
+    invoices: Mapped[list["_Invoice"]] = relationship(
         init=False,
         back_populates="client",
+        cascade="all, delete-orphan",
     )
 
     @hybrid_property
@@ -66,8 +69,8 @@ class _Client(db.BaseModel):
                     exists()
                     .where(
                         and_(
-                            Invoice.client_id == cls.id,
-                            Invoice.status != "DRAFT",
+                            _Invoice.client_id == cls.id,
+                            _Invoice.status != "DRAFT",
                         )
                     )
                     .correlate(cls),
@@ -85,7 +88,8 @@ class _Item(db.BaseModel):
     __tablename__ = "item"
     __table_args__ = (
         CheckConstraint(
-            "(basket_id is not NULL) or (invoice_id is not NULL)",
+            "not ((basket_id is NULL) and (invoice_id is NULL))",
+            # "(basket_id is not NULL) or (invoice_id is not NULL)",
             name="basket_or_invoice_not_null",
         ),
     )
@@ -105,7 +109,7 @@ class _Item(db.BaseModel):
 
     service: Mapped["_Service"] = relationship(init=False)
     basket: Mapped["_Basket"] = relationship(back_populates="items", init=False)
-    invoice: Mapped["Invoice"] = relationship(back_populates="items", init=False)
+    invoice: Mapped["_Invoice"] = relationship(back_populates="items", init=False)
 
     def __post_init__(self) -> None:
         serv = db.Session.get(_Service, self.service_id)
@@ -126,7 +130,11 @@ class _Basket(db.BaseModel):
     )
 
     client: Mapped["_Client"] = relationship(back_populates="basket", init=False)
-    items: Mapped[list["_Item"]] = relationship(back_populates="basket", init=False)
+    items: Mapped[list["_Item"]] = relationship(
+        back_populates="basket",
+        init=False
+        # back_populates="basket", init=False, cascade="all, delete-orphan"
+    )
 
 
 class InvoiceStatus(enum.Enum):
@@ -137,11 +145,10 @@ class InvoiceStatus(enum.Enum):
     CANCELLED = 5
 
 
-class Invoice(db.BaseModel):
+class _Invoice(db.BaseModel):
     __tablename__ = "invoice"
 
     id: Mapped[db.intpk] = mapped_column(init=False)
-    code: Mapped[str] = mapped_column(String(10))
     date: Mapped[date]
     due_date: Mapped[date]
     raw_amount: Mapped[float] = mapped_column(default=0.0)
@@ -152,4 +159,12 @@ class Invoice(db.BaseModel):
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"), init=False)
 
     client: Mapped["_Client"] = relationship(back_populates="invoices", init=False)
-    items: Mapped[list["_Item"]] = relationship(back_populates="invoice", init=False)
+    items: Mapped[list["_Item"]] = relationship(
+        back_populates="invoice",
+        init=False
+        # back_populates="invoice", init=False, cascade="all, delete-orphan"
+    )
+
+    @hybrid_property
+    def code(self) -> str:
+        return "FC" + str(self.id).zfill(10)

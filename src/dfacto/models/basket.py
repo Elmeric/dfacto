@@ -50,7 +50,7 @@ class Basket:
         self._net_amount = raw_amount + vat
 
 
-def get(basket_id: Optional[int] = None) -> Basket:
+def get(basket_id: int) -> Basket:
     basket: Optional[model._Basket] = db.Session.get(model._Basket, basket_id)
     if basket is None:
         raise db.FailedCommand(f"BASKET-GET - Basket {basket_id} not found.")
@@ -77,7 +77,7 @@ def list_all() -> list[Basket]:
 def add_item(basket_id: int, service_id: int, quantity: int) -> item.Item:
     basket: Optional[model._Basket] = db.Session.get(model._Basket, basket_id)
     if basket is None:
-        raise db.RejectedCommand(f"BASKET-ADD-ITEM - Basket {basket_id} not found.")
+        raise db.FailedCommand(f"BASKET-ADD-ITEM - Basket {basket_id} not found.")
 
     it = item.add(service_id, quantity, basket_id=basket_id)
     basket.raw_amount += it.raw_amount
@@ -104,10 +104,60 @@ def update_item(
 ) -> item.Item:
     basket: Optional[model._Basket] = db.Session.get(model._Basket, basket_id)
     if basket is None:
-        raise db.RejectedCommand(f"BASKET-UPDATE-ITEM - Basket {basket_id} not found.")
+        raise db.FailedCommand(f"BASKET-UPDATE-ITEM - Basket {basket_id} not found.")
 
     it = item.update(item_id, service_id, quantity)
     basket.raw_amount += it.raw_amount
     basket.vat += it.vat
     basket.net_amount += it.net_amount
     return it
+
+
+def remove_item(item_id: int) -> None:
+    it: Optional[model._Item] = db.Session.get(model._Item, item_id)
+    if it is None:
+        raise db.FailedCommand(f"BASKET-REMOVE-ITEM - Item {item_id} not found.")
+
+    it.basket.raw_amount -= it.raw_amount
+    it.basket.vat -= it.vat
+    it.basket.net_amount -= it.net_amount
+    if it.invoice_id is None:
+        # Not used by an invoice: delete it.
+        db.Session.delete(it)
+    else:
+        # In use by an invoice, do not delete it, only dereferences the basket.
+        it.basket_id = None
+
+    try:
+        db.Session.commit()
+    except sa.exc.SQLAlchemyError as exc:
+        db.Session.rollback()
+        raise db.FailedCommand(
+            f"BASKET-REMOVE-ITEM - Cannot remove item {it.service.name}"
+            f" from basket of client {it.basket.client.name}: {exc}"
+        )
+
+
+def clear(basket_id: int) -> None:
+    basket: Optional[model._Basket] = db.Session.get(model._Basket, basket_id)
+    if basket is None:
+        raise db.FailedCommand(f"BASKET-CLEAR - Basket {basket_id} not found.")
+
+    for it in basket.items:
+        basket.raw_amount -= it.raw_amount
+        basket.vat -= it.vat
+        basket.net_amount -= it.net_amount
+        if it.invoice_id is None:
+            # Not used by an invoice: delete it.
+            db.Session.delete(it)
+        else:
+            # In use by an invoice, do not delete it, only dereferences the basket.
+            it.basket_id = None
+
+    try:
+        db.Session.commit()
+    except sa.exc.SQLAlchemyError as exc:
+        db.Session.rollback()
+        raise db.FailedCommand(
+            f"BASKET-CLEAR - Cannot clear basket of client {basket.client.name}: {exc}"
+        )

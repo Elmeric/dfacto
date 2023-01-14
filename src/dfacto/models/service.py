@@ -5,27 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 import sqlalchemy as sa
 import sqlalchemy.exc
-import sqlalchemy.orm
 
-from dfacto.models import db, vat_rate
-
-if TYPE_CHECKING:
-    from dfacto.models.vat_rate import _VatRate
-
-
-class _Service(db.BaseModel):
-    __tablename__ = "service"
-
-    id: sa.orm.Mapped[db.intpk] = sa.orm.mapped_column(init=False)
-    name: sa.orm.Mapped[str] = sa.orm.mapped_column(unique=True)
-    unit_price: sa.orm.Mapped[float]
-    vat_rate_id: sa.orm.Mapped[int] = sa.orm.mapped_column(sa.ForeignKey("vat_rate.id"))
-
-    vat_rate: sa.orm.Mapped["_VatRate"] = sa.orm.relationship(init=False)
+from dfacto.models import db, model, vat_rate
 
 
 @dataclass()
@@ -33,20 +18,18 @@ class Service:
     id: int
     name: str
     unit_price: float
-    vat_rate_id: int
-    vat_rate: float
+    vat_rate: vat_rate.VatRate
 
 
-def get(service_id: Optional[int] = None) -> Service:
-    service = db.Session.get(_Service, service_id)
+def get(service_id: int) -> Service:
+    service: model._Service = db.Session.get(model._Service, service_id)
     if service is None:
-        raise db.RejectedCommand(f"Cannot find a service with {service_id} id!")
+        raise db.FailedCommand(f"SERVICE-GET - Service {service_id} not found.")
     return Service(
         service.id,
         service.name,
         service.unit_price,
-        service.vat_rate.id,
-        service.vat_rate.rate,
+        vat_rate.VatRate(service.vat_rate_id, service.vat_rate.rate),
     )
 
 
@@ -56,30 +39,28 @@ def list_all() -> list[Service]:
             service.id,
             service.name,
             service.unit_price,
-            service.vat_rate_id,
-            service.vat_rate.rate,
+            vat_rate.VatRate(service.vat_rate_id, service.vat_rate.rate),
         )
-        for service in db.Session.scalars(sa.select(_Service)).all()
+        for service in db.Session.scalars(sa.select(model._Service)).all()
     ]
 
 
 def add(
     name: str, unit_price: float, vat_rate_id: int = vat_rate.DEFAULT_RATE_ID
 ) -> Service:
-    service = _Service(name=name, unit_price=unit_price, vat_rate_id=vat_rate_id)
+    service = model._Service(name=name, unit_price=unit_price, vat_rate_id=vat_rate_id)
     db.Session.add(service)
     try:
         db.Session.commit()
-    except sa.exc.IntegrityError as exc:
+    except sa.exc.SQLAlchemyError as exc:
         db.Session.rollback()
-        raise db.RejectedCommand(f"Cannot add service {name}: {exc}")
+        raise db.FailedCommand(f"SERVICE-ADD - Cannot add service {name}: {exc}")
     else:
         return Service(
             service.id,
             service.name,
             service.unit_price,
-            service.vat_rate_id,
-            service.vat_rate.rate,
+            vat_rate.VatRate(service.vat_rate_id, service.vat_rate.rate),
         )
 
 
@@ -89,9 +70,10 @@ def update(
     unit_price: Optional[float] = None,
     vat_rate_id: Optional[int] = None,
 ) -> Service:
-    service = db.Session.get(_Service, service_id)
+    service: model._Service = db.Session.get(model._Service, service_id)
+
     if service is None:
-        raise db.RejectedCommand(f"Cannot find a service with {service_id} id!")
+        raise db.FailedCommand(f"SERVICE-UPDATE - Service {service_id} not found.")
 
     if name is not None and name != service.name:
         service.name = name
@@ -104,30 +86,29 @@ def update(
 
     try:
         db.Session.commit()
-    except sa.exc.IntegrityError as exc:
+    except sa.exc.SQLAlchemyError as exc:
         db.Session.rollback()
-        raise db.RejectedCommand(f"Cannot update service {service.name}: {exc}")
+        raise db.FailedCommand(
+            f"SERVICE-UPDATE - Cannot update service {service.name}: {exc}"
+        )
     else:
         return Service(
             service.id,
             service.name,
             service.unit_price,
-            service.vat_rate_id,
-            service.vat_rate.rate,
+            vat_rate.VatRate(service.vat_rate_id, service.vat_rate.rate),
         )
 
 
 def delete(service_id: int) -> None:
+    db.Session.execute(sa.delete(model._Service).where(model._Service.id == service_id))
     try:
-        db.Session.execute(sa.delete(_Service).where(_Service.id == service_id))
-    except sa.exc.IntegrityError:
-        # in_use = db.Session.scalars(
-        #     sa.select(_Item.id)
-        #     .join(_Item.service)
-        #     .where(_Item.service_id == service_id)
-        # ).first()
-        raise db.RejectedCommand(
-            f"Service with id {service_id} is used by at least one invoice's item!"
-        )
-    else:
         db.Session.commit()
+    except sa.exc.IntegrityError:
+        raise db.RejectedCommand(
+            f"SERVICE-DELETE - Service with id {service_id} is used by at least one invoice's item!"
+        )
+    except sa.exc.SQLAlchemyError:
+        raise db.FailedCommand(
+            f"SERVICE-DELETE - SQL error while deleting service {service_id}"
+        )
