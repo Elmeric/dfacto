@@ -6,27 +6,80 @@
 
 import enum
 from datetime import date
-from typing import Optional
+from typing import Annotated, NamedTuple, Optional
 
 from sqlalchemy import ForeignKey, String, and_, case, exists, select
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    MappedAsDataclass,
+    mapped_column,
+    relationship,
+)
 from sqlalchemy.schema import CheckConstraint
 
-from dfacto.models import db
+intpk = Annotated[int, mapped_column(primary_key=True)]
 
 
-class _VatRate(db.BaseModel):
+class CommandException(Exception):
+    """Base command exception."""
+
+
+class RejectedCommand(CommandException):
+    """Indicates that the command is rejected."""
+
+
+class FailedCommand(CommandException):
+    """Indicates that the command has failed."""
+
+
+class CommandStatus(enum.Enum):
+    """Authorized status of a command in its command report.
+
+    REJECTED: the command cannot be satisfied.
+    IN_PROGRESS: the command is running.
+    COMPLETED : The command has terminated with success.
+    FAILED: The command has terminated with errors.
+    """
+
+    REJECTED = enum.auto()
+    IN_PROGRESS = enum.auto()
+    COMPLETED = enum.auto()
+    FAILED = enum.auto()
+
+
+class CommandReport(NamedTuple):
+    """To be returned by any model's commands.
+
+    Class attributes:
+        status: the command status as defined above.
+        reason: a message to explicit the status.
+    """
+
+    status: CommandStatus
+    reason: str = None
+
+    def __repr__(self) -> str:
+        reason = f", {self.reason}" if self.reason else ""
+        return f"CommandReport({self.status.name}{reason})"
+
+
+class BaseModel(MappedAsDataclass, DeclarativeBase):
+    pass
+
+
+class _VatRate(BaseModel):
     __tablename__ = "vat_rate"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     rate: Mapped[float]
 
 
-class _Service(db.BaseModel):
+class _Service(BaseModel):
     __tablename__ = "service"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     name: Mapped[str] = mapped_column(unique=True)
     unit_price: Mapped[float]
     vat_rate_id: Mapped[int] = mapped_column(ForeignKey("vat_rate.id"))
@@ -34,10 +87,10 @@ class _Service(db.BaseModel):
     vat_rate: Mapped["_VatRate"] = relationship(init=False)
 
 
-class _Client(db.BaseModel):
+class _Client(BaseModel):
     __tablename__ = "client"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     address: Mapped[str]
     zip_code: Mapped[str] = mapped_column(String(5))
@@ -84,7 +137,7 @@ class _Client(db.BaseModel):
         self.basket = _Basket()
 
 
-class _Item(db.BaseModel):
+class _Item(BaseModel):
     __tablename__ = "item"
     __table_args__ = (
         CheckConstraint(
@@ -94,7 +147,7 @@ class _Item(db.BaseModel):
         ),
     )
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     raw_amount: Mapped[float] = mapped_column(init=False)
     vat: Mapped[float] = mapped_column(init=False)
     net_amount: Mapped[float] = mapped_column(init=False)
@@ -111,17 +164,11 @@ class _Item(db.BaseModel):
     basket: Mapped["_Basket"] = relationship(back_populates="items", init=False)
     invoice: Mapped["_Invoice"] = relationship(back_populates="items", init=False)
 
-    def __post_init__(self) -> None:
-        serv = db.Session.get(_Service, self.service_id)
-        self.raw_amount = raw_amount = serv.unit_price * self.quantity
-        self.vat = vat = raw_amount * serv.vat_rate.rate / 100
-        self.net_amount = raw_amount + vat
 
-
-class _Basket(db.BaseModel):
+class _Basket(BaseModel):
     __tablename__ = "basket"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     raw_amount: Mapped[float] = mapped_column(default=0.0)
     vat: Mapped[float] = mapped_column(default=0.0)
     net_amount: Mapped[float] = mapped_column(default=0.0)
@@ -145,10 +192,10 @@ class InvoiceStatus(enum.Enum):
     CANCELLED = 5
 
 
-class _Invoice(db.BaseModel):
+class _Invoice(BaseModel):
     __tablename__ = "invoice"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     date: Mapped[date]
     due_date: Mapped[date]
     raw_amount: Mapped[float] = mapped_column(default=0.0)

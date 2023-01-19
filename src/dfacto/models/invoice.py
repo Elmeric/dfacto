@@ -10,8 +10,19 @@ from typing import Optional
 
 import sqlalchemy as sa
 import sqlalchemy.exc
+import sqlalchemy.orm
 
-from dfacto.models import basket, db, item, model
+from dfacto.models.basket import BasketModel
+from dfacto.models.item import Item, ItemModel
+from dfacto.models.model import (
+    CommandReport,
+    CommandStatus,
+    InvoiceStatus,
+    _Basket,
+    _Invoice,
+    _Item,
+)
+from dfacto.models.service import ServiceModel
 
 
 @dataclass()
@@ -19,8 +30,8 @@ class Invoice:
     id: int
     code: str
     client_id: int
-    content: list[item.Item]
-    status: model.InvoiceStatus
+    content: list[Item]
+    status: InvoiceStatus
     _raw_amount: Optional[float] = None
     _vat: Optional[float] = None
     _net_amount: Optional[float] = None
@@ -53,201 +64,298 @@ class Invoice:
         self._net_amount = raw_amount + vat
 
 
-def get(invoice_id: int) -> Invoice:
-    invoice: Optional[model._Invoice] = db.Session.get(model._Invoice, invoice_id)
-    if invoice is None:
-        raise db.FailedCommand(f"INVOICE-GET - Invoice {invoice_id} not found.")
+@dataclass()
+class InvoiceModel:
+    Session: sa.orm.scoped_session
+    service_model: ServiceModel
+    item_model: ItemModel
+    basket_model: BasketModel
 
-    content = [item.get(it.id) for it in invoice.items]
-    return Invoice(
-        invoice.id,
-        invoice.code,
-        invoice.client_id,
-        content,
-        model.InvoiceStatus[invoice.status],
-    )
+    def get(self, invoice_id: int) -> Optional[Invoice]:
+        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        if invoice is None:
+            return
 
-
-def list_all() -> list[Invoice]:
-    return [
-        Invoice(
+        content = [self.item_model.get(it.id) for it in invoice.items]
+        return Invoice(
             invoice.id,
             invoice.code,
             invoice.client_id,
-            [item.get(it.id) for it in invoice.items],
-            model.InvoiceStatus[invoice.status],
-        )
-        for invoice in db.Session.scalars(sa.select(model._Invoice)).all()
-    ]
-
-
-def create_from_basket(basket_id: int, clear_basket: bool = True) -> Invoice:
-    bskt: Optional[model._Basket] = db.Session.get(model._Basket, basket_id)
-    if bskt is None:
-        raise db.FailedCommand(f"INVOICE-CREATE - Basket {basket_id} not found.")
-
-    if len(bskt.items) <= 0:
-        raise db.RejectedCommand(
-            f"INVOICE-CREATE - No items in basket of client {bskt.client.name}."
-        )
-
-    created_at = date.today()
-    invoice = model._Invoice(
-        date=created_at,
-        due_date=created_at,
-        raw_amount=bskt.raw_amount,
-        vat=bskt.vat,
-        net_amount=bskt.net_amount,
-        status=model.InvoiceStatus.DRAFT,
-    )
-    invoice.client_id = bskt.client_id
-    invoice.items = [it for it in bskt.items]
-    db.Session.add(invoice)
-
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"INVOICE-CREATE - Cannot create invoice from basket"
-            f" of client {bskt.client.name}: {exc}"
-        )
-    else:
-        inv = Invoice(
-            invoice.id,
-            invoice.code,
-            invoice.client_id,
-            [item.get(it.id) for it in bskt.items],
+            content,
             invoice.status,
         )
-        inv.totalize()
-        if clear_basket:
-            basket.clear(basket_id)
-        return inv
 
-
-def add_item(invoice_id: int, service_id: int, quantity: int) -> item.Item:
-    invoice: Optional[model._Invoice] = db.Session.get(model._Invoice, invoice_id)
-    if invoice is None:
-        raise db.FailedCommand(f"INVOICE-ADD-ITEM - Invoice {invoice_id} not found.")
-
-    it = item.add(service_id, quantity, invoice_id=invoice_id)
-    invoice.raw_amount += it.raw_amount
-    invoice.vat += it.vat
-    invoice.net_amount += it.net_amount
-
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"INVOICE-ADD-ITEM - Cannot add service {it.service.name}"
-            f" to invoice of client {invoice.client.name}: {exc}"
-        )
-    else:
-        return it
-
-
-def update_item(
-    invoice_id: int,
-    item_id: int,
-    service_id: Optional[int] = None,
-    quantity: Optional[int] = None,
-) -> item.Item:
-    invoice: Optional[model._Invoice] = db.Session.get(model._Invoice, invoice_id)
-    if invoice is None:
-        raise db.FailedCommand(f"INVOICE-UPDATE-ITEM - Invoice {invoice_id} not found.")
-
-    it = item.update(item_id, service_id, quantity)
-    invoice.raw_amount += it.raw_amount
-    invoice.vat += it.vat
-    invoice.net_amount += it.net_amount
-    return it
-
-
-def remove_item(item_id: int) -> None:
-    it: Optional[model._Item] = db.Session.get(model._Item, item_id)
-    if it is None:
-        raise db.FailedCommand(f"INVOICE-REMOVE-ITEM - Item {item_id} not found.")
-
-    if it.invoice is None:
-        raise db.FailedCommand(
-            f"INVOICE-REMOVE-ITEM - Item {item_id} not in an invoice."
-        )
-
-    if it.invoice.status != model.InvoiceStatus.DRAFT:
-        raise db.RejectedCommand(
-            f"INVOICE-REMOVE-ITEM - Only DRAFT invoice can be edited."
-        )
-
-    it.invoice.raw_amount -= it.raw_amount
-    it.invoice.vat -= it.vat
-    it.invoice.net_amount -= it.net_amount
-    if it.basket_id is None:
-        # Not used by a basket: delete it.
-        db.Session.delete(it)
-    else:
-        # In use by basket, do not delete it, only dereferences the invoice.
-        it.invoice_id = None
-
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"INVOICE-REMOVE-ITEM - Cannot remove item {it.service.name}"
-            f" from invoice {it.invoice.code} of client {it.invoice.client.name}: {exc}"
-        )
-
-
-def update_status(invoice_id: int, status: model.InvoiceStatus) -> None:
-    invoice: Optional[model._Invoice] = db.Session.get(model._Invoice, invoice_id)
-    if invoice is None:
-        raise db.FailedCommand(f"INVOICE-STATUS - Invoice {invoice_id} not found.")
-
-    if status != invoice.status:
-        if status == model.InvoiceStatus.DRAFT:
-            raise db.RejectedCommand(
-                f"INVOICE-STATUS - Emitted invoice cannot be reset to DRAFT."
+    def list_all(self) -> list[Invoice]:
+        return [
+            Invoice(
+                invoice.id,
+                invoice.code,
+                invoice.client_id,
+                [self.item_model.get(it.id) for it in invoice.items],
+                invoice.status,
             )
-        invoice.status = status
+            for invoice in self.Session.scalars(sa.select(_Invoice)).all()
+        ]
 
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"INVOICE-STATUS - Cannot change invoice status"
-            f" of {invoice_id} to {status}: {exc}"
+    def create_from_basket(
+        self, basket_id: int, clear_basket: bool = True
+    ) -> CommandReport:
+        bskt: Optional[_Basket] = self.Session.get(_Basket, basket_id)
+        if bskt is None:
+            return CommandReport(
+                CommandStatus.FAILED, f"INVOICE-CREATE - Basket {basket_id} not found."
+            )
+
+        if len(bskt.items) <= 0:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"INVOICE-CREATE - No items in basket of client {bskt.client.name}.",
+            )
+
+        created_at = date.today()
+        invoice = _Invoice(
+            date=created_at,
+            due_date=created_at,
+            raw_amount=bskt.raw_amount,
+            vat=bskt.vat,
+            net_amount=bskt.net_amount,
+            status=InvoiceStatus.DRAFT,
         )
+        invoice.client_id = bskt.client_id
+        invoice.items = [it for it in bskt.items]
+        self.Session.add(invoice)
 
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-CREATE - Cannot create invoice from basket"
+                f" of client {bskt.client.name}: {exc}",
+            )
+        else:
+            inv = Invoice(
+                invoice.id,
+                invoice.code,
+                invoice.client_id,
+                [self.item_model.get(it.id) for it in bskt.items],
+                invoice.status,
+            )
+            inv.totalize()
+            if clear_basket:
+                self.basket_model.clear(basket_id)
+            return CommandReport(CommandStatus.COMPLETED)
 
-def delete(invoice_id: int) -> None:
-    invoice: Optional[model._Invoice] = db.Session.get(model._Invoice, invoice_id)
-    if invoice is None:
-        raise db.FailedCommand(f"INVOICE-DELETE - Invoice {invoice_id} not found.")
+    def add_item(
+        self, invoice_id: int, service_id: int, quantity: int
+    ) -> CommandReport:
+        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        if invoice is None:
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-ADD-ITEM - Invoice {invoice_id} not found.",
+            )
 
-    if invoice.status != model.InvoiceStatus.DRAFT:
-        raise db.RejectedCommand(f"INVOICE-DELETE - Only DRAFT invoice can be deleted.")
+        serv = self.service_model.get(service_id)
+        if serv is None or quantity <= 0:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"INVOICE-ADD-ITEM - An item shall refer to a strictly"
+                f" positive quantity and a service.",
+            )
 
-    for it in invoice.items:
-        invoice.raw_amount -= it.raw_amount
-        invoice.vat -= it.vat
-        invoice.net_amount -= it.net_amount
+        if invoice.status != InvoiceStatus.DRAFT:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"INVOICE-ADD-ITEM - Cannot add items to a non-draft invoice.",
+            )
+
+        item = _Item(quantity=quantity, service_id=service_id)
+        item.raw_amount = raw_amount = serv.unit_price * quantity
+        item.vat = vat = raw_amount * serv.vat_rate.rate / 100
+        item.net_amount = raw_amount + vat
+        item.invoice_id = invoice_id
+        self.Session.add(item)
+
+        invoice.raw_amount += item.raw_amount
+        invoice.vat += item.vat
+        invoice.net_amount += item.net_amount
+
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-ADD-ITEM - Cannot add service {item.service.name}"
+                f" to invoice of client {invoice.client.name}: {exc}",
+            )
+
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
+
+    def update_item(
+        self,
+        invoice_id: int,
+        item_id: int,
+        service_id: Optional[int] = None,
+        quantity: Optional[int] = None,
+    ) -> CommandReport:
+        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        if invoice is None:
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-UPDATE-ITEM - Invoice {invoice_id} not found.",
+            )
+
+        if invoice.status != InvoiceStatus.DRAFT:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"INVOICE-UPDATE-ITEM - Cannot change items of a non-draft invoice.",
+            )
+
+        item: Optional[_Item] = self.Session.get(_Item, item_id)
+        if item is None:
+            return CommandReport(
+                CommandStatus.FAILED, f"INVOICE-UPDATE-ITEM - Item {item_id} not found."
+            )
+
+        update_needed = True
+
+        if service_id is None and quantity is None:
+            update_needed = False
+
+        if service_id is not None:
+            if service_id == item.service_id:
+                update_needed = False
+            item.service_id = service_id
+
+        if quantity is not None:
+            if quantity == item.quantity:
+                update_needed = False
+            item.quantity = quantity
+
+        if update_needed:
+            serv = self.service_model.get(service_id)
+            if serv is None:
+                return CommandReport(
+                    CommandStatus.REJECTED,
+                    f"INVOICE-UPDATE-ITEM - Service {service_id} not found.",
+                )
+            raw_amount = item.raw_amount = serv.unit_price * quantity
+            vat = item.vat = serv.vat_rate.rate * raw_amount
+            item.net_amount = raw_amount + vat
+
+        invoice.raw_amount += item.raw_amount
+        invoice.vat += item.vat
+        invoice.net_amount += item.net_amount
+        return CommandReport(CommandStatus.COMPLETED)
+
+    def remove_item(self, item_id: int) -> CommandReport:
+        it: Optional[_Item] = self.Session.get(_Item, item_id)
+        if it is None:
+            return CommandReport(
+                CommandStatus.FAILED, f"INVOICE-REMOVE-ITEM - Item {item_id} not found."
+            )
+
+        if it.invoice is None:
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-REMOVE-ITEM - Item {item_id} not in an invoice.",
+            )
+
+        if it.invoice.status != InvoiceStatus.DRAFT:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"INVOICE-REMOVE-ITEM - Only DRAFT invoice can be edited.",
+            )
+
+        it.invoice.raw_amount -= it.raw_amount
+        it.invoice.vat -= it.vat
+        it.invoice.net_amount -= it.net_amount
         if it.basket_id is None:
             # Not used by a basket: delete it.
-            db.Session.delete(it)
+            self.Session.delete(it)
         else:
             # In use by basket, do not delete it, only dereferences the invoice.
             it.invoice_id = None
 
-    db.Session.delete(invoice)
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-REMOVE-ITEM - Cannot remove item {it.service.name}"
+                f" from invoice {it.invoice.code} of client {it.invoice.client.name}: {exc}",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
 
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"INVOICE-DELETE - SQL error while deleting draft invoice {invoice_id}"
-            f" of client {invoice.client.name}: {exc}"
-        )
+    def update_status(self, invoice_id: int, status: InvoiceStatus) -> CommandReport:
+        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        if invoice is None:
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-STATUS - Invoice {invoice_id} not found.",
+            )
+
+        if status != invoice.status:
+            if status == InvoiceStatus.DRAFT:
+                return CommandReport(
+                    CommandStatus.REJECTED,
+                    f"INVOICE-STATUS - Emitted invoice cannot be reset to DRAFT.",
+                )
+            invoice.status = status
+
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-STATUS - Cannot change invoice status"
+                f" of {invoice_id} to {status}: {exc}",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
+
+    def delete(self, invoice_id: int) -> CommandReport:
+        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        if invoice is None:
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-DELETE - Invoice {invoice_id} not found.",
+            )
+
+        if invoice.status != InvoiceStatus.DRAFT:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"INVOICE-DELETE - Only DRAFT invoice can be deleted.",
+            )
+
+        for it in invoice.items:
+            invoice.raw_amount -= it.raw_amount
+            invoice.vat -= it.vat
+            invoice.net_amount -= it.net_amount
+            if it.basket_id is None:
+                # Not used by a basket: delete it.
+                self.Session.delete(it)
+            else:
+                # In use by basket, do not delete it, only dereferences the invoice.
+                it.invoice_id = None
+
+        self.Session.delete(invoice)
+
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"INVOICE-DELETE - SQL error while deleting draft invoice {invoice_id}"
+                f" of client {invoice.client.name}: {exc}",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)

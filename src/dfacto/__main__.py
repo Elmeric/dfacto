@@ -1,119 +1,97 @@
 import datetime
-import logging
-import logging.config
 import random
 import sys
 
 from sqlalchemy import select
 
-from dfacto.models import basket, client, db, invoice, service, vat_rate
-from dfacto.models.model import InvoiceStatus, _Client
-
-# from dcfs_editor.models.initdb import initDb
-# from dcfs_editor import dcfsconstants as dc
-# from dcfs_editor.logconfig import LOGGING_CONFIG
-
-
-# logging.config.dictConfig(LOGGING_CONFIG)
-# logging.basicConfig(filename='../dcfs_data/log/dcfs_editor.log',
-#                     filemode='w',
-#                     level=logging.DEBUG,
-#                     # format='(%(asctime)s - %(name)s - %(levelname)-5s) - %(message)s',)
-#                     format='(%(name)-36s - %(levelname)-5s) - %(message)s', )
-
-logger = logging.getLogger(__name__)
+from dfacto.models import db
+from dfacto.models.basket import BasketModel
+from dfacto.models.client import ClientModel
+from dfacto.models.invoice import InvoiceModel
+from dfacto.models.item import ItemModel
+from dfacto.models.model import BaseModel, InvoiceStatus, _Client
+from dfacto.models.service import ServiceModel
+from dfacto.models.vat_rate import VatRateModel
 
 
 def main():
-    db.create_schema()
+    print(f"Creating db schema: {db.engine} {id(db.engine)}", db.Session)
+    BaseModel.metadata.create_all(db.engine)
+    # db.create_schema()
     #    initDb()
 
     start_time = datetime.datetime.now()
 
-    vat_rate.init()
+    vat_rate_model = VatRateModel(db.Session)
+    service_model = ServiceModel(db.Session, vat_rate_model)
+    item_model = ItemModel(db.Session, service_model)
+    basket_model = BasketModel(db.Session, service_model, item_model)
+    invoice_model = InvoiceModel(db.Session, service_model, item_model, basket_model)
+    client_model = ClientModel(db.Session, basket_model)
 
-    print(vat_rate.get_default())
+    print(vat_rate_model.get_default())
 
-    vat_rates = vat_rate.list_all()
+    vat_rates = vat_rate_model.list_all()
     print(vat_rates)
 
-    v = vat_rate.get(vat_rate.DEFAULT_RATE_ID + 1)
+    v = vat_rate_model.get(vat_rate_model.DEFAULT_RATE_ID + 1)
     print(v)
 
-    v = vat_rate.update(vat_rate.DEFAULT_RATE_ID + 1, 5.5)
-    print(v)
+    cmd_report = vat_rate_model.update(vat_rate_model.DEFAULT_RATE_ID + 1, 5.5)
+    print(cmd_report)
 
-    v = vat_rate.add(30)
-    print(v)
+    cmd_report = vat_rate_model.add(30)
+    print(cmd_report)
 
     # try:
-    #     vat_rate.delete(vat_rate.DEFAULT_RATE_ID + 2)
-    # except db.RejectedCommand as exc:
+    #     vat_rate_model.delete(vat_rate_model.DEFAULT_RATE_ID + 2)
+    # except RejectedCommand as exc:
     #     print(exc)
 
-    # vat_rate.reset()
-    vat_rates = vat_rate.list_all()
+    # vat_rate_model.reset()
+    vat_rates = vat_rate_model.list_all()
     print(vat_rates)
 
     for vr in vat_rates:
-        try:
-            vat_rate.delete(vr.id)
-        except db.RejectedCommand as exc:
-            print(exc)
-        except db.FailedCommand as exc:
-            print(exc)
+        cmd_report = vat_rate_model.delete(vr.id)
+        print(cmd_report)
 
-    try:
-        s1 = service.add(f"Service {random.randint(1, 1000)}", 100.0)
-    except db.FailedCommand as exc:
-        print(exc)
-        return
-    else:
-        print(s1)
+    cmd_report = service_model.add(f"Service {random.randint(1, 1000)}", 100.0)
+    print(cmd_report)
 
-    s = service.get(s1.id)
-    print(s)
+    cmd_report = service_model.get(1)
+    print(cmd_report)
 
-    # s2 = service.update(s.id, name="New service")
+    # s2 = service_model.update(s.id, name="New service")
     # print(s2)
-    s2 = service.update(1, unit_price=50)
-    print(s2)
-    s2 = service.update(2, vat_rate_id=3)
-    print(s2)
-    s2 = service.update(2, name="Great service", unit_price=75, vat_rate_id=4)
-    print(s2)
+    cmd_report = service_model.update(1, unit_price=50)
+    print(cmd_report)
+    cmd_report = service_model.update(2, vat_rate_id=3)
+    print(cmd_report)
+    vat_rate_model.add(30)
+    cmd_report = service_model.update(
+        2, name="Great service", unit_price=75, vat_rate_id=4
+    )
+    print(cmd_report)
 
-    try:
-        service.delete(5)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
+    cmd_report = service_model.delete(5)
+    print(cmd_report)
 
-    services = service.list_all()
+    services = service_model.list_all()
     print(services)
 
-    try:
-        vat_rate.delete(4)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
+    cmd_report = vat_rate_model.delete(4)
+    print(cmd_report)
 
-    clients = client.list_all()
+    clients = client_model.list_all()
     if not any(c.name == "John Doe" for c in clients):
-        try:
-            c1 = client.add(
-                name="John Doe",
-                address="1 rue du coin",
-                zip_code="12345",
-                city="ICI",
-            )
-        except db.RejectedCommand as exc:
-            print(exc)
-            return
-        else:
-            print(c1)
+        cmd_report = client_model.add(
+            name="John Doe",
+            address="1 rue du coin",
+            zip_code="12345",
+            city="ICI",
+        )
+        print(cmd_report)
 
     cl: _Client = db.Session.get(_Client, 1)
     if cl.has_emitted_invoices:
@@ -127,80 +105,52 @@ def main():
     if c is not None:
         print(f"Client with emitted invoices: {c.name}, {c.invoices[0].code}")
 
-    try:
-        client.delete(cl.id)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
+    cmd_report = client_model.delete(cl.id)
+    print(cmd_report)
 
-    try:
-        c1 = client.add(
-            name="John Doe",
-            address="1 rue du coin",
-            zip_code="12345",
-            city="ICI",
-        )
-    except db.FailedCommand as exc:
-        print(exc)
-    else:
-        print(c1)
+    cmd_report = client_model.add(
+        name="John Doe",
+        address="1 rue du coin",
+        zip_code="12345",
+        city="ICI",
+    )
+    print(cmd_report)
 
     cl: _Client = db.Session.get(_Client, 1)
-    try:
-        inv = invoice.create_from_basket(cl.basket.id)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
-    else:
-        print(inv)
+    cmd_report = invoice_model.create_from_basket(cl.basket.id)
+    print(cmd_report)
 
-    it = basket.add_item(cl.basket.id, s2.id, 2)
-    print(it)
+    cmd_report = basket_model.add_item(cl.basket.id, 2, 2)
+    print(cmd_report)
 
-    try:
-        inv = invoice.create_from_basket(cl.basket.id)
-        # inv = invoice.create_from_basket(cl.basket.id, clear_basket=False)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
-    else:
-        print(inv)
+    cmd_report = invoice_model.create_from_basket(cl.basket.id)
+    # inv = invoice.create_from_basket(cl.basket.id, clear_basket=False)
+    print(cmd_report)
 
-    it1 = basket.add_item(cl.basket.id, 3, 3)
-    it2 = basket.add_item(cl.basket.id, 4, 4)
+    cmd_report = basket_model.add_item(cl.basket.id, 3, 3)
+    cmd_report = basket_model.add_item(cl.basket.id, 4, 4)
     for it in cl.basket.items:
         print(it.service.name)
-    basket.remove_item(it1.id)
+    basket_model.remove_item(2)
     for it in cl.basket.items:
         print(it.service.name)
 
-    try:
-        invoice.remove_item(inv.content[0].id)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
+    inv = invoice_model.list_all()[-1]
+    cmd_report = invoice_model.remove_item(inv.content[0].id)
+    print(cmd_report)
 
-    invoice.add_item(inv.id, 2, 4)
-    invoice.update_status(inv.id, InvoiceStatus.PAID)
-    try:
-        invoice.update_status(inv.id, InvoiceStatus.DRAFT)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
+    invoice_model.add_item(inv.id, 2, 4)
+    invoice_model.update_status(inv.id, InvoiceStatus.PAID)
+    cmd_report = invoice_model.update_status(inv.id, InvoiceStatus.DRAFT)
+    print(cmd_report)
     print(inv.status)
 
-    inv = invoice.create_from_basket(cl.basket.id)
-    try:
-        invoice.delete(inv.id)
-    except db.RejectedCommand as exc:
-        print(exc)
-    except db.FailedCommand as exc:
-        print(exc)
+    cmd_report = invoice_model.create_from_basket(cl.basket.id)
+    print(cmd_report)
+
+    print(basket_model.list_all())
+    print(invoice_model.get(1))
+    print(invoice_model.list_all())
 
     db.Session.commit()
     db.Session.remove()
@@ -208,87 +158,9 @@ def main():
     end_time = datetime.datetime.now()
     print(f"exec time: {end_time - start_time}")
 
-    return
-
-    try:
-        c1 = client.add(
-            name="John Doe",
-            address="1 rue du coin",
-            zip_code="12345",
-            city="ICI",
-        )
-    except db.RejectedCommand as exc:
-        print(exc)
-        return
-    else:
-        print(c1)
-
-    client.rename(c1.id, "Foo Bar")
-    client.change_address(
-        c1.id, client.Address("3 imapasse ouverte", "33000", "LA-BAS")
-    )
-    client.on_hold(c1.id)
-
-    cl = client.get(c1.id)
-    print(cl)
-    print(cl.basket.content)
-
-    it = basket.add_item(cl.basket.id, s2.id, 2)
-    print(it)
-    print(cl.basket.content)
-
-    s = service.get(1)
-    it = basket.add_item(cl.basket.id, s.id, 2)
-    print(it)
-    print(cl.basket.content)
-    print(f"{cl.basket.raw_amount}, {cl.basket.vat}, {cl.basket.net_amount}")
-    #
-    #
-    # i1 = Invoice(
-    #     code="FC0001",
-    #     date=datetime.date.today(),
-    #     due_date=datetime.date.today(),
-    #     status="DRAFT",
-    # )
-    # i2 = Invoice(
-    #     code="FC0002",
-    #     date=datetime.date.today(),
-    #     due_date=datetime.date.today(),
-    #     status="PAID",
-    # )
-    # i3 = Invoice(
-    #     code="FC0003",
-    #     date=datetime.date.today(),
-    #     due_date=datetime.date.today(),
-    #     status="EMITTED",
-    # )
-    # db.Session.add_all([c1, c2, c3, i1, i2, i3])
-    #
-    # i1.client = c1
-    # i3.client = c3
-    # c2.invoices.append(i2)
-    #
-    # db.Session.commit()
-    #
-    # print("*" * 10)
-    # stmt = select(_Client).where(_Client.name.in_(["John Doe", "Foo", "Bar"]))
-    # for client in db.Session.scalars(stmt):
-    #     print(client)
-    #     if client.name == "John Doe":
-    #         client.invoices = []
-    #     if client.name == "Bar":
-    #         bar_id = client.id
-    # bar = db.Session.get(_Client, bar_id)
-    # print(">> ", bar_id, bar)
-    # db.Session.delete(bar)
-    # db.Session.commit()
-
-    db.Session.remove()
-
 
 if __name__ == "__main__":
     try:
         main()
     except Exception:
-        logger.exception("exception")
         sys.exit(1)

@@ -4,13 +4,16 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import sqlalchemy as sa
 import sqlalchemy.exc
+import sqlalchemy.orm
 
-from dfacto.models import basket, db, invoice, model
+from dfacto.models.basket import Basket, BasketModel
+from dfacto.models.invoice import Invoice
+from dfacto.models.model import CommandReport, CommandStatus, _Client
 
 
 @dataclass()
@@ -27,141 +30,157 @@ class Client:
     code: str
     address: Address
     is_active: bool
-
-    @property
-    def basket(self) -> basket.Basket:
-        client: model._Client = db.Session.get(model._Client, self.id)
-        return basket.get(client.basket.id)
-
-    @property
-    def invoices(self) -> list[invoice.Invoice]:
-        return []
+    basket: Basket
+    invoices: list[Invoice] = field(default_factory=list)
 
 
-def get(client_id: int) -> Client:
-    client: model._Client = db.Session.get(model._Client, client_id)
-    if client is None:
-        raise db.FailedCommand(f"CLIENT-GET - Client {client_id} not found.")
-    return Client(
-        client.id,
-        client.name,
-        client.code,
-        Address(client.address, client.zip_code, client.city),
-        client.is_active,
-    )
+@dataclass()
+class ClientModel:
+    Session: sa.orm.scoped_session
+    basket_model: BasketModel
 
-
-def list_all() -> list[Client]:
-    return [
-        Client(
-            client.id,
-            client.name,
-            client.code,
-            Address(client.address, client.zip_code, client.city),
-            client.is_active,
-        )
-        for client in db.Session.scalars(sa.select(model._Client)).all()
-    ]
-
-
-def add(
-    name: str, address: str, zip_code: str, city: str, is_active: bool = True
-) -> Client:
-    client = model._Client(
-        name=name, address=address, zip_code=zip_code, city=city, is_active=is_active
-    )
-    db.Session.add(client)
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(f"CLIENT-ADD - Cannot add client {name}: {exc}")
-    else:
+    def get(self, client_id: int) -> Optional[Client]:
+        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        if client is None:
+            return
         return Client(
             client.id,
             client.name,
             client.code,
             Address(client.address, client.zip_code, client.city),
             client.is_active,
+            self.basket_model.get(client.basket.id),
         )
 
+    def list_all(self) -> list[Client]:
+        return [
+            Client(
+                client.id,
+                client.name,
+                client.code,
+                Address(client.address, client.zip_code, client.city),
+                client.is_active,
+                self.basket_model.get(client.basket.id),
+            )
+            for client in self.Session.scalars(sa.select(_Client)).all()
+        ]
 
-def on_hold(client_id: int, hold: bool = True) -> None:
-    client: model._Client = db.Session.get(model._Client, client_id)
-    if client is None:
-        raise db.FailedCommand(f"CLIENT-ON_HOLD - Client {client_id} not found.")
-
-    if hold and client.is_active:
-        client.is_active = False
-    if not hold and not client.is_active:
-        client.is_active = True
-
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"CLIENT-ON_HOLD - Cannot set {client.name} active status to {hold}: {exc}"
+    def add(
+        self, name: str, address: str, zip_code: str, city: str, is_active: bool = True
+    ) -> CommandReport:
+        client = _Client(
+            name=name,
+            address=address,
+            zip_code=zip_code,
+            city=city,
+            is_active=is_active,
         )
+        self.Session.add(client)
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED, f"CLIENT-ADD - Cannot add client {name}: {exc}"
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
 
+    def on_hold(self, client_id: int, hold: bool = True) -> CommandReport:
+        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        if client is None:
+            return CommandReport(
+                CommandStatus.FAILED, f"CLIENT-ON_HOLD - Client {client_id} not found."
+            )
 
-def rename(client_id: int, name: str) -> None:
-    client: model._Client = db.Session.get(model._Client, client_id)
-    if client is None:
-        raise db.FailedCommand(f"CLIENT-RENAME - Client {client_id} not found.")
+        if hold and client.is_active:
+            client.is_active = False
+        if not hold and not client.is_active:
+            client.is_active = True
 
-    if name != client.name:
-        client.name = name
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"CLIENT-ON_HOLD - Cannot set {client.name} active status to {hold}: {exc}",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
 
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"CLIENT-RENAME - Cannot rename client {client.name} to {name}: {exc}"
-        )
+    def rename(self, client_id: int, name: str) -> CommandReport:
+        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        if client is None:
+            return CommandReport(
+                CommandStatus.FAILED, f"CLIENT-RENAME - Client {client_id} not found."
+            )
 
+        if name != client.name:
+            client.name = name
 
-def change_address(client_id: int, address: Address) -> None:
-    client: model._Client = db.Session.get(model._Client, client_id)
-    if client is None:
-        raise db.FailedCommand(f"CLIENT-ADDRESS - Client {client_id} not found.")
-    client.address = address.address
-    client.zip_code = address.zip_code
-    client.city = address.city
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"CLIENT-RENAME - Cannot rename client {client.name} to {name}: {exc}",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
 
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError as exc:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"CLIENT-ADDRESS - Cannot change address of client {client.name}: {exc}"
-        )
+    def change_address(self, client_id: int, address: Address) -> CommandReport:
+        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        if client is None:
+            return CommandReport(
+                CommandStatus.FAILED, f"CLIENT-ADDRESS - Client {client_id} not found."
+            )
+        client.address = address.address
+        client.zip_code = address.zip_code
+        client.city = address.city
 
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"CLIENT-ADDRESS - Cannot change address of client {client.name}: {exc}",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
 
-def delete(client_id: int) -> None:
-    client: model._Client = db.Session.get(model._Client, client_id)
+    def delete(self, client_id: int) -> CommandReport:
+        client: Optional[_Client] = self.Session.get(_Client, client_id)
 
-    if client is None:
-        raise db.FailedCommand(f"CLIENT-DELETE - Client {client_id} not found.")
+        if client is None:
+            return CommandReport(
+                CommandStatus.FAILED, f"CLIENT-DELETE - Client {client_id} not found."
+            )
 
-    if client.has_emitted_invoices:
-        raise db.RejectedCommand(
-            f"CLIENT-DELETE - Client {client.name} has non-DRAFT"
-            f" invoices and cannot be deleted."
-        )
+        if client.has_emitted_invoices:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"CLIENT-DELETE - Client {client.name} has non-DRAFT"
+                f" invoices and cannot be deleted.",
+            )
 
-    if len(client.basket.items) > 0:
-        raise db.RejectedCommand(
-            f"CLIENT-DELETE - Client {client.name} has a non-empty"
-            f" basket and cannot be deleted."
-        )
+        if len(client.basket.items) > 0:
+            return CommandReport(
+                CommandStatus.REJECTED,
+                f"CLIENT-DELETE - Client {client.name} has a non-empty"
+                f" basket and cannot be deleted.",
+            )
 
-    db.Session.delete(client)
-    try:
-        db.Session.commit()
-    except sa.exc.SQLAlchemyError:
-        db.Session.rollback()
-        raise db.FailedCommand(
-            f"CLIENT-DELETE - SQL error while deleting client {client.name}."
-        )
+        self.Session.delete(client)
+        try:
+            self.Session.commit()
+        except sa.exc.SQLAlchemyError:
+            self.Session.rollback()
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"CLIENT-DELETE - SQL error while deleting client {client.name}.",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
