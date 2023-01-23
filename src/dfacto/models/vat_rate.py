@@ -10,9 +10,9 @@ from typing import ClassVar, Optional, TypedDict
 
 import sqlalchemy as sa
 import sqlalchemy.exc
-import sqlalchemy.orm
+from sqlalchemy.orm import scoped_session
 
-from dfacto.models.model import CommandReport, CommandStatus, _VatRate
+from dfacto.models.model import CommandReport, CommandStatus, _VatRate, _Service
 
 
 class PresetRate(TypedDict):
@@ -28,7 +28,7 @@ class VatRate:
 
 @dataclass()
 class VatRateModel:
-    Session: sa.orm.scoped_session
+    Session: scoped_session
 
     DEFAULT_RATE_ID: ClassVar[int] = 1
     PRESET_RATES: ClassVar[list[PresetRate]] = [
@@ -47,24 +47,31 @@ class VatRateModel:
             self.Session.commit()
 
     def reset(self) -> CommandReport:
+        report = None
+        self.Session.execute(sa.update(_VatRate), VatRateModel.PRESET_RATES)
         try:
+            # TODO: Limit delete to the non-used VAT rates.
             self.Session.execute(
-                sa.delete(_VatRate).where(
-                    _VatRate.id.not_in(VatRateModel.PRESET_RATE_IDS)
-                )
+                sa.delete(_VatRate)
+                .where(_VatRate.id.not_in(VatRateModel.PRESET_RATE_IDS))
             )
         except sa.exc.IntegrityError:
             # Some non-preset VAT rates are in use: keep them all!
-            pass
+            report = CommandReport(
+                CommandStatus.COMPLETED,
+                "VAT_RATE-RESET - Some VAT rate are in-use: all are kept."
+            )
+        try:
+            self.Session.commit()
         except sa.exc.SQLAlchemyError:
+            self.Session.rollback()
             return CommandReport(
                 CommandStatus.FAILED,
-                f"VAT_RATE-RESET - SQL error while resetting VAT rates.",
+                "VAT_RATE-RESET - SQL error while resetting VAT rates.",
             )
         else:
-            self.Session.execute(sa.update(_VatRate), VatRateModel.PRESET_RATES)
-            self.Session.commit()
-            return CommandReport(CommandStatus.COMPLETED)
+            report = report or CommandReport(CommandStatus.COMPLETED)
+            return report
 
     def get_default(self) -> VatRate:
         return self.get(VatRateModel.DEFAULT_RATE_ID)
@@ -109,6 +116,7 @@ class VatRateModel:
             try:
                 self.Session.commit()
             except sa.exc.SQLAlchemyError as exc:
+                self.Session.rollback()
                 return CommandReport(
                     CommandStatus.FAILED,
                     f"VAT_RATE-UPDATE - Cannot update VAT rate {vat_rate_id}: {exc}",
@@ -120,27 +128,36 @@ class VatRateModel:
         if vat_rate_id in VatRateModel.PRESET_RATE_IDS:
             return CommandReport(
                 CommandStatus.REJECTED,
-                "VAT_RATE-DELETE - Default VAT rates cannot be deleted!",
+                "VAT_RATE-DELETE - Default VAT rates cannot be deleted.",
             )
 
+        vat_rate = self.Session.scalars(
+            sa.select(_VatRate).where(_VatRate.id == vat_rate_id)
+        ).first()
+        if vat_rate is None:
+            return CommandReport(CommandStatus.COMPLETED)
+
+        self.Session.delete(vat_rate)
+
         try:
-            self.Session.execute(sa.delete(_VatRate).where(_VatRate.id == vat_rate_id))
+            self.Session.commit()
         except sa.exc.IntegrityError:
-            # in_use = self.Session.scalars(
-            #     sa.select(_Service.name)
-            #     .join(_Service.vat_rate)
-            #     .where(_Service.vat_rate_id == vat_rate_id)
-            # ).first()
+            self.Session.rollback()
+            in_use = self.Session.scalars(
+                sa.select(_Service)
+                # .join(_Service.vat_rate)
+                .where(_Service.vat_rate_id == vat_rate_id)
+            ).first()
             return CommandReport(
                 CommandStatus.REJECTED,
                 f"VAT_RATE-DELETE - VAT rate with id {vat_rate_id} is used"
-                f" by at least one service!",
+                f" by at least '{in_use.name}' service.",
             )
-        except sa.exc.SQLAlchemyError:
+        except sa.exc.SQLAlchemyError as exc:
+            self.Session.rollback()
             return CommandReport(
                 CommandStatus.FAILED,
-                f"VAT_RATE-DELETE - SQL error while deleting VAT rate {vat_rate_id}",
+                f"VAT_RATE-DELETE - Cannot delete VAT rate {vat_rate_id}: {exc}",
             )
         else:
-            self.Session.commit()
             return CommandReport(CommandStatus.COMPLETED)
