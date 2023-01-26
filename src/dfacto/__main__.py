@@ -11,12 +11,13 @@ from dfacto.models.invoice import InvoiceModel
 from dfacto.models.item import ItemModel
 from dfacto.models.model import BaseModel, InvoiceStatus, _Client
 from dfacto.models.service import ServiceModel
-from dfacto.models.vat_rate import VatRateModel
+from dfacto.models.vat_rate import VatRateModel, VatRateCreate, VatRateUpdate
 
 
 def main():
     print(f"Creating db schema: {db.engine} {id(db.engine)}", db.Session)
     BaseModel.metadata.create_all(db.engine)
+    print("DB schema is created")
     # db.create_schema()
     #    initDb()
 
@@ -29,18 +30,18 @@ def main():
     invoice_model = InvoiceModel(db.Session, service_model, item_model, basket_model)
     client_model = ClientModel(db.Session, basket_model)
 
-    print(vat_rate_model.get_default())
+    print(vat_rate_model.get())
 
-    vat_rates = vat_rate_model.list_all()
+    vat_rates = vat_rate_model.get_multi()
     print(vat_rates)
 
     v = vat_rate_model.get(vat_rate_model.DEFAULT_RATE_ID + 1)
     print(v)
 
-    cmd_report = vat_rate_model.update(vat_rate_model.DEFAULT_RATE_ID + 1, 5.5)
+    cmd_report = vat_rate_model.update(vat_rate_model.DEFAULT_RATE_ID + 1, VatRateCreate(5.5))
     print(cmd_report)
 
-    cmd_report = vat_rate_model.add(30)
+    cmd_report = vat_rate_model.add(VatRateCreate(30))
     print(cmd_report)
 
     # try:
@@ -49,7 +50,7 @@ def main():
     #     print(exc)
 
     # vat_rate_model.reset()
-    vat_rates = vat_rate_model.list_all()
+    vat_rates = vat_rate_model.get_multi()
     print(vat_rates)
 
     for vr in vat_rates:
@@ -68,7 +69,7 @@ def main():
     print(cmd_report)
     cmd_report = service_model.update(2, vat_rate_id=3)
     print(cmd_report)
-    vat_rate_model.add(30)
+    vat_rate_model.add(VatRateCreate(30))
     cmd_report = service_model.update(
         2, name="Great service", unit_price=75, vat_rate_id=4
     )

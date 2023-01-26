@@ -13,15 +13,11 @@ import sqlalchemy.exc
 from sqlalchemy.orm import scoped_session
 
 from dfacto.models.model import CommandReport, CommandStatus, _VatRate, _Service
+from dfacto.models.schema import VatRate, VatRateCreate, VatRateUpdate
+from dfacto.models.crud import crud_vat_rate, CrudError, CrudIntegrityError
 
 
 class PresetRate(TypedDict):
-    id: int
-    rate: float
-
-
-@dataclass()
-class VatRate:
     id: int
     rate: float
 
@@ -73,56 +69,47 @@ class VatRateModel:
             report = report or CommandReport(CommandStatus.COMPLETED)
             return report
 
-    def get_default(self) -> VatRate:
-        return self.get(VatRateModel.DEFAULT_RATE_ID)
-
     def get(self, vat_rate_id: Optional[int] = None) -> Optional[VatRate]:
         id_ = vat_rate_id or VatRateModel.DEFAULT_RATE_ID
-        vat_rate: Optional[_VatRate] = self.Session.get(_VatRate, id_)
+        vat_rate = crud_vat_rate.get(self.Session, id_)
         if vat_rate is None:
-            return
-        return VatRate(vat_rate.id, vat_rate.rate)
+            return None
+        return VatRate.from_orm(vat_rate)
 
-    def list_all(self) -> list[VatRate]:
+    def get_multi(self, skip: int = 0, limit: int = 10) -> list[VatRate]:
         return [
-            VatRate(vat_rate.id, vat_rate.rate)
-            for vat_rate in self.Session.scalars(sa.select(_VatRate)).all()
+            VatRate.from_orm(vat_rate)
+            for vat_rate in crud_vat_rate.get_multi(self.Session, skip, limit)
         ]
 
-    def add(self, rate: float) -> CommandReport:
-        vat_rate = _VatRate(rate=rate)
-        self.Session.add(vat_rate)
+    def add(self, vr_in: VatRateCreate) -> CommandReport:
         try:
-            self.Session.commit()
-        except sa.exc.SQLAlchemyError as exc:
-            self.Session.rollback()
+            _vat_rate = crud_vat_rate.create(self.Session, obj_in=vr_in)
+        except CrudError as exc:
             return CommandReport(
                 CommandStatus.FAILED,
-                f"VAT_RATE-ADD - Cannot add VAT rate {rate}: {exc}",
+                f"VAT_RATE-ADD - Cannot add VAT rate {vr_in.rate}: {exc}",
             )
         else:
             return CommandReport(CommandStatus.COMPLETED)
 
-    def update(self, vat_rate_id: int, rate: float) -> CommandReport:
-        vat_rate: Optional[_VatRate] = self.Session.get(_VatRate, vat_rate_id)
+    def update(self, vat_rate_id: int, vr_in: VatRateUpdate) -> CommandReport:
+        vat_rate = crud_vat_rate.get(self.Session, vat_rate_id)
         if vat_rate is None:
             return CommandReport(
                 CommandStatus.FAILED,
                 f"VAT_RATE-UPDATE - VAT rate {vat_rate_id} not found.",
             )
 
-        if vat_rate.rate != rate:
-            vat_rate.rate = rate
-            try:
-                self.Session.commit()
-            except sa.exc.SQLAlchemyError as exc:
-                self.Session.rollback()
-                return CommandReport(
-                    CommandStatus.FAILED,
-                    f"VAT_RATE-UPDATE - Cannot update VAT rate {vat_rate_id}: {exc}",
-                )
-
-        return CommandReport(CommandStatus.COMPLETED)
+        try:
+            _vat_rate = crud_vat_rate.update(self.Session, db_obj=vat_rate, obj_in=vr_in)
+        except CrudError as exc:
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"VAT_RATE-UPDATE - Cannot update VAT rate {vat_rate_id}: {exc}",
+            )
+        else:
+            return CommandReport(CommandStatus.COMPLETED)
 
     def delete(self, vat_rate_id: int) -> CommandReport:
         if vat_rate_id in VatRateModel.PRESET_RATE_IDS:
@@ -131,18 +118,16 @@ class VatRateModel:
                 "VAT_RATE-DELETE - Default VAT rates cannot be deleted.",
             )
 
-        vat_rate = self.Session.scalars(
-            sa.select(_VatRate).where(_VatRate.id == vat_rate_id)
-        ).first()
+        vat_rate = crud_vat_rate.get(self.Session, vat_rate_id)
         if vat_rate is None:
-            return CommandReport(CommandStatus.COMPLETED)
-
-        self.Session.delete(vat_rate)
+            return CommandReport(
+                CommandStatus.FAILED,
+                f"VAT_RATE-DELETE - VAT rate {vat_rate_id} not found.",
+            )
 
         try:
-            self.Session.commit()
-        except sa.exc.IntegrityError:
-            self.Session.rollback()
+            _vat_rate = crud_vat_rate.delete(self.Session, db_obj=vat_rate)
+        except CrudIntegrityError:
             in_use = self.Session.scalars(
                 sa.select(_Service)
                 # .join(_Service.vat_rate)
@@ -153,8 +138,7 @@ class VatRateModel:
                 f"VAT_RATE-DELETE - VAT rate with id {vat_rate_id} is used"
                 f" by at least '{in_use.name}' service.",
             )
-        except sa.exc.SQLAlchemyError as exc:
-            self.Session.rollback()
+        except CrudError as exc:
             return CommandReport(
                 CommandStatus.FAILED,
                 f"VAT_RATE-DELETE - Cannot delete VAT rate {vat_rate_id}: {exc}",

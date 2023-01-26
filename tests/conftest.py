@@ -20,7 +20,7 @@ from dfacto.models.vat_rate import VatRateModel
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
     if isinstance(dbapi_connection, SQLite3Connection):
-        print("Execute: PRAGMA foreign_keys=ON")
+        # print("Execute: PRAGMA foreign_keys=ON")
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
         # cursor.execute("PRAGMA journal_mode = OFF")
@@ -44,9 +44,10 @@ def do_begin(conn):
 
 @pytest.fixture(scope="session")
 def engine():
-    engine = create_engine(
-        r"sqlite+pysqlite:///F:\Users\Documents\Python\dfacto_test.db"
-    )
+    # engine = create_engine(
+    #     r"sqlite+pysqlite:///F:\Users\Documents\Python\dfacto_test.db"
+    # )
+    engine = create_engine("sqlite+pysqlite:///:memory:")
     listen(engine, "connect", _set_sqlite_pragma)
     listen(engine, "connect", do_connect)
     listen(engine, "begin", do_begin)

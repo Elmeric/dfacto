@@ -13,7 +13,7 @@ import sqlalchemy as sa
 import sqlalchemy.exc
 
 from dfacto.models.model import CommandStatus, _VatRate, _Service
-from dfacto.models.vat_rate import VatRate, VatRateModel
+from dfacto.models.vat_rate import VatRate, VatRateModel, VatRateCreate, VatRateUpdate
 
 
 @pytest.fixture()
@@ -58,7 +58,7 @@ def test_init_twice(dbsession, vat_rate_model, mock_commit):
 
 
 def test_get_default(vat_rate_model):
-    default_vr = vat_rate_model.get_default()
+    default_vr = vat_rate_model.get()
 
     assert default_vr.id == VatRateModel.DEFAULT_RATE_ID
     assert default_vr.rate == VatRateModel.PRESET_RATES[0]["rate"]
@@ -76,19 +76,20 @@ def test_get_unknown(vat_rate_model):
     assert vat_rate_model.get(10) is None
 
 
-def test_list_all(dbsession, vat_rate_model):
+def test_get_multi(dbsession, vat_rate_model):
     # Add a VAT rate
     vr_id = VatRateModel.DEFAULT_RATE_ID + 3
     dbsession.execute(sa.insert(_VatRate), [{"id": vr_id, "rate": 12.3}])
     dbsession.commit()
 
-    vat_rates = vat_rate_model.list_all()
-    assert len(vat_rates) == 4
-    for i in range(len(VatRateModel.PRESET_RATE_IDS)):
-        assert vat_rates[i].id == VatRateModel.PRESET_RATES[i]["id"]
-        assert vat_rates[i].rate == VatRateModel.PRESET_RATES[i]["rate"]
-    assert vat_rates[len(VatRateModel.PRESET_RATE_IDS)].id == vr_id
-    assert vat_rates[len(VatRateModel.PRESET_RATE_IDS)].rate == 12.3
+    skip = len(VatRateModel.PRESET_RATE_IDS) - 1
+    vat_rates = vat_rate_model.get_multi(skip=skip, limit=2)
+
+    assert len(vat_rates) == 2
+    assert vat_rates[0].id == VatRateModel.PRESET_RATES[skip]["id"]
+    assert vat_rates[0].rate == VatRateModel.PRESET_RATES[skip]["rate"]
+    assert vat_rates[1].id == vr_id
+    assert vat_rates[1].rate == 12.3
 
 
 def test_add(dbsession, vat_rate_model):
@@ -96,7 +97,7 @@ def test_add(dbsession, vat_rate_model):
         sa.select(_VatRate).where(_VatRate.rate == 30.0)
     ).first() is None
 
-    report = vat_rate_model.add(rate=30)
+    report = vat_rate_model.add(VatRateCreate(rate=30))
 
     assert report.status == CommandStatus.COMPLETED
     try:
@@ -116,7 +117,7 @@ def test_add_commit_error(dbsession, vat_rate_model, mock_commit):
         sa.select(_VatRate).where(_VatRate.rate == 30.0)
     ).first() is None
 
-    report = vat_rate_model.add(rate=30)
+    report = vat_rate_model.add(VatRateCreate(rate=30))
 
     assert report.status == CommandStatus.FAILED
     assert report.reason.startswith("VAT_RATE-ADD - Cannot add VAT rate 30")
@@ -127,7 +128,7 @@ def test_update(dbsession, vat_rate_model):
     vr = dbsession.scalars(sa.select(_VatRate).where(_VatRate.id == vr_id)).first()
     assert vr.rate == VatRateModel.PRESET_RATES[1]["rate"]
 
-    report = vat_rate_model.update(vr_id, rate=10.0)
+    report = vat_rate_model.update(vr_id, VatRateUpdate(10.0))
 
     assert report.status == CommandStatus.COMPLETED
     vr = dbsession.scalars(sa.select(_VatRate).where(_VatRate.id == vr_id)).first()
@@ -140,9 +141,10 @@ def test_update_same_rate(dbsession, vat_rate_model, mock_commit):
 
     vr_id = VatRateModel.DEFAULT_RATE_ID + 1
     vr = dbsession.scalars(sa.select(_VatRate).where(_VatRate.id == vr_id)).first()
-    assert vr.rate == VatRateModel.PRESET_RATES[1]["rate"]
+    rate = VatRateModel.PRESET_RATES[1]["rate"]
+    assert vr.rate == rate
 
-    report = vat_rate_model.update(vr_id, rate=VatRateModel.PRESET_RATES[1]["rate"])
+    report = vat_rate_model.update(vr_id, VatRateUpdate(rate))
 
     assert report.status == CommandStatus.COMPLETED
     vr = dbsession.scalars(sa.select(_VatRate).where(_VatRate.id == vr_id)).first()
@@ -156,7 +158,7 @@ def test_update_unknown(dbsession, vat_rate_model):
         sa.select(_VatRate).where(_VatRate.id == vr_id)
     ).first() is None
 
-    report = vat_rate_model.update(vr_id, rate=12.3)
+    report = vat_rate_model.update(vr_id, VatRateUpdate(12.3))
 
     assert report.status == CommandStatus.FAILED
     assert report.reason == f"VAT_RATE-UPDATE - VAT rate {vr_id} not found."
@@ -171,7 +173,7 @@ def test_update_commit_error(dbsession, vat_rate_model, mock_commit):
     vr = dbsession.scalars(sa.select(_VatRate).where(_VatRate.id == vr_id)).first()
     assert vr.rate == VatRateModel.PRESET_RATES[1]["rate"]
 
-    report = vat_rate_model.update(vr_id, rate=10.0)
+    report = vat_rate_model.update(vr_id, VatRateUpdate(10.0))
 
     assert report.status == CommandStatus.FAILED
     assert report.reason.startswith(
@@ -206,7 +208,8 @@ def test_delete_unknown(dbsession, vat_rate_model):
 
     report = vat_rate_model.delete(vr_id)
 
-    assert report.status == CommandStatus.COMPLETED
+    assert report.status == CommandStatus.FAILED
+    assert report.reason == f"VAT_RATE-DELETE - VAT rate {vr_id} not found."
 
 
 def test_delete_default(dbsession, vat_rate_model):
