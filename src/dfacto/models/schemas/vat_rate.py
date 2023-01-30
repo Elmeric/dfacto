@@ -6,37 +6,38 @@
 from typing import Optional
 from dataclasses import dataclass
 
-from dfacto.models.model import _VatRate
+from dfacto.models.models import _VatRate
+from .base import BaseSchema
 
 
-@dataclass()
-class _VatRateBase:
+@dataclass
+class _VatRateBase(BaseSchema):
     pass
 
 
-@dataclass()
+@dataclass
 class _VatRateDefaultsBase:
     rate: Optional[float] = 0.0
 
 
-@dataclass()
+@dataclass
 class VatRateCreate(_VatRateBase):
     rate: float
 
 
-@dataclass()
+@dataclass
 class VatRateUpdate(_VatRateBase, _VatRateDefaultsBase):
     pass
 
 
-@dataclass()
+@dataclass
 class _VatRateInDBBase(_VatRateBase):
     id: int
     rate: float
 
 
 # Additional properties to return from DB
-@dataclass()
+@dataclass
 class VatRate(_VatRateInDBBase):
     pass
 
@@ -46,6 +47,6 @@ class VatRate(_VatRateInDBBase):
 
 
 # Additional properties stored in DB
-@dataclass()
+@dataclass
 class VatRateInDB(_VatRateInDBBase):
     pass

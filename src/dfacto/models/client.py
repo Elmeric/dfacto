@@ -13,7 +13,8 @@ import sqlalchemy.orm
 
 from dfacto.models.basket import Basket, BasketModel
 from dfacto.models.invoice import Invoice
-from dfacto.models.model import CommandReport, CommandStatus, _Client
+from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.models import _Client
 
 
 @dataclass()
@@ -67,7 +68,7 @@ class ClientModel:
 
     def add(
         self, name: str, address: str, zip_code: str, city: str, is_active: bool = True
-    ) -> CommandReport:
+    ) -> CommandResponse:
         client = _Client(
             name=name,
             address=address,
@@ -80,16 +81,16 @@ class ClientModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-ADD - Cannot add client {name}: {exc}"
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def on_hold(self, client_id: int, hold: bool = True) -> CommandReport:
+    def on_hold(self, client_id: int, hold: bool = True) -> CommandResponse:
         client: Optional[_Client] = self.Session.get(_Client, client_id)
         if client is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-ON_HOLD - Client {client_id} not found."
             )
 
@@ -102,17 +103,17 @@ class ClientModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"CLIENT-ON_HOLD - Cannot set {client.name} active status to {hold}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def rename(self, client_id: int, name: str) -> CommandReport:
+    def rename(self, client_id: int, name: str) -> CommandResponse:
         client: Optional[_Client] = self.Session.get(_Client, client_id)
         if client is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-RENAME - Client {client_id} not found."
             )
 
@@ -123,17 +124,17 @@ class ClientModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"CLIENT-RENAME - Cannot rename client {client.name} to {name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def change_address(self, client_id: int, address: Address) -> CommandReport:
+    def change_address(self, client_id: int, address: Address) -> CommandResponse:
         client: Optional[_Client] = self.Session.get(_Client, client_id)
         if client is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-ADDRESS - Client {client_id} not found."
             )
         client.address = address.address
@@ -144,30 +145,30 @@ class ClientModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"CLIENT-ADDRESS - Cannot change address of client {client.name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def delete(self, client_id: int) -> CommandReport:
+    def delete(self, client_id: int) -> CommandResponse:
         client: Optional[_Client] = self.Session.get(_Client, client_id)
 
         if client is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-DELETE - Client {client_id} not found."
             )
 
         if client.has_emitted_invoices:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"CLIENT-DELETE - Client {client.name} has non-DRAFT"
                 f" invoices and cannot be deleted.",
             )
 
         if len(client.basket.items) > 0:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"CLIENT-DELETE - Client {client.name} has a non-empty"
                 f" basket and cannot be deleted.",
@@ -178,9 +179,9 @@ class ClientModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"CLIENT-DELETE - SQL error while deleting client {client.name}.",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)

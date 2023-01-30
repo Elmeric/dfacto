@@ -11,7 +11,8 @@ import sqlalchemy as sa
 import sqlalchemy.exc
 import sqlalchemy.orm
 
-from dfacto.models.model import CommandReport, CommandStatus, _Item
+from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.models import _Item
 from dfacto.models.service import Service, ServiceModel
 
 
@@ -56,15 +57,15 @@ class ItemModel:
             for item in self.Session.scalars(sa.select(_Item)).all()
         ]
 
-    def delete(self, item_id: int) -> CommandReport:
+    def delete(self, item_id: int) -> CommandResponse:
         self.Session.execute(sa.delete(_Item).where(_Item.id == item_id))
         try:
             self.Session.commit()
         except sa.exc.SQLAlchemyError:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"ITEM_DELETE - Item with id {item_id} is used"
                 f" by at least one client's basket or invoice!",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)

@@ -12,13 +12,9 @@ import sqlalchemy.exc
 import sqlalchemy.orm
 
 from dfacto.models.item import Item, ItemModel
-from dfacto.models.model import (
-    CommandReport,
-    CommandStatus,
-    InvoiceStatus,
-    _Basket,
-    _Item,
-)
+from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.models import InvoiceStatus, _Basket, _Item
+
 from dfacto.models.service import ServiceModel
 
 
@@ -87,16 +83,16 @@ class BasketModel:
             for basket in self.Session.scalars(sa.select(_Basket)).all()
         ]
 
-    def add_item(self, basket_id: int, service_id: int, quantity: int) -> CommandReport:
+    def add_item(self, basket_id: int, service_id: int, quantity: int) -> CommandResponse:
         basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
         if basket is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"BASKET-ADD-ITEM - Basket {basket_id} not found."
             )
 
         serv = self.service_model.get(service_id)
         if serv is None or quantity <= 0:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"BASKET-ADD-ITEM - An item shall refer to a strictly positive quantity"
                 f" and a service.",
@@ -117,13 +113,13 @@ class BasketModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"BASKET-ADD-ITEM - Cannot add service {item.service.name}"
                 f" to basket of client {basket.client.name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
     def update_item(
         self,
@@ -131,23 +127,23 @@ class BasketModel:
         item_id: int,
         service_id: Optional[int] = None,
         quantity: Optional[int] = None,
-    ) -> CommandReport:
+    ) -> CommandResponse:
         basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
         if basket is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"BASKET-UPDATE-ITEM - Basket {basket_id} not found.",
             )
 
         item: Optional[_Item] = self.Session.get(_Item, item_id)
         if item is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"BASKET-UPDATE-ITEM - Item {item_id} not found."
             )
 
         invoice = item.invoice
         if invoice is not None and invoice.status != InvoiceStatus.DRAFT:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"BASKET-UPDATE-ITEM - Cannot change items of a non-draft invoice.",
             )
@@ -170,7 +166,7 @@ class BasketModel:
         if update_needed:
             serv = self.service_model.get(service_id)
             if serv is None:
-                return CommandReport(
+                return CommandResponse(
                     CommandStatus.REJECTED,
                     f"BASKET-UPDATE-ITEM - Service {service_id} not found.",
                 )
@@ -182,12 +178,12 @@ class BasketModel:
         basket.vat += item.vat
         basket.net_amount += item.net_amount
 
-        return CommandReport(CommandStatus.COMPLETED)
+        return CommandResponse(CommandStatus.COMPLETED)
 
-    def remove_item(self, item_id: int) -> CommandReport:
+    def remove_item(self, item_id: int) -> CommandResponse:
         it: Optional[_Item] = self.Session.get(_Item, item_id)
         if it is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"BASKET-REMOVE-ITEM - Item {item_id} not found."
             )
 
@@ -205,18 +201,18 @@ class BasketModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"BASKET-REMOVE-ITEM - Cannot remove item {it.service.name}"
                 f" from basket of client {it.basket.client.name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def clear(self, basket_id: int) -> CommandReport:
+    def clear(self, basket_id: int) -> CommandResponse:
         basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
         if basket is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"BASKET-CLEAR - Basket {basket_id} not found."
             )
 
@@ -235,9 +231,9 @@ class BasketModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"BASKET-CLEAR - Cannot clear basket of client {basket.client.name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)

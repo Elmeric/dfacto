@@ -14,14 +14,8 @@ import sqlalchemy.orm
 
 from dfacto.models.basket import BasketModel
 from dfacto.models.item import Item, ItemModel
-from dfacto.models.model import (
-    CommandReport,
-    CommandStatus,
-    InvoiceStatus,
-    _Basket,
-    _Invoice,
-    _Item,
-)
+from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.models import InvoiceStatus, _Basket, _Invoice, _Item
 from dfacto.models.service import ServiceModel
 
 
@@ -99,15 +93,15 @@ class InvoiceModel:
 
     def create_from_basket(
         self, basket_id: int, clear_basket: bool = True
-    ) -> CommandReport:
+    ) -> CommandResponse:
         bskt: Optional[_Basket] = self.Session.get(_Basket, basket_id)
         if bskt is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"INVOICE-CREATE - Basket {basket_id} not found."
             )
 
         if len(bskt.items) <= 0:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"INVOICE-CREATE - No items in basket of client {bskt.client.name}.",
             )
@@ -129,7 +123,7 @@ class InvoiceModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-CREATE - Cannot create invoice from basket"
                 f" of client {bskt.client.name}: {exc}",
@@ -145,28 +139,28 @@ class InvoiceModel:
             inv.totalize()
             if clear_basket:
                 self.basket_model.clear(basket_id)
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
     def add_item(
         self, invoice_id: int, service_id: int, quantity: int
-    ) -> CommandReport:
+    ) -> CommandResponse:
         invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
         if invoice is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-ADD-ITEM - Invoice {invoice_id} not found.",
             )
 
         serv = self.service_model.get(service_id)
         if serv is None or quantity <= 0:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"INVOICE-ADD-ITEM - An item shall refer to a strictly"
                 f" positive quantity and a service.",
             )
 
         if invoice.status != InvoiceStatus.DRAFT:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"INVOICE-ADD-ITEM - Cannot add items to a non-draft invoice.",
             )
@@ -186,14 +180,14 @@ class InvoiceModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-ADD-ITEM - Cannot add service {item.service.name}"
                 f" to invoice of client {invoice.client.name}: {exc}",
             )
 
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
     def update_item(
         self,
@@ -201,23 +195,23 @@ class InvoiceModel:
         item_id: int,
         service_id: Optional[int] = None,
         quantity: Optional[int] = None,
-    ) -> CommandReport:
+    ) -> CommandResponse:
         invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
         if invoice is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-UPDATE-ITEM - Invoice {invoice_id} not found.",
             )
 
         if invoice.status != InvoiceStatus.DRAFT:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"INVOICE-UPDATE-ITEM - Cannot change items of a non-draft invoice.",
             )
 
         item: Optional[_Item] = self.Session.get(_Item, item_id)
         if item is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"INVOICE-UPDATE-ITEM - Item {item_id} not found."
             )
 
@@ -239,7 +233,7 @@ class InvoiceModel:
         if update_needed:
             serv = self.service_model.get(service_id)
             if serv is None:
-                return CommandReport(
+                return CommandResponse(
                     CommandStatus.REJECTED,
                     f"INVOICE-UPDATE-ITEM - Service {service_id} not found.",
                 )
@@ -250,23 +244,23 @@ class InvoiceModel:
         invoice.raw_amount += item.raw_amount
         invoice.vat += item.vat
         invoice.net_amount += item.net_amount
-        return CommandReport(CommandStatus.COMPLETED)
+        return CommandResponse(CommandStatus.COMPLETED)
 
-    def remove_item(self, item_id: int) -> CommandReport:
+    def remove_item(self, item_id: int) -> CommandResponse:
         it: Optional[_Item] = self.Session.get(_Item, item_id)
         if it is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"INVOICE-REMOVE-ITEM - Item {item_id} not found."
             )
 
         if it.invoice is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-REMOVE-ITEM - Item {item_id} not in an invoice.",
             )
 
         if it.invoice.status != InvoiceStatus.DRAFT:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"INVOICE-REMOVE-ITEM - Only DRAFT invoice can be edited.",
             )
@@ -285,25 +279,25 @@ class InvoiceModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-REMOVE-ITEM - Cannot remove item {it.service.name}"
                 f" from invoice {it.invoice.code} of client {it.invoice.client.name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def update_status(self, invoice_id: int, status: InvoiceStatus) -> CommandReport:
+    def update_status(self, invoice_id: int, status: InvoiceStatus) -> CommandResponse:
         invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
         if invoice is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-STATUS - Invoice {invoice_id} not found.",
             )
 
         if status != invoice.status:
             if status == InvoiceStatus.DRAFT:
-                return CommandReport(
+                return CommandResponse(
                     CommandStatus.REJECTED,
                     f"INVOICE-STATUS - Emitted invoice cannot be reset to DRAFT.",
                 )
@@ -313,24 +307,24 @@ class InvoiceModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-STATUS - Cannot change invoice status"
                 f" of {invoice_id} to {status}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def delete(self, invoice_id: int) -> CommandReport:
+    def delete(self, invoice_id: int) -> CommandResponse:
         invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
         if invoice is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-DELETE - Invoice {invoice_id} not found.",
             )
 
         if invoice.status != InvoiceStatus.DRAFT:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"INVOICE-DELETE - Only DRAFT invoice can be deleted.",
             )
@@ -352,10 +346,10 @@ class InvoiceModel:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"INVOICE-DELETE - SQL error while deleting draft invoice {invoice_id}"
                 f" of client {invoice.client.name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)

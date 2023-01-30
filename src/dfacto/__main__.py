@@ -2,16 +2,18 @@ import datetime
 import random
 import sys
 
-from sqlalchemy import select
+from sqlalchemy import select, exc
 
 from dfacto.models import db
 from dfacto.models.basket import BasketModel
 from dfacto.models.client import ClientModel
 from dfacto.models.invoice import InvoiceModel
 from dfacto.models.item import ItemModel
-from dfacto.models.model import BaseModel, InvoiceStatus, _Client
+from dfacto.models.db import BaseModel
+from dfacto.models.models import InvoiceStatus, _Client
 from dfacto.models.service import ServiceModel
-from dfacto.models.vat_rate import VatRateModel, VatRateCreate, VatRateUpdate
+from dfacto.models.vat_rate import VatRateModel
+from dfacto.models.schemas import VatRateCreate, VatRateUpdate
 
 
 def main():
@@ -30,13 +32,14 @@ def main():
     invoice_model = InvoiceModel(db.Session, service_model, item_model, basket_model)
     client_model = ClientModel(db.Session, basket_model)
 
-    print(vat_rate_model.get())
+    cmd_report = vat_rate_model.get()
+    print(cmd_report.body)
 
-    vat_rates = vat_rate_model.get_multi()
-    print(vat_rates)
+    cmd_report = vat_rate_model.get_multi()
+    print(cmd_report.body)
 
     v = vat_rate_model.get(vat_rate_model.DEFAULT_RATE_ID + 1)
-    print(v)
+    print(v.body)
 
     cmd_report = vat_rate_model.update(vat_rate_model.DEFAULT_RATE_ID + 1, VatRateCreate(5.5))
     print(cmd_report)
@@ -50,7 +53,8 @@ def main():
     #     print(exc)
 
     # vat_rate_model.reset()
-    vat_rates = vat_rate_model.get_multi()
+    cmd_report = vat_rate_model.get_multi()
+    vat_rates = cmd_report.body
     print(vat_rates)
 
     for vr in vat_rates:
@@ -163,5 +167,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
+    except Exception as exc:
+        print(exc)
         sys.exit(1)

@@ -4,10 +4,18 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 from sqlite3 import Connection as SQLite3Connection
+from typing import Annotated
 
 from sqlalchemy import create_engine
 from sqlalchemy.event import listen
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker, MappedAsDataclass, DeclarativeBase, mapped_column
+
+
+class BaseModel(MappedAsDataclass, DeclarativeBase):
+    pass
+
+
+intpk = Annotated[int, mapped_column(primary_key=True)]
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):

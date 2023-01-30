@@ -11,8 +11,9 @@ import sqlalchemy as sa
 import sqlalchemy.exc
 import sqlalchemy.orm
 
-from dfacto.models.model import CommandReport, CommandStatus, _Service
-from dfacto.models.vat_rate import VatRate, VatRateModel
+from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models import models, schemas
+from dfacto.models.vat_rate import VatRateModel
 
 
 @dataclass()
@@ -20,7 +21,7 @@ class Service:
     id: int
     name: str
     unit_price: float
-    vat_rate: VatRate
+    vat_rate: schemas.VatRate
 
 
 @dataclass()
@@ -29,14 +30,14 @@ class ServiceModel:
     vat_rate_model: VatRateModel
 
     def get(self, service_id: int) -> Optional[Service]:
-        service: Optional[_Service] = self.Session.get(_Service, service_id)
+        service: Optional[models._Service] = self.Session.get(models._Service, service_id)
         if service is None:
             return
         return Service(
             service.id,
             service.name,
             service.unit_price,
-            VatRate(service.vat_rate_id, service.vat_rate.rate),
+            schemas.VatRate(service.vat_rate_id, service.vat_rate.rate),
         )
 
     def list_all(self) -> list[Service]:
@@ -45,9 +46,9 @@ class ServiceModel:
                 service.id,
                 service.name,
                 service.unit_price,
-                VatRate(service.vat_rate_id, service.vat_rate.rate),
+                schemas.VatRate(service.vat_rate_id, service.vat_rate.rate),
             )
-            for service in self.Session.scalars(sa.select(_Service)).all()
+            for service in self.Session.scalars(sa.select(models._Service)).all()
         ]
 
     def add(
@@ -55,19 +56,19 @@ class ServiceModel:
         name: str,
         unit_price: float,
         vat_rate_id: int = VatRateModel.DEFAULT_RATE_ID,
-    ) -> CommandReport:
-        service = _Service(name=name, unit_price=unit_price, vat_rate_id=vat_rate_id)
+    ) -> CommandResponse:
+        service = models._Service(name=name, unit_price=unit_price, vat_rate_id=vat_rate_id)
         self.Session.add(service)
         try:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED, f"SERVICE-ADD - Cannot add service {name}: {exc}"
             )
 
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
     def update(
         self,
@@ -75,11 +76,11 @@ class ServiceModel:
         name: Optional[str] = None,
         unit_price: Optional[float] = None,
         vat_rate_id: Optional[int] = None,
-    ) -> CommandReport:
-        service: Optional[_Service] = self.Session.get(_Service, service_id)
+    ) -> CommandResponse:
+        service: Optional[models._Service] = self.Session.get(models._Service, service_id)
 
         if service is None:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"SERVICE-UPDATE - Service {service_id} not found.",
             )
@@ -91,33 +92,33 @@ class ServiceModel:
             service.unit_price = unit_price
 
         if vat_rate_id is not None and vat_rate_id != service.vat_rate_id:
-            service.vat_rate_id = self.vat_rate_model.get(vat_rate_id).id
+            service.vat_rate_id = self.vat_rate_model.get(vat_rate_id).body.id
 
         try:
             self.Session.commit()
         except sa.exc.SQLAlchemyError as exc:
             self.Session.rollback()
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"SERVICE-UPDATE - Cannot update service {service.name}: {exc}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)
 
-    def delete(self, service_id: int) -> CommandReport:
-        self.Session.execute(sa.delete(_Service).where(_Service.id == service_id))
+    def delete(self, service_id: int) -> CommandResponse:
+        self.Session.execute(sa.delete(models._Service).where(models._Service.id == service_id))
         try:
             self.Session.commit()
         except sa.exc.IntegrityError:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.REJECTED,
                 f"SERVICE-DELETE - Service with id {service_id}"
                 f" is used by at least one invoice's item!",
             )
         except sa.exc.SQLAlchemyError:
-            return CommandReport(
+            return CommandResponse(
                 CommandStatus.FAILED,
                 f"SERVICE-DELETE - SQL error while deleting service {service_id}",
             )
         else:
-            return CommandReport(CommandStatus.COMPLETED)
+            return CommandResponse(CommandStatus.COMPLETED)

@@ -14,7 +14,7 @@ from sqlalchemy.event import listen
 from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 from sqlalchemy.exc import SQLAlchemyError
 
-from dfacto.models.model import BaseModel
+from dfacto.models.db import BaseModel
 from dfacto.models.vat_rate import VatRateModel
 
 
