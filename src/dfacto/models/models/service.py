@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from dfacto.models.db import BaseModel, intpk
 
 if TYPE_CHECKING:
-    from .vat_rate import _VatRate
+    from .vat_rate import VatRate
 
 
 class _Service(BaseModel):
@@ -23,4 +23,4 @@ class _Service(BaseModel):
     unit_price: Mapped[float]
     vat_rate_id: Mapped[int] = mapped_column(ForeignKey("vat_rate.id"))
 
-    vat_rate: Mapped["_VatRate"] = relationship(init=False)
+    vat_rate: Mapped["VatRate"] = relationship(init=False)

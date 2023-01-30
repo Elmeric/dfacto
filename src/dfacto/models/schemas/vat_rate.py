@@ -6,7 +6,7 @@
 from typing import Optional
 from dataclasses import dataclass
 
-from dfacto.models.models import _VatRate
+from dfacto.models import models
 from .base import BaseSchema
 
 
@@ -42,7 +42,7 @@ class VatRate(_VatRateInDBBase):
     pass
 
     @classmethod
-    def from_orm(cls, orm_obj: _VatRate) -> "VatRate":
+    def from_orm(cls, orm_obj: models.VatRate) -> "VatRate":
         return cls(orm_obj.id, orm_obj.rate)
 
 

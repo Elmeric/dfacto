@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from .vat_rate import _VatRate
+from .vat_rate import VatRate
 from .service import _Service
 from .client import _Client
 from .basket import _Basket

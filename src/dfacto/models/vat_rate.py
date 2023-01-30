@@ -36,19 +36,19 @@ class VatRateModel:
     )
 
     def __post_init__(self) -> None:
-        if self.Session.scalars(sa.select(models._VatRate)).first() is None:
+        if self.Session.scalars(sa.select(models.VatRate)).first() is None:
             # No VAT rates in the database: create them.
-            self.Session.execute(sa.insert(models._VatRate), VatRateModel.PRESET_RATES)
+            self.Session.execute(sa.insert(models.VatRate), VatRateModel.PRESET_RATES)
             self.Session.commit()
 
     def reset(self) -> CommandResponse:
         report = None
-        self.Session.execute(sa.update(models._VatRate), VatRateModel.PRESET_RATES)
+        self.Session.execute(sa.update(models.VatRate), VatRateModel.PRESET_RATES)
         try:
             # TODO: Limit delete to the non-used VAT rates.
             self.Session.execute(
-                sa.delete(models._VatRate)
-                .where(models._VatRate.id.not_in(VatRateModel.PRESET_RATE_IDS))
+                sa.delete(models.VatRate)
+                .where(models.VatRate.id.not_in(VatRateModel.PRESET_RATE_IDS))
             )
         except sa.exc.IntegrityError:
             # Some non-preset VAT rates are in use: keep them all!

@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from dfacto.models.db import BaseModel, intpk
 
 
-class _VatRate(BaseModel):
+class VatRate(BaseModel):
     __tablename__ = "vat_rate"
 
     id: Mapped[intpk] = mapped_column(init=False)

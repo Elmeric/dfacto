@@ -5,8 +5,8 @@
 # LICENSE file in the root directory of this source tree.
 
 from .base import CRUDBase, CrudError, CrudIntegrityError
-from dfacto.models.models import _VatRate
+from dfacto.models.models import VatRate
 from dfacto.models.schemas.vat_rate import VatRateCreate, VatRateUpdate
 
 
-vat_rate = CRUDBase[_VatRate, VatRateCreate, VatRateUpdate](_VatRate)
+vat_rate = CRUDBase[VatRate, VatRateCreate, VatRateUpdate](VatRate)
