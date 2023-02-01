@@ -6,16 +6,12 @@
 
 from sqlalchemy import String, and_, case, exists, select
 from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-    relationship,
-)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models.db import BaseModel, intpk
 
 from .basket import _Basket
-from .invoice import _Invoice, InvoiceStatus
+from .invoice import InvoiceStatus, _Invoice
 
 
 class _Client(BaseModel):

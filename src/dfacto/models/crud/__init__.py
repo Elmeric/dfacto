@@ -4,9 +4,12 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from .base import CRUDBase, CrudError, CrudIntegrityError
-from dfacto.models.models import VatRate
-from dfacto.models.schemas.vat_rate import VatRateCreate, VatRateUpdate
-
-
-vat_rate = CRUDBase[VatRate, VatRateCreate, VatRateUpdate](VatRate)
+from .base import (
+    CreateSchemaType,
+    CRUDBase,
+    CrudError,
+    CrudIntegrityError,
+    UpdateSchemaType,
+)
+from .service import CRUDService, service
+from .vat_rate import CRUDVatRate, vat_rate

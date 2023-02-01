@@ -7,19 +7,15 @@
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import (
-    Mapped,
-    mapped_column,
-    relationship,
-)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import CheckConstraint
 
 from dfacto.models.db import BaseModel, intpk
 
 if TYPE_CHECKING:
-    from .service import _Service
     from .basket import _Basket
     from .invoice import _Invoice
+    from .service import Service
 
 
 class _Item(BaseModel):
@@ -45,6 +41,6 @@ class _Item(BaseModel):
         ForeignKey("basket.id"), init=False
     )
 
-    service: Mapped["_Service"] = relationship(init=False)
+    service: Mapped["Service"] = relationship(init=False)
     basket: Mapped["_Basket"] = relationship(back_populates="items", init=False)
     invoice: Mapped["_Invoice"] = relationship(back_populates="items", init=False)

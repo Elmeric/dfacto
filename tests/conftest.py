@@ -11,11 +11,10 @@ from sqlite3 import Connection as SQLite3Connection
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.event import listen
-from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 
 from dfacto.models.db import BaseModel
-from dfacto.models.vat_rate import VatRateModel
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -69,7 +68,9 @@ def dbsession(engine, tables):
     transaction = connection.begin()
     # use the connection with the already started transaction
     # session = Session(bind=connection, join_transaction_mode="create_savepoint")
-    session_factory = sessionmaker(bind=connection, join_transaction_mode="create_savepoint")
+    session_factory = sessionmaker(
+        bind=connection, join_transaction_mode="create_savepoint"
+    )
     Session = scoped_session(session_factory)
 
     # yield session
@@ -81,8 +82,3 @@ def dbsession(engine, tables):
     transaction.rollback()
     # put back the connection to the connection pool
     connection.close()
-
-
-@pytest.fixture
-def vat_rate_model(dbsession):
-    return VatRateModel(dbsession)

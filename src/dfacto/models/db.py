@@ -8,7 +8,13 @@ from typing import Annotated
 
 from sqlalchemy import create_engine
 from sqlalchemy.event import listen
-from sqlalchemy.orm import scoped_session, sessionmaker, MappedAsDataclass, DeclarativeBase, mapped_column
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    MappedAsDataclass,
+    mapped_column,
+    scoped_session,
+    sessionmaker,
+)
 
 
 class BaseModel(MappedAsDataclass, DeclarativeBase):

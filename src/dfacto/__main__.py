@@ -2,37 +2,40 @@ import datetime
 import random
 import sys
 
-from sqlalchemy import select, exc
+from sqlalchemy import select
 
 from dfacto.models import db
 from dfacto.models.basket import BasketModel
 from dfacto.models.client import ClientModel
+from dfacto.models.db import BaseModel
 from dfacto.models.invoice import InvoiceModel
 from dfacto.models.item import ItemModel
-from dfacto.models.db import BaseModel
 from dfacto.models.models import InvoiceStatus, _Client
+from dfacto.models.schemas import (
+    ServiceCreate,
+    ServiceUpdate,
+    VatRateCreate,
+    VatRateUpdate,
+)
 from dfacto.models.service import ServiceModel
 from dfacto.models.vat_rate import VatRateModel
-from dfacto.models.schemas import VatRateCreate, VatRateUpdate
 
 
 def main():
     print(f"Creating db schema: {db.engine} {id(db.engine)}", db.Session)
     BaseModel.metadata.create_all(db.engine)
     print("DB schema is created")
-    # db.create_schema()
-    #    initDb()
 
     start_time = datetime.datetime.now()
 
     vat_rate_model = VatRateModel(db.Session)
-    service_model = ServiceModel(db.Session, vat_rate_model)
+    service_model = ServiceModel(db.Session)
     item_model = ItemModel(db.Session, service_model)
     basket_model = BasketModel(db.Session, service_model, item_model)
     invoice_model = InvoiceModel(db.Session, service_model, item_model, basket_model)
     client_model = ClientModel(db.Session, basket_model)
 
-    cmd_report = vat_rate_model.get()
+    cmd_report = vat_rate_model.get_default()
     print(cmd_report.body)
 
     cmd_report = vat_rate_model.get_multi()
@@ -41,7 +44,9 @@ def main():
     v = vat_rate_model.get(vat_rate_model.DEFAULT_RATE_ID + 1)
     print(v.body)
 
-    cmd_report = vat_rate_model.update(vat_rate_model.DEFAULT_RATE_ID + 1, VatRateCreate(5.5))
+    cmd_report = vat_rate_model.update(
+        vat_rate_model.DEFAULT_RATE_ID + 1, VatRateUpdate(5.5)
+    )
     print(cmd_report)
 
     cmd_report = vat_rate_model.add(VatRateCreate(30))
@@ -59,34 +64,41 @@ def main():
 
     for vr in vat_rates:
         cmd_report = vat_rate_model.delete(vr.id)
-        print(cmd_report)
+        print(cmd_report, cmd_report.body)
 
-    cmd_report = service_model.add(f"Service {random.randint(1, 1000)}", 100.0)
-    print(cmd_report)
+    cmd_report = service_model.add(
+        ServiceCreate(
+            name=f"Service {random.randint(1, 1000)}",
+            unit_price=100.0,
+            vat_rate_id=vat_rate_model.DEFAULT_RATE_ID,
+        )
+    )
+    print(cmd_report, cmd_report.body)
 
     cmd_report = service_model.get(1)
-    print(cmd_report)
+    print(cmd_report, cmd_report.body)
 
     # s2 = service_model.update(s.id, name="New service")
     # print(s2)
-    cmd_report = service_model.update(1, unit_price=50)
-    print(cmd_report)
-    cmd_report = service_model.update(2, vat_rate_id=3)
-    print(cmd_report)
+    cmd_report = service_model.update(1, ServiceUpdate(unit_price=50))
+    print(cmd_report, cmd_report.body)
+    cmd_report = service_model.update(2, ServiceUpdate(vat_rate_id=3))
+    print(cmd_report, cmd_report.body)
     vat_rate_model.add(VatRateCreate(30))
     cmd_report = service_model.update(
-        2, name="Great service", unit_price=75, vat_rate_id=4
+        2, ServiceUpdate(name="Great service", unit_price=75, vat_rate_id=4)
     )
-    print(cmd_report)
+    print(cmd_report, cmd_report.body)
 
-    cmd_report = service_model.delete(5)
-    print(cmd_report)
+    cmd_report = service_model.delete(7)
+    print(cmd_report, cmd_report.body)
 
-    services = service_model.list_all()
+    cmd_report = service_model.get_multi()
+    services = cmd_report.body
     print(services)
 
     cmd_report = vat_rate_model.delete(4)
-    print(cmd_report)
+    print(cmd_report, cmd_report.body)
 
     clients = client_model.list_all()
     if not any(c.name == "John Doe" for c in clients):

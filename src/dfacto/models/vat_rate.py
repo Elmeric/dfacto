@@ -3,17 +3,14 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-# from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import ClassVar, Optional, TypedDict
+from typing import ClassVar, TypedDict
 
-import sqlalchemy as sa
-import sqlalchemy.exc
-from sqlalchemy.orm import scoped_session
-
+from dfacto.models import crud, schemas
 from dfacto.models.command import CommandResponse, CommandStatus
-from dfacto.models import crud, models, schemas
+
+from .base import DFactoModel
 
 
 class PresetRate(TypedDict):
@@ -22,8 +19,9 @@ class PresetRate(TypedDict):
 
 
 @dataclass()
-class VatRateModel:
-    Session: scoped_session
+class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
+    crud_object: crud.CRUDVatRate = crud.vat_rate
+    schema: schemas.VatRate = schemas.VatRate
 
     DEFAULT_RATE_ID: ClassVar[int] = 1
     PRESET_RATES: ClassVar[list[PresetRate]] = [
@@ -36,126 +34,50 @@ class VatRateModel:
     )
 
     def __post_init__(self) -> None:
-        if self.Session.scalars(sa.select(models.VatRate)).first() is None:
-            # No VAT rates in the database: create them.
-            self.Session.execute(sa.insert(models.VatRate), VatRateModel.PRESET_RATES)
-            self.Session.commit()
+        self.crud_object.init_defaults(self.Session, VatRateModel.PRESET_RATES)
 
     def reset(self) -> CommandResponse:
-        report = None
-        self.Session.execute(sa.update(models.VatRate), VatRateModel.PRESET_RATES)
-        try:
-            # TODO: Limit delete to the non-used VAT rates.
-            self.Session.execute(
-                sa.delete(models.VatRate)
-                .where(models.VatRate.id.not_in(VatRateModel.PRESET_RATE_IDS))
-            )
-        except sa.exc.IntegrityError:
-            # Some non-preset VAT rates are in use: keep them all!
-            report = CommandResponse(
-                CommandStatus.COMPLETED,
-                "VAT_RATE-RESET - Some VAT rate are in-use: all are kept."
-            )
-        try:
-            self.Session.commit()
-        except sa.exc.SQLAlchemyError:
-            self.Session.rollback()
-            return CommandResponse(
-                CommandStatus.FAILED,
-                "VAT_RATE-RESET - SQL error while resetting VAT rates.",
-            )
-        else:
-            report = report or CommandResponse(CommandStatus.COMPLETED)
-            return report
+        for vat_rate in VatRateModel.PRESET_RATES:
+            self.update(vat_rate["id"], schemas.VatRateUpdate(vat_rate["rate"]))
 
-    def get(self, vat_rate_id: Optional[int] = None) -> CommandResponse:
-        id_ = vat_rate_id or VatRateModel.DEFAULT_RATE_ID
-        try:
-            vat_rate = crud.vat_rate.get(self.Session, id_)
-        except crud.CrudError as exc:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"VAT_RATE-GET - SQL or database error: {exc}",
-            )
+        vat_rates = self.get_all().body
+        success = True
+        if vat_rates is not None:
+            for vat_rate in vat_rates:
+                if vat_rate.id not in VatRateModel.PRESET_RATE_IDS:
+                    response = self.delete(vat_rate.id)
+                    success = success and response.status is CommandStatus.COMPLETED
+        if success:
+            return CommandResponse(CommandStatus.COMPLETED)
         else:
-            if vat_rate is None:
-                body = None
-            else:
-                body = schemas.VatRate.from_orm(vat_rate)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
-
-    def get_multi(self, skip: int = 0, limit: int = 10) -> CommandResponse:
-        try:
-            vat_rates = crud.vat_rate.get_multi(self.Session, skip=skip, limit=limit)
-        except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"VAT_RATE-GET-MULTI - SQL or database error: {exc}",
-            )
-        else:
-            body = [schemas.VatRate.from_orm(vat_rate) for vat_rate in vat_rates]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
-
-    def add(self, vr_in: schemas.VatRateCreate) -> CommandResponse:
-        try:
-            vat_rate = crud.vat_rate.create(self.Session, obj_in=vr_in)
-        except crud.CrudError as exc:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"VAT_RATE-ADD - Cannot add VAT rate {vr_in.rate}: {exc}",
-            )
-        else:
-            return CommandResponse(CommandStatus.COMPLETED, body=vat_rate)
-
-    def update(self, vat_rate_id: int, vr_in: schemas.VatRateUpdate) -> CommandResponse:
-        vat_rate = crud.vat_rate.get(self.Session, vat_rate_id)
-        if vat_rate is None:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"VAT_RATE-UPDATE - VAT rate {vat_rate_id} not found.",
+                "VAT_RATE-RESET - Reset failed: some VAT rates may be in use.",
             )
 
-        try:
-            vat_rate = crud.vat_rate.update(self.Session, db_obj=vat_rate, obj_in=vr_in)
-        except crud.CrudError as exc:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"VAT_RATE-UPDATE - Cannot update VAT rate {vat_rate_id}: {exc}",
-            )
-        else:
-            return CommandResponse(CommandStatus.COMPLETED, body=vat_rate)
+    def get_default(self) -> CommandResponse:
+        return self.get(VatRateModel.DEFAULT_RATE_ID)
 
     def delete(self, vat_rate_id: int) -> CommandResponse:
         if vat_rate_id in VatRateModel.PRESET_RATE_IDS:
             return CommandResponse(
                 CommandStatus.REJECTED,
-                "VAT_RATE-DELETE - Default VAT rates cannot be deleted.",
+                "DELETE - Default VAT rates cannot be deleted.",
             )
 
-        vat_rate = crud.vat_rate.get(self.Session, vat_rate_id)
+        vat_rate = self.crud_object.get(self.Session, vat_rate_id)
         if vat_rate is None:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"VAT_RATE-DELETE - VAT rate {vat_rate_id} not found.",
+                f"DELETE - Object {vat_rate_id} not found.",
             )
 
-        try:
-            vat_rate = crud.vat_rate.delete(self.Session, id_=vat_rate_id)
-        except crud.CrudIntegrityError:
-            in_use = self.Session.scalars(
-                sa.select(models._Service)
-                # .join(_Service.vat_rate)
-                .where(models._Service.vat_rate_id == vat_rate_id)
-            ).first()
+        in_use = vat_rate.services
+        if len(in_use) > 0:
             return CommandResponse(
                 CommandStatus.REJECTED,
-                f"VAT_RATE-DELETE - VAT rate with id {vat_rate_id} is used"
-                f" by at least '{in_use.name}' service.",
+                f"DELETE - VAT rate with id {vat_rate_id} is used"
+                f" by at least '{in_use[0].name}' service.",
             )
-        except crud.CrudError as exc:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"VAT_RATE-DELETE - Cannot delete VAT rate {vat_rate_id}: {exc}",
-            )
-        else:
-            return CommandResponse(CommandStatus.COMPLETED, body=vat_rate)
+
+        return super().delete(vat_rate_id)

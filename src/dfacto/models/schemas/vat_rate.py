@@ -3,10 +3,11 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-from typing import Optional
 from dataclasses import dataclass
+from typing import Optional
 
 from dfacto.models import models
+
 from .base import BaseSchema
 
 
@@ -26,7 +27,7 @@ class VatRateCreate(_VatRateBase):
 
 
 @dataclass
-class VatRateUpdate(_VatRateBase, _VatRateDefaultsBase):
+class VatRateUpdate(_VatRateDefaultsBase, _VatRateBase):
     pass
 
 

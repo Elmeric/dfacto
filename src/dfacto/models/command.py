@@ -5,9 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from typing import NamedTuple, Any
-
-from dfacto.models import crud
+from typing import Any, NamedTuple
 
 
 class CommandException(Exception):

@@ -13,8 +13,8 @@ import sqlalchemy.exc
 import sqlalchemy.orm
 
 from dfacto.models.basket import BasketModel
-from dfacto.models.item import Item, ItemModel
 from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.item import Item, ItemModel
 from dfacto.models.models import InvoiceStatus, _Basket, _Invoice, _Item
 from dfacto.models.service import ServiceModel
 

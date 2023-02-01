@@ -11,10 +11,9 @@ import sqlalchemy as sa
 import sqlalchemy.exc
 import sqlalchemy.orm
 
-from dfacto.models.item import Item, ItemModel
 from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.item import Item, ItemModel
 from dfacto.models.models import InvoiceStatus, _Basket, _Item
-
 from dfacto.models.service import ServiceModel
 
 
@@ -83,7 +82,9 @@ class BasketModel:
             for basket in self.Session.scalars(sa.select(_Basket)).all()
         ]
 
-    def add_item(self, basket_id: int, service_id: int, quantity: int) -> CommandResponse:
+    def add_item(
+        self, basket_id: int, service_id: int, quantity: int
+    ) -> CommandResponse:
         basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
         if basket is None:
             return CommandResponse(

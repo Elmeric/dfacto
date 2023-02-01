@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from .vat_rate import VatRate
 
 
-class _Service(BaseModel):
+class Service(BaseModel):
     __tablename__ = "service"
 
     id: Mapped[intpk] = mapped_column(init=False)
@@ -23,4 +23,4 @@ class _Service(BaseModel):
     unit_price: Mapped[float]
     vat_rate_id: Mapped[int] = mapped_column(ForeignKey("vat_rate.id"))
 
-    vat_rate: Mapped["VatRate"] = relationship(init=False)
+    vat_rate: Mapped["VatRate"] = relationship(init=False, back_populates="services")

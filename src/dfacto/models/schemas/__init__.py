@@ -7,4 +7,5 @@
 from dataclasses import dataclass
 
 from .base import BaseSchema
-from .vat_rate import VatRateCreate, VatRateUpdate, VatRate, VatRateInDB
+from .service import Service, ServiceCreate, ServiceInDB, ServiceUpdate
+from .vat_rate import VatRate, VatRateCreate, VatRateInDB, VatRateUpdate

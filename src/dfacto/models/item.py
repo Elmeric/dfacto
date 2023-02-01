@@ -13,7 +13,8 @@ import sqlalchemy.orm
 
 from dfacto.models.command import CommandResponse, CommandStatus
 from dfacto.models.models import _Item
-from dfacto.models.service import Service, ServiceModel
+from dfacto.models.schemas import Service
+from dfacto.models.service import ServiceModel
 
 
 @dataclass()
