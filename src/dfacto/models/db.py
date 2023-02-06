@@ -39,7 +39,8 @@ print(f"**************** CREATING ENGINE ****************")
 #     os.remove('dcfs_data/dcfs.db')
 # except OSError:
 #     pass
-engine = create_engine("sqlite+pysqlite:///dfacto.db")
+# engine = create_engine("sqlite+pysqlite:///dfacto.db")
+engine = create_engine("sqlite+pysqlite:///:memory:")
 # engine = create_engine('sqlite+pysqlite:///dfacto.db', echo=True)
 listen(engine, "connect", _set_sqlite_pragma)
 session_factory = sessionmaker(bind=engine)

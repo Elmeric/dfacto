@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
+from typing import Type
 
 from dfacto.models import crud, schemas
 
@@ -14,4 +15,4 @@ from .base import DFactoModel
 @dataclass()
 class ServiceModel(DFactoModel[crud.CRUDService, schemas.Service]):
     crud_object: crud.CRUDService = crud.service
-    schema: schemas.Service = schemas.Service
+    schema: Type[schemas.Service] = schemas.Service

@@ -5,25 +5,25 @@
 # LICENSE file in the root directory of this source tree.
 
 import dataclasses
-from typing import Any, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import Any, Generic, Optional, Type, TypeVar, Union
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
 from dfacto.models.db import BaseModel
-from dfacto.models.schemas import BaseSchema
+from dfacto.models import schemas
 
 ModelType = TypeVar("ModelType", bound=BaseModel)
-CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseSchema)
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseSchema)
+CreateSchemaType = TypeVar("CreateSchemaType", bound=schemas.BaseSchema)
+UpdateSchemaType = TypeVar("UpdateSchemaType", bound=schemas.BaseSchema)
 
 
 class CrudError(Exception):
     pass
 
 
-class CrudIntegrityError(Exception):
+class CrudIntegrityError(CrudError):
     pass
 
 
@@ -42,7 +42,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     def get_multi(
         self, db: scoped_session, *, skip: int = 0, limit: int = 100
-    ) -> List[ModelType]:
+    ) -> list[ModelType]:
         try:
             obj_list = db.scalars(select(self.model).offset(skip).limit(limit)).all()
         except SQLAlchemyError as exc:
@@ -50,7 +50,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         else:
             return obj_list
 
-    def get_all(self, db: scoped_session) -> List[ModelType]:
+    def get_all(self, db: scoped_session) -> list[ModelType]:
         try:
             obj_list = db.scalars(select(self.model)).all()
         except SQLAlchemyError as exc:
@@ -76,7 +76,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db: scoped_session,
         *,
         db_obj: ModelType,
-        obj_in: Union[UpdateSchemaType, Dict[str, Any]],
+        obj_in: Union[UpdateSchemaType, dict[str, Any]],
     ) -> ModelType:
         updated = False
         obj_data = vars(db_obj)
@@ -97,7 +97,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 updated = True
 
         if updated:
-            db.add(db_obj)
             try:
                 db.commit()
             except SQLAlchemyError as exc:

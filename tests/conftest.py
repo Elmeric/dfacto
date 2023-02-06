@@ -82,3 +82,48 @@ def dbsession(engine, tables):
     transaction.rollback()
     # put back the connection to the connection pool
     connection.close()
+
+
+@pytest.fixture()
+def mock_commit(monkeypatch):
+    state = {"failed": False}
+    called = []
+
+    def _commit(_):
+        called.append(True)
+        if state["failed"]:
+            raise SQLAlchemyError("Commit failed")
+
+    monkeypatch.setattr("dfacto.models.crud.base.scoped_session.commit", _commit)
+
+    return state, called
+
+
+@pytest.fixture()
+def mock_get(monkeypatch):
+    state = {"failed": False}
+    called = []
+
+    def _get(_1, _2, _3):
+        called.append(True)
+        if state["failed"]:
+            raise SQLAlchemyError("Get failed")
+
+    monkeypatch.setattr("dfacto.models.crud.base.scoped_session.get", _get)
+
+    return state, called
+
+
+@pytest.fixture()
+def mock_select(monkeypatch):
+    state = {"failed": False}
+    called = []
+
+    def _select(_):
+        called.append(True)
+        if state["failed"]:
+            raise SQLAlchemyError("Select failed")
+
+    monkeypatch.setattr("dfacto.models.crud.base.select", _select)
+
+    return state, called

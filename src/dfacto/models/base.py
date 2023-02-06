@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar
+from typing import Generic, Optional, Type, TypeVar
 
 from sqlalchemy.orm import scoped_session
 
@@ -20,7 +20,7 @@ SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)
 class DFactoModel(Generic[CRUDObjectType, SchemaType]):
     Session: scoped_session
     crud_object: Optional[CRUDObjectType] = None
-    schema: Optional[SchemaType] = None
+    schema: Optional[Type[SchemaType]] = None
 
     def get(self, obj_id: int) -> CommandResponse:
         try:
@@ -54,14 +54,14 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
 
     def get_all(self) -> CommandResponse:
         try:
-            vat_rates = self.crud_object.get_all(self.Session)
+            db_objs = self.crud_object.get_all(self.Session)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
                 f"GET-ALL - SQL or database error: {exc}",
             )
         else:
-            body = [self.schema.from_orm(db_obj) for db_obj in vat_rates]
+            body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def add(self, obj_in: crud.CreateSchemaType) -> CommandResponse:
@@ -102,7 +102,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
         if db_obj is None:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"DELETE - object {obj_id} not found.",
+                f"DELETE - Object {obj_id} not found.",
             )
 
         try:

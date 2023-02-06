@@ -17,7 +17,7 @@ class _VatRateBase(BaseSchema):
 
 
 @dataclass
-class _VatRateDefaultsBase:
+class _VatRateDefaultsBase(BaseSchema):
     rate: Optional[float] = 0.0
 
 

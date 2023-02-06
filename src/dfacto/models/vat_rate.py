@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import ClassVar, TypedDict
+from typing import ClassVar, Type, TypedDict
 
 from dfacto.models import crud, schemas
 from dfacto.models.command import CommandResponse, CommandStatus
@@ -21,7 +21,7 @@ class PresetRate(TypedDict):
 @dataclass()
 class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
     crud_object: crud.CRUDVatRate = crud.vat_rate
-    schema: schemas.VatRate = schemas.VatRate
+    schema: Type[schemas.VatRate] = schemas.VatRate
 
     DEFAULT_RATE_ID: ClassVar[int] = 1
     PRESET_RATES: ClassVar[list[PresetRate]] = [

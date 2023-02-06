@@ -3,6 +3,7 @@ import random
 import sys
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from dfacto.models import db
 from dfacto.models.basket import BasketModel
@@ -19,6 +20,7 @@ from dfacto.models.schemas import (
 )
 from dfacto.models.service import ServiceModel
 from dfacto.models.vat_rate import VatRateModel
+from dfacto.models import crud, models, schemas
 
 
 def main():
@@ -176,9 +178,77 @@ def main():
     print(f"exec time: {end_time - start_time}")
 
 
+def init_services(dbsession):
+    preset_rates = [
+        {"id": 1, "rate": 0.0},
+        {"id": 2, "rate": 5.5},
+        {"id": 3, "rate": 20.0},
+    ]
+    crud.vat_rate.init_defaults(dbsession, preset_rates)
+
+    services = []
+    for i in range(5):
+        service = models.Service(
+            name=f"Service_{i + 1}",
+            unit_price=100 + 10 * i,
+            vat_rate_id=(i % 3) + 1
+        )
+        dbsession.add(service)
+        dbsession.commit()
+        dbsession.refresh(service)
+        services.append(service)
+
+    return services
+
+
+def update():
+    print(f"Creating db schema: {db.engine} {id(db.engine)}", db.Session)
+    BaseModel.metadata.create_all(db.engine)
+    print("DB schema is created")
+
+    services = init_services(db.Session)
+
+    service = services[0]
+
+    updated = crud.service.update(
+        db.Session,
+        db_obj=service,
+        obj_in=schemas.ServiceUpdate(
+            name="Wonderful service",
+            unit_price=1000.0,
+            vat_rate_id=2
+        )
+    )
+
+    try:
+        assert updated.id == service.id
+        assert updated.name == "Wonderful service"
+        assert updated.unit_price == 1000.0
+        assert updated.vat_rate_id == 2
+        assert updated.vat_rate.id == 2
+        assert updated.vat_rate.rate == 5.5
+    except AssertionError as exc:
+        print(exc)
+
+    try:
+        s = db.Session.get(models.Service, updated.id)
+    except SQLAlchemyError:
+        s = None
+
+    try:
+        assert s.name == "Wonderful service"
+        assert s.unit_price == 1000.0
+        assert s.vat_rate_id == 2
+        assert s.vat_rate.id == 2
+        assert s.vat_rate.rate == 5.5
+    except AssertionError as exc:
+        print(exc)
+
+
 if __name__ == "__main__":
     try:
         main()
+        # update()
     except Exception as exc:
         print(exc)
         sys.exit(1)

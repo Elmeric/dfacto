@@ -19,7 +19,7 @@ class _ServiceBase(BaseSchema):
 
 
 @dataclass
-class _ServiceDefaultsBase:
+class _ServiceDefaultsBase(BaseSchema):
     name: Optional[str] = None
     unit_price: Optional[float] = None
     vat_rate_id: Optional[int] = None
