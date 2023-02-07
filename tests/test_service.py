@@ -120,7 +120,7 @@ class FakeService(schemas.Service):
 
 
 @pytest.fixture
-def init_services(dbsession: sa.orm.scoped_session) -> list[schemas.Service]:
+def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
     preset_rates = [
         {"id": 1, "rate": 0.0},
         {"id": 2, "rate": 5.5},
