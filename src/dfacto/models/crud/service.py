@@ -10,7 +10,9 @@ from dfacto.models import schemas
 from .base import CRUDBase
 
 
-class CRUDService(CRUDBase[models.Service, schemas.ServiceCreate, schemas.ServiceUpdate]):
+class CRUDService(
+    CRUDBase[models.Service, schemas.ServiceCreate, schemas.ServiceUpdate]
+):
     pass
 
 

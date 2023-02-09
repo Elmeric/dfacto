@@ -7,9 +7,8 @@
 from dataclasses import dataclass
 from typing import ClassVar, Type, TypedDict
 
-from dfacto.models import crud, schemas
-from dfacto.models.command import CommandResponse, CommandStatus
-
+from dfacto.models import db, crud, schemas
+from dfacto.models.api.command import CommandResponse, CommandStatus
 from .base import DFactoModel
 
 
@@ -32,9 +31,6 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
     PRESET_RATE_IDS: ClassVar[tuple[int, ...]] = tuple(
         [rate["id"] for rate in PRESET_RATES]
     )
-
-    def __post_init__(self) -> None:
-        self.crud_object.init_defaults(self.Session, VatRateModel.PRESET_RATES)
 
     def reset(self) -> CommandResponse:
         for vat_rate in VatRateModel.PRESET_RATES:
@@ -81,3 +77,6 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
             )
 
         return super().delete(vat_rate_id)
+
+
+vat_rate = VatRateModel(db.Session)

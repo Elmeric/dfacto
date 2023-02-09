@@ -11,9 +11,9 @@ import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
-from dfacto.models.command import CommandStatus
-from dfacto.models import crud, models, schemas
-from dfacto.models.service import ServiceModel
+from dfacto.models.api.command import CommandStatus
+from dfacto.models import db, crud, models, schemas
+from dfacto.models.api.api_v1.service import ServiceModel
 
 
 class FakeCRUDBase(crud.CRUDBase):
@@ -121,12 +121,7 @@ class FakeService(schemas.Service):
 
 @pytest.fixture
 def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
-    preset_rates = [
-        {"id": 1, "rate": 0.0},
-        {"id": 2, "rate": 5.5},
-        {"id": 3, "rate": 20.0},
-    ]
-    crud.vat_rate.init_defaults(dbsession, preset_rates)
+    db.init_db_data(dbsession)
 
     services = []
     for i in range(5):

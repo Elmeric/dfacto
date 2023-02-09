@@ -11,10 +11,11 @@ import sqlalchemy as sa
 import sqlalchemy.exc
 import sqlalchemy.orm
 
-from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.item import Item, ItemModel
 from dfacto.models.models import InvoiceStatus, _Basket, _Item
-from dfacto.models.service import ServiceModel
+# from dfacto.models.api.api_v1.service import ServiceModel
+from dfacto.models import api
 
 
 @dataclass()
@@ -57,7 +58,7 @@ class Basket:
 @dataclass()
 class BasketModel:
     Session: sa.orm.scoped_session
-    service_model: ServiceModel
+    # service_model: ServiceModel
     item_model: ItemModel
 
     def get(self, basket_id: int) -> Optional[Basket]:
@@ -91,7 +92,8 @@ class BasketModel:
                 CommandStatus.FAILED, f"BASKET-ADD-ITEM - Basket {basket_id} not found."
             )
 
-        serv = self.service_model.get(service_id)
+        serv = api.service.get(service_id)
+        # serv = self.service_model.get(service_id)
         if serv is None or quantity <= 0:
             return CommandResponse(
                 CommandStatus.REJECTED,
@@ -165,7 +167,8 @@ class BasketModel:
             item.quantity = quantity
 
         if update_needed:
-            serv = self.service_model.get(service_id)
+            serv = api.service.get(service_id)
+            # serv = self.service_model.get(service_id)
             if serv is None:
                 return CommandResponse(
                     CommandStatus.REJECTED,

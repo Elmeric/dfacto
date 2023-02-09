@@ -10,12 +10,18 @@
 
 import pytest
 import sqlalchemy as sa
-import sqlalchemy.exc
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import scoped_session
 
-from dfacto.models import models
-from dfacto.models.command import CommandStatus
+from dfacto.models.api.command import CommandStatus
 from dfacto.models.schemas import VatRate, VatRateCreate, VatRateUpdate
-from dfacto.models.vat_rate import VatRateModel
+from dfacto.models import db, models
+from dfacto.models.api.api_v1.vat_rate import VatRateModel
+
+
+@pytest.fixture(autouse=True)
+def init_vat_rates(dbsession: sa.orm.scoped_session) -> None:
+    db.init_db_data(dbsession)
 
 
 @pytest.fixture
@@ -24,8 +30,6 @@ def vat_rate_model(dbsession):
 
 
 def test_init(dbsession):
-    assert dbsession.scalars(sa.select(models.VatRate)).first() is None
-
     VatRateModel(dbsession)
 
     vat_rates = dbsession.scalars(sa.select(models.VatRate)).all()
@@ -38,8 +42,6 @@ def test_init(dbsession):
 def test_init_twice(dbsession, vat_rate_model, mock_commit):
     state, called = mock_commit
     state["failed"] = False
-
-    assert dbsession.scalars(sa.select(models.VatRate)).first() is not None
 
     VatRateModel(dbsession)
 

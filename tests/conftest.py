@@ -14,7 +14,7 @@ from sqlalchemy.event import listen
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 
-from dfacto.models.db import BaseModel
+from dfacto.models import db
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -55,9 +55,9 @@ def engine():
 
 @pytest.fixture(scope="session")
 def tables(engine):
-    BaseModel.metadata.create_all(engine)
+    db.BaseModel.metadata.create_all(engine)
     yield
-    BaseModel.metadata.drop_all(engine)
+    db.BaseModel.metadata.drop_all(engine)
 
 
 @pytest.fixture

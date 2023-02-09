@@ -7,8 +7,7 @@
 from dataclasses import dataclass
 from typing import Type
 
-from dfacto.models import crud, schemas
-
+from dfacto.models import db, crud, schemas
 from .base import DFactoModel
 
 
@@ -16,3 +15,6 @@ from .base import DFactoModel
 class ServiceModel(DFactoModel[crud.CRUDService, schemas.Service]):
     crud_object: crud.CRUDService = crud.service
     schema: Type[schemas.Service] = schemas.Service
+
+
+service = ServiceModel(db.Session)

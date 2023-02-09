@@ -11,10 +11,11 @@ import sqlalchemy as sa
 import sqlalchemy.exc
 import sqlalchemy.orm
 
-from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.models import _Item
 from dfacto.models.schemas import Service
-from dfacto.models.service import ServiceModel
+# from dfacto.models.api.api_v1.service import ServiceModel
+from dfacto.models import api
 
 
 @dataclass()
@@ -30,7 +31,7 @@ class Item:
 @dataclass()
 class ItemModel:
     Session: sa.orm.scoped_session
-    service_model: ServiceModel
+    # service_model: ServiceModel
 
     def get(self, item_id: int) -> Optional[Item]:
         item: Optional[_Item] = self.Session.get(_Item, item_id)
@@ -41,7 +42,8 @@ class ItemModel:
             item.raw_amount,
             item.vat,
             item.net_amount,
-            self.service_model.get(item.service.id),
+            api.service.get(item.service.id),
+            # self.service_model.get(item.service.id),
             item.quantity,
         )
 
@@ -52,7 +54,8 @@ class ItemModel:
                 item.raw_amount,
                 item.vat,
                 item.net_amount,
-                self.service_model.get(item.service.id),
+                api.service.get(item.service.id),
+                # self.service_model.get(item.service.id),
                 item.quantity,
             )
             for item in self.Session.scalars(sa.select(_Item)).all()

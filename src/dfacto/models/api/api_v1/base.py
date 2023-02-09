@@ -10,7 +10,7 @@ from typing import Generic, Optional, Type, TypeVar
 from sqlalchemy.orm import scoped_session
 
 from dfacto.models import crud, schemas
-from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.api.command import CommandResponse, CommandStatus
 
 CRUDObjectType = TypeVar("CRUDObjectType", bound=crud.CRUDBase)
 SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)

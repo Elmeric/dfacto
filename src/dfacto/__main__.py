@@ -5,101 +5,88 @@ import sys
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from dfacto.models import db
+from dfacto.models import db, crud, models, schemas, api
 from dfacto.models.basket import BasketModel
 from dfacto.models.client import ClientModel
-from dfacto.models.db import BaseModel
 from dfacto.models.invoice import InvoiceModel
 from dfacto.models.item import ItemModel
-from dfacto.models.models import InvoiceStatus, _Client
-from dfacto.models.schemas import (
-    ServiceCreate,
-    ServiceUpdate,
-    VatRateCreate,
-    VatRateUpdate,
-)
-from dfacto.models.service import ServiceModel
-from dfacto.models.vat_rate import VatRateModel
-from dfacto.models import crud, models, schemas
 
 
 def main():
-    print(f"Creating db schema: {db.engine} {id(db.engine)}", db.Session)
-    BaseModel.metadata.create_all(db.engine)
-    print("DB schema is created")
-
+    # TODO: Add a check that the db exists with correct tables and initial data
     start_time = datetime.datetime.now()
 
-    vat_rate_model = VatRateModel(db.Session)
-    service_model = ServiceModel(db.Session)
-    item_model = ItemModel(db.Session, service_model)
-    basket_model = BasketModel(db.Session, service_model, item_model)
-    invoice_model = InvoiceModel(db.Session, service_model, item_model, basket_model)
+    item_model = ItemModel(db.Session)
+    # item_model = ItemModel(db.Session, api.service)
+    basket_model = BasketModel(db.Session, api.service)
+    # basket_model = BasketModel(db.Session, api.service, item_model)
+    invoice_model = InvoiceModel(db.Session, api.service, item_model)
+    # invoice_model = InvoiceModel(db.Session, api.service, item_model, basket_model)
     client_model = ClientModel(db.Session, basket_model)
 
-    cmd_report = vat_rate_model.get_default()
+    cmd_report = api.vat_rate.get_default()
     print(cmd_report.body)
 
-    cmd_report = vat_rate_model.get_multi()
+    cmd_report = api.vat_rate.get_multi()
     print(cmd_report.body)
 
-    v = vat_rate_model.get(vat_rate_model.DEFAULT_RATE_ID + 1)
+    v = api.vat_rate.get(api.vat_rate.DEFAULT_RATE_ID + 1)
     print(v.body)
 
-    cmd_report = vat_rate_model.update(
-        vat_rate_model.DEFAULT_RATE_ID + 1, VatRateUpdate(5.5)
+    cmd_report = api.vat_rate.update(
+        api.vat_rate.DEFAULT_RATE_ID + 1, schemas.VatRateUpdate(5.5)
     )
     print(cmd_report)
 
-    cmd_report = vat_rate_model.add(VatRateCreate(30))
+    cmd_report = api.vat_rate.add(schemas.VatRateCreate(30))
     print(cmd_report)
 
     # try:
-    #     vat_rate_model.delete(vat_rate_model.DEFAULT_RATE_ID + 2)
+    #     api.vat_rate.delete(api.vat_rate.DEFAULT_RATE_ID + 2)
     # except RejectedCommand as exc:
     #     print(exc)
 
-    # vat_rate_model.reset()
-    cmd_report = vat_rate_model.get_multi()
+    # api.vat_rate.reset()
+    cmd_report = api.vat_rate.get_multi()
     vat_rates = cmd_report.body
     print(vat_rates)
 
     for vr in vat_rates:
-        cmd_report = vat_rate_model.delete(vr.id)
+        cmd_report = api.vat_rate.delete(vr.id)
         print(cmd_report, cmd_report.body)
 
-    cmd_report = service_model.add(
-        ServiceCreate(
+    cmd_report = api.service.add(
+        schemas.ServiceCreate(
             name=f"Service {random.randint(1, 1000)}",
             unit_price=100.0,
-            vat_rate_id=vat_rate_model.DEFAULT_RATE_ID,
+            vat_rate_id=api.vat_rate.DEFAULT_RATE_ID,
         )
     )
     print(cmd_report, cmd_report.body)
 
-    cmd_report = service_model.get(1)
+    cmd_report = api.service.get(1)
     print(cmd_report, cmd_report.body)
 
-    # s2 = service_model.update(s.id, name="New service")
+    # s2 = api.service.update(s.id, name="New service")
     # print(s2)
-    cmd_report = service_model.update(1, ServiceUpdate(unit_price=50))
+    cmd_report = api.service.update(1, schemas.ServiceUpdate(unit_price=50))
     print(cmd_report, cmd_report.body)
-    cmd_report = service_model.update(2, ServiceUpdate(vat_rate_id=3))
+    cmd_report = api.service.update(2, schemas.ServiceUpdate(vat_rate_id=3))
     print(cmd_report, cmd_report.body)
-    vat_rate_model.add(VatRateCreate(30))
-    cmd_report = service_model.update(
-        2, ServiceUpdate(name="Great service", unit_price=75, vat_rate_id=4)
+    api.vat_rate.add(schemas.VatRateCreate(30))
+    cmd_report = api.service.update(
+        2, schemas.ServiceUpdate(name="Great service", unit_price=75, vat_rate_id=4)
     )
     print(cmd_report, cmd_report.body)
 
-    cmd_report = service_model.delete(7)
+    cmd_report = api.service.delete(7)
     print(cmd_report, cmd_report.body)
 
-    cmd_report = service_model.get_multi()
+    cmd_report = api.service.get_multi()
     services = cmd_report.body
     print(services)
 
-    cmd_report = vat_rate_model.delete(4)
+    cmd_report = api.vat_rate.delete(4)
     print(cmd_report, cmd_report.body)
 
     clients = client_model.list_all()
@@ -112,14 +99,14 @@ def main():
         )
         print(cmd_report)
 
-    cl: _Client = db.Session.get(_Client, 1)
+    cl: models._Client = db.Session.get(models._Client, 1)
     if cl.has_emitted_invoices:
         print(f"Client {cl.name} has emitted invoices")
     else:
         print(f"Client {cl.name} has no emitted invoices")
 
-    c: _Client = db.Session.execute(
-        select(_Client).filter(_Client.has_emitted_invoices)
+    c: models._Client = db.Session.execute(
+        select(models._Client).filter(models._Client.has_emitted_invoices)
     ).scalar()
     if c is not None:
         print(f"Client with emitted invoices: {c.name}, {c.invoices[0].code}")
@@ -135,7 +122,7 @@ def main():
     )
     print(cmd_report)
 
-    cl: _Client = db.Session.get(_Client, 1)
+    cl: models._Client = db.Session.get(models._Client, 1)
     cmd_report = invoice_model.create_from_basket(cl.basket.id)
     print(cmd_report)
 
@@ -159,8 +146,8 @@ def main():
     print(cmd_report)
 
     invoice_model.add_item(inv.id, 2, 4)
-    invoice_model.update_status(inv.id, InvoiceStatus.PAID)
-    cmd_report = invoice_model.update_status(inv.id, InvoiceStatus.DRAFT)
+    invoice_model.update_status(inv.id, models.InvoiceStatus.PAID)
+    cmd_report = invoice_model.update_status(inv.id, models.InvoiceStatus.DRAFT)
     print(cmd_report)
     print(inv.status)
 
@@ -202,9 +189,9 @@ def init_services(dbsession):
 
 
 def update():
-    print(f"Creating db schema: {db.engine} {id(db.engine)}", db.Session)
-    BaseModel.metadata.create_all(db.engine)
-    print("DB schema is created")
+    # print(f"Creating db schema: {db.engine} {id(db.engine)}", db.Session)
+    # BaseModel.metadata.create_all(db.engine)
+    # print("DB schema is created")
 
     services = init_services(db.Session)
 

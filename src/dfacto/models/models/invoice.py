@@ -12,7 +12,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dfacto.models.db import BaseModel, intpk
+from dfacto.models import db
 
 if TYPE_CHECKING:
     from .client import _Client
@@ -27,10 +27,10 @@ class InvoiceStatus(enum.Enum):
     CANCELLED = 5
 
 
-class _Invoice(BaseModel):
+class _Invoice(db.BaseModel):
     __tablename__ = "invoice"
 
-    id: Mapped[intpk] = mapped_column(init=False)
+    id: Mapped[db.intpk] = mapped_column(init=False)
     date: Mapped[date]
     due_date: Mapped[date]
     raw_amount: Mapped[float] = mapped_column(default=0.0)

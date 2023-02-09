@@ -5,16 +5,15 @@
 # LICENSE file in the root directory of this source tree.
 
 import dataclasses
-from typing import Any, Generic, Optional, Type, TypeVar, Union
+from typing import Any, Generic, Optional, Type, TypeVar, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
-from dfacto.models.db import BaseModel
-from dfacto.models import schemas
+from dfacto.models import db, schemas
 
-ModelType = TypeVar("ModelType", bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=db.BaseModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=schemas.BaseSchema)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=schemas.BaseSchema)
 
@@ -32,48 +31,56 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """CRUD object with default methods to Create, Read, Update, Delete (CRUD)."""
         self.model = model
 
-    def get(self, db: scoped_session, id_: Any) -> Optional[ModelType]:
+    def get(self, dbsession: scoped_session, id_: Any) -> Optional[ModelType]:
         try:
-            obj = db.get(self.model, id_)
+            obj = dbsession.get(self.model, id_)
         except SQLAlchemyError as exc:
             raise CrudError from exc
         else:
             return obj
 
     def get_multi(
-        self, db: scoped_session, *, skip: int = 0, limit: int = 100
+        self, dbsession: scoped_session, *, skip: int = 0, limit: int = 100
     ) -> list[ModelType]:
         try:
-            obj_list = db.scalars(select(self.model).offset(skip).limit(limit)).all()
+            obj_list = cast(
+                list[ModelType],
+                dbsession.scalars(select(self.model).offset(skip).limit(limit)).all()
+            )
         except SQLAlchemyError as exc:
             raise CrudError from exc
         else:
             return obj_list
 
-    def get_all(self, db: scoped_session) -> list[ModelType]:
+    def get_all(self, dbsession: scoped_session) -> list[ModelType]:
         try:
-            obj_list = db.scalars(select(self.model)).all()
+            obj_list = cast(
+                list[ModelType],
+                dbsession.scalars(select(self.model)).all()
+            )
         except SQLAlchemyError as exc:
             raise CrudError from exc
         else:
             return obj_list
 
-    def create(self, db: scoped_session, *, obj_in: CreateSchemaType) -> ModelType:
+    def create(
+        self, dbsession: scoped_session, *, obj_in: CreateSchemaType
+    ) -> ModelType:
         obj_in_data = dataclasses.asdict(obj_in)
         db_obj = self.model(**obj_in_data)
-        db.add(db_obj)
+        dbsession.add(db_obj)
         try:
-            db.commit()
+            dbsession.commit()
         except SQLAlchemyError as exc:
-            db.rollback()
+            dbsession.rollback()
             raise CrudError() from exc
         else:
-            db.refresh(db_obj)
+            dbsession.refresh(db_obj)
             return db_obj
 
     def update(
         self,
-        db: scoped_session,
+        dbsession: scoped_session,
         *,
         db_obj: ModelType,
         obj_in: Union[UpdateSchemaType, dict[str, Any]],
@@ -98,22 +105,22 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         if updated:
             try:
-                db.commit()
+                dbsession.commit()
             except SQLAlchemyError as exc:
-                db.rollback()
+                dbsession.rollback()
                 raise CrudError() from exc
             else:
-                db.refresh(db_obj)
+                dbsession.refresh(db_obj)
                 return db_obj
         return db_obj
 
-    def delete(self, db: scoped_session, *, db_obj: ModelType) -> None:
-        db.delete(db_obj)
+    def delete(self, dbsession: scoped_session, *, db_obj: ModelType) -> None:
+        dbsession.delete(db_obj)
         try:
-            db.commit()
+            dbsession.commit()
         # except IntegrityError as exc:
-        #     db.rollback()
+        #     dbsession.rollback()
         #     raise CrudIntegrityError() from exc
         except SQLAlchemyError as exc:
-            db.rollback()
+            dbsession.rollback()
             raise CrudError() from exc

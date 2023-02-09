@@ -9,17 +9,17 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dfacto.models.db import BaseModel, intpk
+from dfacto.models import db
 
 if TYPE_CHECKING:
     from .client import _Client
     from .item import _Item
 
 
-class _Basket(BaseModel):
+class _Basket(db.BaseModel):
     __tablename__ = "basket"
 
-    id: Mapped[intpk] = mapped_column(init=False)
+    id: Mapped[db.intpk] = mapped_column(init=False)
     raw_amount: Mapped[float] = mapped_column(default=0.0)
     vat: Mapped[float] = mapped_column(default=0.0)
     net_amount: Mapped[float] = mapped_column(default=0.0)

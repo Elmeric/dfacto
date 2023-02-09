@@ -8,16 +8,15 @@ from sqlalchemy import String, and_, case, exists, select
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dfacto.models.db import BaseModel, intpk
-
+from dfacto.models import db
 from .basket import _Basket
 from .invoice import InvoiceStatus, _Invoice
 
 
-class _Client(BaseModel):
+class _Client(db.BaseModel):
     __tablename__ = "client"
 
-    id: Mapped[intpk] = mapped_column(init=False)
+    id: Mapped[db.intpk] = mapped_column(init=False)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     address: Mapped[str]
     zip_code: Mapped[str] = mapped_column(String(5))

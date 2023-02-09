@@ -41,6 +41,7 @@ class CommandResponse(NamedTuple):
     Class attributes:
         status: the command status as defined above.
         reason: a message to explicit the status.
+        body: an object returned by the command.
     """
 
     status: CommandStatus

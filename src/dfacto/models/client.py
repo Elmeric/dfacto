@@ -12,7 +12,7 @@ import sqlalchemy.exc
 import sqlalchemy.orm
 
 from dfacto.models.basket import Basket, BasketModel
-from dfacto.models.command import CommandResponse, CommandStatus
+from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.invoice import Invoice
 from dfacto.models.models import _Client
 
