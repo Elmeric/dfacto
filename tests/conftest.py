@@ -6,6 +6,9 @@
 
 # Cf. https://gist.github.com/kissgyorgy/e2365f25a213de44b9a2
 
+from typing import Union, Any, Type
+import dataclasses
+
 from sqlite3 import Connection as SQLite3Connection
 
 import pytest
@@ -14,15 +17,13 @@ from sqlalchemy.event import listen
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 
-from dfacto.models import db
+from dfacto.models import db, crud, schemas
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
     if isinstance(dbapi_connection, SQLite3Connection):
-        # print("Execute: PRAGMA foreign_keys=ON")
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")
-        # cursor.execute("PRAGMA journal_mode = OFF")
         cursor.close()
 
 
@@ -127,3 +128,96 @@ def mock_select(monkeypatch):
     monkeypatch.setattr("dfacto.models.crud.base.select", _select)
 
     return state, called
+
+
+class FakeCRUDBase(crud.CRUDBase):
+    def __init__(
+        self,
+        *,
+        raises: dict[
+            str,
+            Union[bool, Union[Type[crud.CrudError], Type[crud.CrudIntegrityError]]]
+        ],
+        read_value: Any = None
+    ):
+        self.raises = raises
+        self.read_value = read_value
+        self.methods_called = []
+
+    def get(self, _db, _id):
+        self.methods_called.append("GET")
+        exc = self.raises["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return self.read_value
+
+    def get_multi(self, _db, *, skip: int = 0, limit: int = 100):
+        self.methods_called.append("GET_MULTI")
+        exc = self.raises["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return self.read_value[skip: skip + limit]
+
+    def get_all(self, _db):
+        self.methods_called.append("GET_ALL")
+        exc = self.raises["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return self.read_value
+
+    def create(self, _db, *, obj_in: schemas.ServiceCreate):
+        self.methods_called.append("CREATE")
+        exc = self.raises["CREATE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            obj_in.id = 1
+            return obj_in
+
+    def update(
+        self,
+        _db,
+        *,
+        db_obj: dict[str, Any],
+        obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]
+    ):
+        self.methods_called.append("UPDATE")
+        exc = self.raises["UPDATE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            if isinstance(obj_in, dict):
+                update_data = obj_in
+            else:
+                update_data = dataclasses.asdict(obj_in)
+            for field in db_obj:
+                if (
+                    field in update_data
+                    and update_data[field] is not None
+                    and db_obj[field] != update_data[field]
+                ):
+                    db_obj[field] = update_data[field]
+            return db_obj
+
+    def delete(self, db: scoped_session, *, db_obj: dict[str, Any]) -> None:
+        self.methods_called.append("DELETE")
+        exc = self.raises["DELETE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return

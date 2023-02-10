@@ -4,8 +4,8 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Union, Any, Type
-import dataclasses
+from typing import cast
+
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,99 +14,7 @@ from sqlalchemy.orm import scoped_session
 from dfacto.models.api.command import CommandStatus
 from dfacto.models import db, crud, models, schemas
 from dfacto.models.api.api_v1.service import ServiceModel
-
-
-class FakeCRUDBase(crud.CRUDBase):
-    def __init__(
-        self,
-        *,
-        raises: dict[
-            str,
-            Union[bool, Union[Type[crud.CrudError], Type[crud.CrudIntegrityError]]]
-        ],
-        read_value: Any = None
-    ):
-        self.raises = raises
-        self.read_value = read_value
-        self.methods_called = []
-
-    def get(self, _db, _id):
-        self.methods_called.append("GET")
-        exc = self.raises["READ"]
-        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
-            raise exc
-        elif exc:
-            raise crud.CrudError
-        else:
-            return self.read_value
-
-    def get_multi(self, _db, *, skip: int = 0, limit: int = 100):
-        self.methods_called.append("GET_MULTI")
-        exc = self.raises["READ"]
-        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
-            raise exc
-        elif exc:
-            raise crud.CrudError
-        else:
-            return self.read_value[skip: skip + limit]
-
-    def get_all(self, _db):
-        self.methods_called.append("GET_ALL")
-        exc = self.raises["READ"]
-        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
-            raise exc
-        elif exc:
-            raise crud.CrudError
-        else:
-            return self.read_value
-
-    def create(self, _db, *, obj_in: schemas.ServiceCreate):
-        self.methods_called.append("CREATE")
-        exc = self.raises["CREATE"]
-        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
-            raise exc
-        elif exc:
-            raise crud.CrudError
-        else:
-            obj_in.id = 1
-            return obj_in
-
-    def update(
-        self,
-        _db,
-        *,
-        db_obj: dict[str, Any],
-        obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]
-    ):
-        self.methods_called.append("UPDATE")
-        exc = self.raises["UPDATE"]
-        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
-            raise exc
-        elif exc:
-            raise crud.CrudError
-        else:
-            if isinstance(obj_in, dict):
-                update_data = obj_in
-            else:
-                update_data = dataclasses.asdict(obj_in)
-            for field in db_obj:
-                if (
-                    field in update_data
-                    and update_data[field] is not None
-                    and db_obj[field] != update_data[field]
-                ):
-                    db_obj[field] = update_data[field]
-            return db_obj
-
-    def delete(self, db: scoped_session, *, db_obj: dict[str, Any]) -> None:
-        self.methods_called.append("DELETE")
-        exc = self.raises["DELETE"]
-        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
-            raise exc
-        elif exc:
-            raise crud.CrudError
-        else:
-            return
+from.conftest import FakeCRUDBase
 
 
 class FakeCRUDService(FakeCRUDBase, crud.CRUDService):
@@ -123,7 +31,6 @@ class FakeService(schemas.Service):
 def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
     db.init_db_data(dbsession)
 
-    services = []
     for i in range(5):
         service = models.Service(
             name=f"Service_{i + 1}",
@@ -132,10 +39,11 @@ def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
         )
         dbsession.add(service)
         dbsession.commit()
-        services.append(service)
 
-    for service in services:
-        dbsession.refresh(service)
+    services = cast(
+        list[models.Service],
+        dbsession.scalars(sa.select(models.Service)).all()
+    )
     return services
 
 

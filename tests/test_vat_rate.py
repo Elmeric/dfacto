@@ -8,20 +8,50 @@
 
 # Cf. https://gist.github.com/kissgyorgy/e2365f25a213de44b9a2
 
+from typing import cast
+from collections import namedtuple
+
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
-from dfacto.models.api.command import CommandStatus
-from dfacto.models.schemas import VatRate, VatRateCreate, VatRateUpdate
-from dfacto.models import db, models
+from dfacto.models.api.command import CommandResponse, CommandStatus
+from dfacto.models import db, crud, models, schemas
 from dfacto.models.api.api_v1.vat_rate import VatRateModel
+from.conftest import FakeCRUDBase
 
 
-@pytest.fixture(autouse=True)
-def init_vat_rates(dbsession: sa.orm.scoped_session) -> None:
+class FakeCRUDVatRate(FakeCRUDBase, crud.CRUDVatRate):
+    pass
+
+
+FakeORMVatRate = namedtuple("VatRate", ["id", "rate", "services"])
+FakeORMService = namedtuple("Service", ["id", "name", "unit_price"])
+
+
+class FakeVatRate(schemas.VatRate):
+    @classmethod
+    def from_orm(cls, obj):
+        return obj
+
+
+@pytest.fixture
+def init_vat_rates(dbsession: sa.orm.scoped_session) -> list[models.VatRate]:
     db.init_db_data(dbsession)
+
+    for i in range(3):
+        vat_rate = models.VatRate(
+            rate=10 + 2.5*i     # 10, 12.5, 15
+        )
+        dbsession.add(vat_rate)
+        dbsession.commit()
+
+    vat_rates = cast(
+        list[models.VatRate],
+        dbsession.scalars(sa.select(models.VatRate)).all()
+    )
+    return vat_rates
 
 
 @pytest.fixture
@@ -29,149 +59,89 @@ def vat_rate_model(dbsession):
     return VatRateModel(dbsession)
 
 
-def test_init(dbsession):
-    VatRateModel(dbsession)
-
-    vat_rates = dbsession.scalars(sa.select(models.VatRate)).all()
-    assert len(vat_rates) == 3
-    for i in range(len(VatRateModel.PRESET_RATE_IDS)):
-        assert vat_rates[i].id == VatRateModel.PRESET_RATES[i]["id"]
-        assert vat_rates[i].rate == VatRateModel.PRESET_RATES[i]["rate"]
+def test_crud_init():
+    assert crud.vat_rate.model is models.VatRate
 
 
-def test_init_twice(dbsession, vat_rate_model, mock_commit):
-    state, called = mock_commit
-    state["failed"] = False
+def test_crud_get(dbsession, init_vat_rates):
+    vat_rates = init_vat_rates
 
-    VatRateModel(dbsession)
+    vat_rate = crud.vat_rate.get(dbsession, id_=vat_rates[0].id)
 
-    vat_rates = dbsession.scalars(sa.select(models.VatRate)).all()
-    assert len(vat_rates) == 3
-    assert len(called) == 0
+    assert vat_rate is vat_rates[0]
 
 
-def test_get(vat_rate_model):
-    report = vat_rate_model.get(VatRateModel.DEFAULT_RATE_ID + 1)
+def test_crud_get_unknown(dbsession, init_vat_rates):
+    vat_rates = init_vat_rates
+    ids = [vr.id for vr in vat_rates]
 
-    assert report.status == CommandStatus.COMPLETED
-    vr = report.body
-    assert isinstance(vr, VatRate)
-    assert vr.id == VatRateModel.PRESET_RATES[1]["id"]
-    assert vr.rate == VatRateModel.PRESET_RATES[1]["rate"]
+    vat_rate = crud.vat_rate.get(dbsession, id_=100)
 
-
-def test_get_unknown(vat_rate_model):
-    response = vat_rate_model.get(10)
-
-    assert response.status == CommandStatus.FAILED
-    assert response.reason == "GET - Object 10 not found."
-    assert response.body is None
+    assert 100 not in ids
+    assert vat_rate is None
 
 
-def test_get_error(vat_rate_model, mock_get):
+def test_crud_get_error(dbsession, init_vat_rates, mock_get):
     state, _called = mock_get
     state["failed"] = True
 
-    response = vat_rate_model.get(VatRateModel.DEFAULT_RATE_ID)
+    vat_rates = init_vat_rates
 
-    assert response.status == CommandStatus.FAILED
-    assert response.reason.startswith("GET - SQL or database error:")
-
-
-def test_get_default(vat_rate_model):
-    report = vat_rate_model.get_default()
-
-    assert report.status == CommandStatus.COMPLETED
-    default_vr = report.body
-    assert isinstance(default_vr, VatRate)
-    assert default_vr.id == VatRateModel.DEFAULT_RATE_ID
-    assert default_vr.rate == VatRateModel.PRESET_RATES[0]["rate"]
+    with pytest.raises(crud.CrudError):
+        _vat_rate = crud.vat_rate.get(dbsession, id_=vat_rates[0].id)
 
 
-def test_get_multi(dbsession, vat_rate_model):
-    # Add a VAT rate
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id, "rate": 12.3}])
-    dbsession.commit()
+@pytest.mark.parametrize(
+    "kwargs, offset, length",
+    (
+        ({}, 0, 6),
+        ({"limit": 2}, 0, 2),
+        ({"skip": 2}, 2, 4),
+        ({"skip": 2, "limit": 2}, 2, 2)
+    )
+)
+def test_crud_get_multi(kwargs, offset, length, dbsession, init_vat_rates):
+    vat_rates = init_vat_rates
 
-    skip = len(VatRateModel.PRESET_RATE_IDS) - 1
-    response = vat_rate_model.get_multi(skip=skip, limit=2)
+    obj_list = crud.vat_rate.get_multi(dbsession, **kwargs)
 
-    assert response.status == CommandStatus.COMPLETED
-    vat_rates = response.body
-    assert len(vat_rates) == 2
-    assert vat_rates[0].id == VatRateModel.PRESET_RATES[skip]["id"]
-    assert vat_rates[0].rate == VatRateModel.PRESET_RATES[skip]["rate"]
-    assert vat_rates[1].id == vr_id
-    assert vat_rates[1].rate == 12.3
+    assert len(obj_list) == length
+    for i, obj in enumerate(obj_list):
+        assert obj is vat_rates[i + offset]
 
 
-def test_get_multi_error(vat_rate_model, mock_select):
+def test_crud_get_multi_error(dbsession, init_vat_rates, mock_select):
     state, _called = mock_select
     state["failed"] = True
 
-    response = vat_rate_model.get_multi(skip=0, limit=2)
-
-    assert response.status == CommandStatus.FAILED
-    assert response.reason.startswith("GET-MULTI - SQL or database error:")
+    with pytest.raises(crud.CrudError):
+        _vat_rates = crud.vat_rate.get_multi(dbsession)
 
 
-def test_get_all(dbsession, vat_rate_model):
-    # Add a VAT rate
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id, "rate": 12.3}])
-    dbsession.commit()
-
-    response = vat_rate_model.get_all()
-
-    assert response.status == CommandStatus.COMPLETED
-    vat_rates = response.body
-    assert len(vat_rates) == len(VatRateModel.PRESET_RATES) + 1
-    for i in range(len(VatRateModel.PRESET_RATES)):
-        assert vat_rates[i].id == VatRateModel.PRESET_RATES[i]["id"]
-        assert vat_rates[i].rate == VatRateModel.PRESET_RATES[i]["rate"]
-    assert vat_rates[3].id == vr_id
-    assert vat_rates[3].rate == 12.3
-
-
-def test_get_all_error(vat_rate_model, mock_select):
-    state, _called = mock_select
-    state["failed"] = True
-
-    response = vat_rate_model.get_all()
-
-    assert response.status == CommandStatus.FAILED
-    assert response.reason.startswith("GET-ALL - SQL or database error:")
-
-
-def test_add(dbsession, vat_rate_model):
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.rate == 30.0)
-        ).first()
-        is None
+def test_crud_create(dbsession, init_vat_rates):
+    vat_rate = crud.vat_rate.create(
+        dbsession,
+        obj_in=schemas.VatRateCreate(rate=30.0)
     )
 
-    report = vat_rate_model.add(VatRateCreate(rate=30))
-
-    assert report.status == CommandStatus.COMPLETED
-    assert isinstance(report.body, VatRate)
-    assert report.body.rate == 30.0
+    assert vat_rate.id is not None
+    assert vat_rate.rate == 30.0
     try:
-        vr = dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.rate == 30.0)
-        ).one()
+        s = dbsession.get(models.VatRate, vat_rate.id)
     except sa.exc.SQLAlchemyError:
-        vr = None
-    assert vr is not None
-    assert vr.rate == 30.0
+        s = None
+    assert s.rate == 30.0
 
 
-@pytest.mark.filterwarnings("ignore::sqlalchemy.exc.SAWarning")
-def test_add_commit_error(dbsession, vat_rate_model, mock_commit):
+def test_crud_create_error(dbsession, init_vat_rates, mock_commit):
     state, _called = mock_commit
     state["failed"] = True
 
+    with pytest.raises(crud.CrudError):
+        _vat_rate = crud.vat_rate.create(
+            dbsession,
+            obj_in=schemas.VatRateCreate(rate=30.0)
+        )
     assert (
         dbsession.scalars(
             sa.select(models.VatRate).where(models.VatRate.rate == 30.0)
@@ -179,267 +149,508 @@ def test_add_commit_error(dbsession, vat_rate_model, mock_commit):
         is None
     )
 
-    report = vat_rate_model.add(VatRateCreate(rate=30))
 
-    assert report.status == CommandStatus.FAILED
-    assert report.reason.startswith("ADD - Cannot add object")
-    assert report.body is None
+@pytest.mark.parametrize("obj_in_factory", (schemas.VatRateUpdate, dict))
+def test_crud_update(obj_in_factory, dbsession, init_vat_rates):
+    vat_rate = init_vat_rates[0]
 
+    updated = crud.vat_rate.update(
+        dbsession,
+        db_obj=vat_rate,
+        obj_in=obj_in_factory(rate=30.0)
+    )
 
-def test_update(dbsession, vat_rate_model):
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 1
-    vr = dbsession.scalars(
-        sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-    ).first()
-    assert vr.rate == VatRateModel.PRESET_RATES[1]["rate"]
-
-    report = vat_rate_model.update(vr_id, VatRateUpdate(10.0))
-
-    assert report.status == CommandStatus.COMPLETED
-    assert isinstance(report.body, VatRate)
-    assert report.body.rate == 10.0
-    vr = dbsession.scalars(
-        sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-    ).first()
-    assert vr.rate == 10.0
+    assert updated.id == vat_rate.id
+    assert updated.rate == 30.0
+    try:
+        s = dbsession.get(models.VatRate, updated.id)
+    except sa.exc.SQLAlchemyError:
+        s = None
+    assert s.rate == 30.0
 
 
-def test_update_same_rate(dbsession, vat_rate_model, mock_commit):
+def test_crud_update_idem(dbsession, init_vat_rates, mock_commit):
     state, called = mock_commit
     state["failed"] = False
 
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 1
-    vr = dbsession.scalars(
-        sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-    ).first()
-    rate = VatRateModel.PRESET_RATES[1]["rate"]
-    assert vr.rate == rate
+    vat_rate = init_vat_rates[0]
 
-    report = vat_rate_model.update(vr_id, VatRateUpdate(rate))
+    updated = crud.vat_rate.update(
+        dbsession,
+        db_obj=vat_rate,
+        obj_in=schemas.VatRateUpdate(rate=vat_rate.rate)
+    )
 
-    assert report.status == CommandStatus.COMPLETED
-    vr = dbsession.scalars(
-        sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-    ).first()
-    assert vr.rate == VatRateModel.PRESET_RATES[1]["rate"]
+    assert updated is vat_rate
     assert len(called) == 0
 
 
-def test_update_unknown(dbsession, vat_rate_model):
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is None
-    )
-
-    report = vat_rate_model.update(vr_id, VatRateUpdate(12.3))
-
-    assert report.status == CommandStatus.FAILED
-    assert report.reason == f"UPDATE - Object {vr_id} not found."
-    assert report.body is None
-
-
-@pytest.mark.filterwarnings("ignore::sqlalchemy.exc.SAWarning")
-def test_update_commit_error(dbsession, vat_rate_model, mock_commit):
-    state, _called = mock_commit
+def test_crud_update_error(dbsession, init_vat_rates, mock_commit):
+    state, called = mock_commit
     state["failed"] = True
 
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 1
-    vr = dbsession.scalars(
-        sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-    ).first()
-    assert vr.rate == VatRateModel.PRESET_RATES[1]["rate"]
+    vat_rate = init_vat_rates[0]
 
-    report = vat_rate_model.update(vr_id, VatRateUpdate(10.0))
+    with pytest.raises(crud.CrudError):
+        _updated = crud.vat_rate.update(
+            dbsession,
+            db_obj=vat_rate,
+            obj_in=schemas.VatRateUpdate(rate=30.0)
+        )
 
-    assert report.status == CommandStatus.FAILED
-    assert report.reason.startswith(f"UPDATE - Cannot update object {vr_id}:")
-    assert report.body is None
-
-
-def test_delete(dbsession, vat_rate_model):
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
     assert (
         dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is None
-    )
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id, "rate": 12.3}])
-    dbsession.commit()
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is not None
-    )
-
-    report = vat_rate_model.delete(vr_id)
-
-    assert report.status == CommandStatus.COMPLETED
-    assert report.body is None
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
+            sa.select(models.VatRate).where(models.VatRate.rate == 30.0)
         ).first()
         is None
     )
 
 
-def test_delete_unknown(dbsession, vat_rate_model):
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is None
-    )
+def test_crud_delete(dbsession, init_vat_rates):
+    vat_rate = init_vat_rates[0]
+    assert dbsession.get(models.VatRate, vat_rate.id) is not None
 
-    report = vat_rate_model.delete(vr_id)
+    crud.vat_rate.delete(dbsession, db_obj=vat_rate)
 
-    assert report.status == CommandStatus.FAILED
-    assert report.reason == f"DELETE - Object {vr_id} not found."
-    assert report.body is None
+    assert dbsession.get(models.VatRate, vat_rate.id) is None
 
 
-def test_delete_default(dbsession, vat_rate_model):
-    vr_id = VatRateModel.DEFAULT_RATE_ID
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is not None
-    )
-
-    report = vat_rate_model.delete(vr_id)
-
-    assert report.status == CommandStatus.REJECTED
-    assert report.reason == "DELETE - Default VAT rates cannot be deleted."
-    assert report.body is None
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is not None
-    )
-
-
-@pytest.mark.filterwarnings("ignore::sqlalchemy.exc.SAWarning")
-def test_delete_in_use(dbsession, vat_rate_model):
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id, "rate": 12.3}])
-    service = models.Service(name="A service", unit_price=100.0, vat_rate_id=vr_id)
-    dbsession.add(service)
-    dbsession.commit()
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is not None
-    )
-
-    report = vat_rate_model.delete(vr_id)
-
-    assert report.status == CommandStatus.REJECTED
-    assert (
-        report.reason
-        == f"DELETE - VAT rate with id {vr_id} is used by at least 'A service' service."
-    )
-    assert report.body is None
-
-
-@pytest.mark.filterwarnings("ignore::sqlalchemy.exc.SAWarning")
-def test_delete_commit_error(dbsession, vat_rate_model, mock_commit):
-    state, _called = mock_commit
+def test_crud_delete_error(dbsession, init_vat_rates, mock_commit):
+    state, called = mock_commit
     state["failed"] = True
 
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is None
-    )
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id, "rate": 12.3}])
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is not None
-    )
+    vat_rate = init_vat_rates[0]
+    assert dbsession.get(models.VatRate, vat_rate.id) is not None
 
-    report = vat_rate_model.delete(vr_id)
+    with pytest.raises(crud.CrudError):
+        crud.vat_rate.delete(dbsession, db_obj=vat_rate)
 
-    assert report.status == CommandStatus.FAILED
-    assert report.reason.startswith(f"DELETE - Cannot delete object {vr_id}:")
-    assert report.body is None
+    assert dbsession.get(models.VatRate, vat_rate.id) is not None
 
 
-def test_reset(dbsession, vat_rate_model):
-    # Change the second preset rate
-    dbsession.execute(
-        sa.update(models.VatRate),
-        [{"id": VatRateModel.DEFAULT_RATE_ID + 1, "rate": 10.0}],
-    )
-    # Add a not-used rate
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id, "rate": 12.3}])
-    dbsession.commit()
-    # Check that test conditions are OK
-    assert len(dbsession.scalars(sa.select(models.VatRate)).all()) == 4
+def test_schema_from_orm(dbsession, init_vat_rates):
+    vat_rate = init_vat_rates[0]
 
-    report = vat_rate_model.reset()
+    from_db = schemas.VatRate.from_orm(vat_rate)
 
-    assert report.status == CommandStatus.COMPLETED
-    assert report.reason is None
-    assert report.body is None
-    # The second preset rate is reset to its default value
-    rate_2 = dbsession.get(models.VatRate, VatRateModel.DEFAULT_RATE_ID + 1)
-    assert rate_2.rate == VatRateModel.PRESET_RATES[1]["rate"]
-    # The not-used rate is deleted
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is None
+    assert from_db.id == vat_rate.id
+    assert from_db.rate == vat_rate.rate
+
+
+def test_cmd_get(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False},
+            read_value=dict(id=1, rate=30.0)
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
     )
 
+    response = vat_rate_model.get(obj_id=1)
 
-def test_reset_some_in_use(dbsession, vat_rate_model):
-    # Add a not-used rate
-    vr_id = VatRateModel.DEFAULT_RATE_ID + 3
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id, "rate": 12.3}])
-    # Add an in-use rate
-    vr_id_in_use = VatRateModel.DEFAULT_RATE_ID + 4
-    dbsession.execute(sa.insert(models.VatRate), [{"id": vr_id_in_use, "rate": 45.6}])
-    service = models.Service(
-        name="A service", unit_price=100.0, vat_rate_id=vr_id_in_use
-    )
-    dbsession.add(service)
-    dbsession.commit()
-    # Check that test conditions are OK
-    assert len(dbsession.scalars(sa.select(models.VatRate)).all()) == 5
+    assert len(crud_object.methods_called) == 1
+    assert "GET" in crud_object.methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body["id"] == 1
+    assert response.body["rate"] == 30.0
 
-    report = vat_rate_model.reset()
 
-    assert report.status == CommandStatus.FAILED
-    assert (
-        report.reason == "VAT_RATE-RESET - Reset failed: some VAT rates may be in use."
+def test_cmd_get_unknown(dbsession):
+    crud_object = FakeCRUDVatRate(raises={"READ": False}, read_value=None)
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
     )
-    assert report.body is None
-    # The not-used rate is de3eted
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id)
-        ).first()
-        is None
+
+    response = vat_rate_model.get(obj_id=1)
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "GET - Object 1 not found."
+
+
+def test_cmd_get_error(dbsession):
+    crud_object = FakeCRUDVatRate(raises={"READ": True})
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
     )
-    # The in-use rate is present
-    assert (
-        dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.id == vr_id_in_use)
-        ).first()
-        is not None
+
+    response = vat_rate_model.get(obj_id=1)
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("GET - SQL or database error")
+
+
+def test_cmd_get_default(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False},
+            read_value=dict(id=db.DEFAULT_RATE_ID, rate=0.0)
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
     )
+
+    response = vat_rate_model.get_default()
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET" in crud_object.methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body["id"] == db.DEFAULT_RATE_ID
+    assert response.body["rate"] == 0.0
+
+
+def test_cmd_get_multi(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False},
+            read_value=[
+                dict(id=1,rate=10.0),
+                dict(id=2, rate=20.0),
+                dict(id=3, rate=30.0),
+                dict(id=4, rate=40.0),
+            ]
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
+    )
+
+    response = vat_rate_model.get_multi(skip=1, limit=2)
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET_MULTI" in crud_object.methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert len(response.body) == 2
+    assert response.body[0]["id"] == 2
+    assert response.body[0]["rate"] == 20.0
+    assert response.body[1]["id"] == 3
+    assert response.body[1]["rate"] == 30.0
+
+
+def test_cmd_get_multi_error(dbsession):
+    crud_object = FakeCRUDVatRate(raises={"READ": True})
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.get_multi(skip=1, limit=2)
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET_MULTI" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("GET-MULTI - SQL or database error")
+
+
+def test_cmd_get_all(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False},
+            read_value=[
+                dict(id=2, rate=20.0),
+                dict(id=3, rate=30.0),
+            ]
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
+    )
+
+    response = vat_rate_model.get_all()
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET_ALL" in crud_object.methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert len(response.body) == 2
+    assert response.body[0]["id"] == 2
+    assert response.body[0]["rate"] == 20.0
+    assert response.body[1]["id"] == 3
+    assert response.body[1]["rate"] == 30.0
+
+
+def test_cmd_get_all_error(dbsession):
+    crud_object = FakeCRUDVatRate(raises={"READ": True})
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.get_all()
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET_ALL" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("GET-ALL - SQL or database error")
+
+
+def test_cmd_add(dbsession):
+    crud_object = FakeCRUDVatRate(raises={"CREATE": False})
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
+    )
+
+    response = vat_rate_model.add(
+        schemas.VatRateCreate(rate=20.0)
+    )
+
+    assert len(crud_object.methods_called) == 1
+    assert "CREATE" in crud_object.methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body.id == 1
+    assert response.body.rate == 20.0
+
+
+def test_cmd_add_error(dbsession):
+    crud_object = FakeCRUDVatRate(raises={"CREATE": True})
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.add(
+        schemas.VatRateCreate(rate=20.0)
+    )
+
+    assert len(crud_object.methods_called) == 1
+    assert "CREATE" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("ADD - Cannot add object")
+
+
+def test_cmd_update(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False, "UPDATE": False},
+            read_value=dict(id=1, rate=100.0)
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
+    )
+
+    response = vat_rate_model.update(
+        obj_id=1,
+        obj_in=schemas.VatRateUpdate(rate=20.0)
+    )
+
+    assert len(crud_object.methods_called) == 2
+    assert "GET" in crud_object.methods_called
+    assert "UPDATE" in crud_object.methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body["id"] == 1
+    assert response.body["rate"] == 20.0
+
+
+def test_cmd_update_unknown(dbsession):
+    crud_object = FakeCRUDVatRate(raises={"READ": False, "UPDATE": False}, read_value=None)
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.update(
+        obj_id=1,
+        obj_in=schemas.VatRateUpdate(rate=20.0)
+    )
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("UPDATE - Object 1 not found.")
+
+
+def test_cmd_update_error(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False, "UPDATE": True},
+            read_value=dict(id=1, rate=10.0)
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.update(
+        obj_id=1,
+        obj_in=schemas.VatRateUpdate(rate=200.0)
+    )
+
+    assert len(crud_object.methods_called) == 2
+    assert "GET" in crud_object.methods_called
+    assert "UPDATE" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("UPDATE - Cannot update object 1")
+
+
+def test_cmd_delete(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False, "DELETE": False},
+            read_value=FakeORMVatRate(id=4, rate=10.0, services=[])
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
+    )
+
+    response = vat_rate_model.delete(vat_rate_id=4)
+
+    assert len(crud_object.methods_called) == 2
+    assert "GET" in crud_object.methods_called
+    assert "DELETE" in crud_object.methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body is None
+
+
+def test_cmd_delete_default(dbsession):
+    crud_object = FakeCRUDVatRate(
+        raises={"READ": False, "DELETE": False},
+        read_value=None
+    )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.delete(vat_rate_id=1)
+
+    assert len(crud_object.methods_called) == 0
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason.startswith("DELETE - Default VAT rates cannot be deleted.")
+
+
+def test_cmd_delete_unknown(dbsession):
+    crud_object = FakeCRUDVatRate(
+        raises={"READ": False, "DELETE": False},
+        read_value=None
+    )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.delete(vat_rate_id=4)
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("DELETE - Object 4 not found.")
+
+
+def test_cmd_delete_in_use(dbsession):
+    service = FakeORMService(id=1, name="Service 1", unit_price=100.0)
+    vat_rate = FakeORMVatRate(id=4, rate=10.0, services=[service])
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False, "DELETE": False},
+            read_value=vat_rate
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
+    )
+
+    response = vat_rate_model.delete(vat_rate_id=4)
+
+    assert len(crud_object.methods_called) == 1
+    assert "GET" in crud_object.methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "DELETE - VAT rate with id 4 is used by at least 'Service 1' service."
+    assert response.body is None
+
+
+def test_cmd_delete_error(dbsession):
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False, "DELETE": crud.CrudError},
+            read_value=FakeORMVatRate(id=4, rate=10.0, services=[])
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema = FakeVatRate
+    )
+
+    response = vat_rate_model.delete(vat_rate_id=4)
+
+    assert len(crud_object.methods_called) == 2
+    assert "GET" in crud_object.methods_called
+    assert "DELETE" in crud_object.methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("DELETE - Cannot delete object 4")
+
+
+@pytest.mark.parametrize(
+    "in_use, expected",
+    (
+        (
+            True,
+            CommandResponse(
+                CommandStatus.FAILED,
+                "VAT_RATE-RESET - Reset failed: some VAT rates may be in use."
+            )
+        ),
+        (False, CommandResponse(CommandStatus.COMPLETED))
+    )
+)
+def test_cmd_reset(in_use, expected, dbsession):
+    service = FakeORMService(id=1, name="Service 1", unit_price=100.0)
+    vat_rate_not_used = FakeORMVatRate(id=4, rate=10.0, services=[])
+    vat_rate_in_use = FakeORMVatRate(id=5, rate=10.0, services=[service])
+    crud_object = FakeCRUDVatRate(
+            raises={"READ": False, "UPDATE": False, "DELETE": False},
+            read_value=None
+        )
+    vat_rate_model = VatRateModel(
+        dbsession,
+        crud_object=crud_object,
+        schema=FakeVatRate
+    )
+
+    call_count = {"UPDATE": 0, "GET_ALL":0, "DELETE": 0}
+
+    def _update(_obj_id, _obj_in):
+        call_count["UPDATE"] += 1
+        return CommandResponse(CommandStatus.COMPLETED)
+
+    def _get_all():
+        call_count["GET_ALL"] += 1
+        if in_use:
+            return CommandResponse(CommandStatus.COMPLETED, body=[vat_rate_in_use])
+        return CommandResponse(CommandStatus.COMPLETED, body=[vat_rate_not_used])
+
+    def _delete(_obj_id):
+        call_count["DELETE"] += 1
+        if in_use:
+            return CommandResponse(CommandStatus.REJECTED)
+        return CommandResponse(CommandStatus.COMPLETED)
+
+    vat_rate_model.update = _update
+    vat_rate_model.get_all = _get_all
+    vat_rate_model.delete = _delete
+
+    response = vat_rate_model.reset()
+
+    assert response.status is expected.status
+    assert response.reason == expected.reason
+    assert response.body is None
+    assert call_count["UPDATE"] == 3
+    assert call_count["GET_ALL"] == 1
+    assert call_count["DELETE"] == 1

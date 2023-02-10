@@ -38,8 +38,8 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
 
         vat_rates = self.get_all().body
         success = True
-        if vat_rates is not None:
-            for vat_rate in vat_rates:
+        if vat_rates is not None:   # pragma: no branch
+            for vat_rate in vat_rates:  # pragma: no branch
                 if vat_rate.id not in VatRateModel.PRESET_RATE_IDS:
                     response = self.delete(vat_rate.id)
                     success = success and response.status is CommandStatus.COMPLETED
@@ -76,7 +76,15 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
                 f" by at least '{in_use[0].name}' service.",
             )
 
-        return super().delete(vat_rate_id)
+        try:
+            self.crud_object.delete(self.Session, db_obj=vat_rate)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"DELETE - Cannot delete object {vat_rate_id}: {exc}",
+            )
+        else:
+            return CommandResponse(CommandStatus.COMPLETED)
 
 
 vat_rate = VatRateModel(db.Session)
