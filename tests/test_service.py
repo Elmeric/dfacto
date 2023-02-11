@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import cast
+import dataclasses
 
 import pytest
 import sqlalchemy as sa
@@ -14,17 +15,22 @@ from sqlalchemy.orm import scoped_session
 from dfacto.models.api.command import CommandStatus
 from dfacto.models import db, crud, models, schemas
 from dfacto.models.api.api_v1.service import ServiceModel
-from.conftest import FakeCRUDBase
+from .conftest import FakeORMModel, FakeSchema, FakeCRUDBase
+
+
+@dataclasses.dataclass
+class FakeORMService(FakeORMModel):
+    unit_price: float
+    name: str = "Service"
+    vat_rate_id: int = 1
 
 
 class FakeCRUDService(FakeCRUDBase, crud.CRUDService):
     pass
 
 
-class FakeService(schemas.Service):
-    @classmethod
-    def from_orm(cls, obj):
-        return obj
+class FakeService(FakeSchema, schemas.Service):
+    pass
 
 
 @pytest.fixture
@@ -126,7 +132,7 @@ def test_crud_create(dbsession, init_services):
     assert service.unit_price == 1000.0
     assert service.vat_rate_id == 2
     assert service.vat_rate.id == 2
-    assert service.vat_rate.rate == 5.5
+    assert service.vat_rate.rate == 2.1
     try:
         s = dbsession.get(models.Service, service.id)
     except sa.exc.SQLAlchemyError:
@@ -135,7 +141,7 @@ def test_crud_create(dbsession, init_services):
     assert s.unit_price == 1000.0
     assert s.vat_rate_id == 2
     assert s.vat_rate.id == 2
-    assert s.vat_rate.rate == 5.5
+    assert s.vat_rate.rate == 2.1
 
 
 def test_crud_create_duplicate(dbsession, init_services):
@@ -195,7 +201,7 @@ def test_crud_update(obj_in_factory, dbsession, init_services):
     assert updated.unit_price == 1000.0
     assert updated.vat_rate_id == 2
     assert updated.vat_rate.id == 2
-    assert updated.vat_rate.rate == 5.5
+    assert updated.vat_rate.rate == 2.1
     try:
         s = dbsession.get(models.Service, updated.id)
     except sa.exc.SQLAlchemyError:
@@ -204,7 +210,7 @@ def test_crud_update(obj_in_factory, dbsession, init_services):
     assert s.unit_price == 1000.0
     assert s.vat_rate_id == 2
     assert s.vat_rate.id == 2
-    assert s.vat_rate.rate == 5.5
+    assert s.vat_rate.rate == 2.1
 
 
 def test_crud_update_partial(dbsession, init_services):
@@ -271,10 +277,13 @@ def test_crud_update_error(dbsession, init_services, mock_commit):
 def test_crud_delete(dbsession, init_services):
     service = init_services[0]
     assert dbsession.get(models.Service, service.id) is not None
+    assert service in dbsession.get(models.VatRate, service.vat_rate_id).services
 
     crud.service.delete(dbsession, db_obj=service)
 
     assert dbsession.get(models.Service, service.id) is None
+    for s in dbsession.get(models.VatRate, service.vat_rate_id).services:
+        assert s.id != service.id
 
 
 def test_crud_delete_error(dbsession, init_services, mock_commit):
@@ -305,7 +314,7 @@ def test_schema_from_orm(dbsession, init_services):
 def test_cmd_get(dbsession):
     crud_object = FakeCRUDService(
             raises={"READ": False},
-            read_value=dict(id=1, name="Service 1", unit_price=100.0)
+            read_value=FakeORMService(id=1, name="Service 1", unit_price=100.0)
         )
     service_model = ServiceModel(
         dbsession,
@@ -318,9 +327,9 @@ def test_cmd_get(dbsession):
     assert len(crud_object.methods_called) == 1
     assert "GET" in crud_object.methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body["id"] == 1
-    assert response.body["name"] == "Service 1"
-    assert response.body["unit_price"] == 100.0
+    assert response.body.id == 1
+    assert response.body.name == "Service 1"
+    assert response.body.unit_price == 100.0
 
 
 def test_cmd_get_unknown(dbsession):
@@ -359,10 +368,10 @@ def test_cmd_get_multi(dbsession):
     crud_object = FakeCRUDService(
             raises={"READ": False},
             read_value=[
-                dict(id=1, name="Service 1", unit_price=100.0),
-                dict(id=2, name="Service 2", unit_price=200.0),
-                dict(id=3, name="Service 3", unit_price=300.0),
-                dict(id=4, name="Service 4", unit_price=400.0),
+                FakeORMService(id=1, name="Service 1", unit_price=100.0),
+                FakeORMService(id=2, name="Service 2", unit_price=200.0),
+                FakeORMService(id=3, name="Service 3", unit_price=300.0),
+                FakeORMService(id=4, name="Service 4", unit_price=400.0),
             ]
         )
     service_model = ServiceModel(
@@ -377,12 +386,12 @@ def test_cmd_get_multi(dbsession):
     assert "GET_MULTI" in crud_object.methods_called
     assert response.status is CommandStatus.COMPLETED
     assert len(response.body) == 2
-    assert response.body[0]["id"] == 2
-    assert response.body[0]["name"] == "Service 2"
-    assert response.body[0]["unit_price"] == 200.0
-    assert response.body[1]["id"] == 3
-    assert response.body[1]["name"] == "Service 3"
-    assert response.body[1]["unit_price"] == 300.0
+    assert response.body[0].id == 2
+    assert response.body[0].name == "Service 2"
+    assert response.body[0].unit_price == 200.0
+    assert response.body[1].id == 3
+    assert response.body[1].name == "Service 3"
+    assert response.body[1].unit_price == 300.0
 
 
 def test_cmd_get_multi_error(dbsession):
@@ -405,8 +414,8 @@ def test_cmd_get_all(dbsession):
     crud_object = FakeCRUDService(
             raises={"READ": False},
             read_value=[
-                dict(id=2, name="Service 2", unit_price=200.0),
-                dict(id=3, name="Service 3", unit_price=300.0),
+                FakeORMService(id=2, name="Service 2", unit_price=200.0),
+                FakeORMService(id=3, name="Service 3", unit_price=300.0),
             ]
         )
     service_model = ServiceModel(
@@ -421,12 +430,12 @@ def test_cmd_get_all(dbsession):
     assert "GET_ALL" in crud_object.methods_called
     assert response.status is CommandStatus.COMPLETED
     assert len(response.body) == 2
-    assert response.body[0]["id"] == 2
-    assert response.body[0]["name"] == "Service 2"
-    assert response.body[0]["unit_price"] == 200.0
-    assert response.body[1]["id"] == 3
-    assert response.body[1]["name"] == "Service 3"
-    assert response.body[1]["unit_price"] == 300.0
+    assert response.body[0].id == 2
+    assert response.body[0].name == "Service 2"
+    assert response.body[0].unit_price == 200.0
+    assert response.body[1].id == 3
+    assert response.body[1].name == "Service 3"
+    assert response.body[1].unit_price == 300.0
 
 
 def test_cmd_get_all_error(dbsession):
@@ -487,7 +496,7 @@ def test_cmd_add_error(dbsession):
 def test_cmd_update(dbsession):
     crud_object = FakeCRUDService(
             raises={"READ": False, "UPDATE": False},
-            read_value=dict(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
+            read_value=FakeORMService(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
         )
     service_model = ServiceModel(
         dbsession,
@@ -504,10 +513,10 @@ def test_cmd_update(dbsession):
     assert "GET" in crud_object.methods_called
     assert "UPDATE" in crud_object.methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body["id"] == 1
-    assert response.body["name"] == "Service 2"
-    assert response.body["unit_price"] == 200.0
-    assert response.body["vat_rate_id"] == 3
+    assert response.body.id == 1
+    assert response.body.name == "Service 2"
+    assert response.body.unit_price == 200.0
+    assert response.body.vat_rate_id == 3
 
 
 def test_cmd_update_unknown(dbsession):
@@ -532,7 +541,7 @@ def test_cmd_update_unknown(dbsession):
 def test_cmd_update_error(dbsession):
     crud_object = FakeCRUDService(
             raises={"READ": False, "UPDATE": True},
-            read_value=dict(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
+            read_value=FakeORMService(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
         )
     service_model = ServiceModel(
         dbsession,
@@ -555,7 +564,7 @@ def test_cmd_update_error(dbsession):
 def test_cmd_delete(dbsession):
     crud_object = FakeCRUDService(
             raises={"READ": False, "DELETE": False},
-            read_value=dict(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
+            read_value=FakeORMService(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
         )
     service_model = ServiceModel(
         dbsession,
@@ -595,7 +604,7 @@ def test_cmd_delete_unknown(dbsession):
 def test_cmd_delete_error(error, dbsession):
     crud_object = FakeCRUDService(
             raises={"READ": False, "DELETE": error},
-            read_value=dict(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
+            read_value=FakeORMService(id=1, name="Service 1", unit_price=100.0, vat_rate_id=1)
         )
     service_model = ServiceModel(
         dbsession,

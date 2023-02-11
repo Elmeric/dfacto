@@ -14,28 +14,32 @@ from .base import BaseSchema
 
 @dataclass
 class _VatRateBase(BaseSchema):
-    pass
+    name: str
+    rate: float
+    is_default: bool
+    is_preset: bool
 
 
 @dataclass
 class _VatRateDefaultsBase(BaseSchema):
-    rate: Optional[float] = 0.0
+    name: Optional[str] = None
+    rate: Optional[float] = None
 
 
 @dataclass
 class VatRateCreate(_VatRateBase):
-    rate: float
+    is_default: bool = False
+    is_preset: bool = False
 
 
 @dataclass
-class VatRateUpdate(_VatRateDefaultsBase, _VatRateBase):
+class VatRateUpdate(_VatRateDefaultsBase):
     pass
 
 
 @dataclass
 class _VatRateInDBBase(_VatRateBase):
     id: int
-    rate: float
 
 
 # Additional properties to return from DB
@@ -45,7 +49,13 @@ class VatRate(_VatRateInDBBase):
 
     @classmethod
     def from_orm(cls, orm_obj: models.VatRate) -> "VatRate":
-        return cls(orm_obj.id, orm_obj.rate)
+        return cls(
+            id=orm_obj.id,
+            name=orm_obj.name,
+            rate=orm_obj.rate,
+            is_default=orm_obj.is_default,
+            is_preset=orm_obj.is_preset
+        )
 
 
 # Additional properties stored in DB

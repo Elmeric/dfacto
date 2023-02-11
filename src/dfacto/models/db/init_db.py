@@ -14,15 +14,18 @@ from dfacto.models.db import base
 
 
 class PresetRate(TypedDict):
-    id: int
+    name: str
     rate: float
+    is_default: bool
+    is_preset: bool
 
 
-DEFAULT_RATE_ID: int = 1
 PRESET_RATES: list[PresetRate] = [
-    {"id": DEFAULT_RATE_ID, "rate": 0.0},
-    {"id": DEFAULT_RATE_ID + 1, "rate": 5.5},
-    {"id": DEFAULT_RATE_ID + 2, "rate": 20.0},
+    {"name": "taux zéro", "rate": 0.0, "is_default": True, "is_preset": True},
+    {"name": "taux particulier", "rate": 2.1, "is_default": False, "is_preset": True},
+    {"name": "taux réduit", "rate": 5.5, "is_default": False, "is_preset": True},
+    {"name": "taux intermédiaire", "rate": 10, "is_default": False, "is_preset": True},
+    {"name": "taux normal", "rate": 20, "is_default": False, "is_preset": True},
 ]
 
 
@@ -43,7 +46,7 @@ def init_db_data(session: Union[Session, scoped_session]) -> None:
     #             )
     #         )
     if session.scalars(sa.select(models.VatRate)).first() is None:
-        # No VAT rates in the database: create them.
+        # No VAT rates in the database: add the presets and mark "taux zéro" as default.
         session.execute(sa.insert(models.VatRate), PRESET_RATES)
         session.commit()
 

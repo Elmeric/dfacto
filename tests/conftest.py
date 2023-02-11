@@ -130,6 +130,17 @@ def mock_select(monkeypatch):
     return state, called
 
 
+@dataclasses.dataclass
+class FakeORMModel:
+    id: int
+
+
+class FakeSchema:
+    @classmethod
+    def from_orm(cls, obj):
+        return obj
+
+
 class FakeCRUDBase(crud.CRUDBase):
     def __init__(
         self,
@@ -189,7 +200,7 @@ class FakeCRUDBase(crud.CRUDBase):
         self,
         _db,
         *,
-        db_obj: dict[str, Any],
+        db_obj,
         obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]
     ):
         self.methods_called.append("UPDATE")
@@ -199,17 +210,18 @@ class FakeCRUDBase(crud.CRUDBase):
         elif exc:
             raise crud.CrudError
         else:
+            obj_data = dataclasses.asdict(db_obj)
             if isinstance(obj_in, dict):
                 update_data = obj_in
             else:
                 update_data = dataclasses.asdict(obj_in)
-            for field in db_obj:
+            for field in obj_data:
                 if (
                     field in update_data
                     and update_data[field] is not None
-                    and db_obj[field] != update_data[field]
+                    and getattr(db_obj, field) != update_data[field]
                 ):
-                    db_obj[field] = update_data[field]
+                    setattr(db_obj, field, update_data[field])
             return db_obj
 
     def delete(self, db: scoped_session, *, db_obj: dict[str, Any]) -> None:

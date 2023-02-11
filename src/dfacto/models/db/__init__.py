@@ -6,4 +6,4 @@
 
 from .base_model import BaseModel, intpk
 from .session import engine, Session
-from .init_db import DEFAULT_RATE_ID, create_tables, init_db, init_db_data
+from .init_db import create_tables, init_db, init_db_data
