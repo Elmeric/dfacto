@@ -65,7 +65,10 @@ addopts = [
 testpaths = [
     "tests",
 ]
-
+markers = [
+    "crud: marks CRUD integration tests using an in-memory database (deselect with '-m \"not crud\"')",
+    "api",
+]
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

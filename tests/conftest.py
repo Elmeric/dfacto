@@ -85,6 +85,9 @@ def dbsession(engine, tables):
     connection.close()
 
 
+#
+# Mock some methods of the sqlalchemy 'scoped_session'
+#
 @pytest.fixture()
 def mock_commit(monkeypatch):
     state = {"failed": False}
@@ -130,64 +133,47 @@ def mock_select(monkeypatch):
     return state, called
 
 
-@dataclasses.dataclass
-class FakeORMModel:
-    id: int
+#
+# Mock some methods of the CRUDBase class used by all DFactoModel command API
+#
+@pytest.fixture()
+def mock_dfacto_model(monkeypatch):
+    state = {"raises": {}, "read_value": None}
+    methods_called = []
 
-
-class FakeSchema:
-    @classmethod
-    def from_orm(cls, obj):
-        return obj
-
-
-class FakeCRUDBase(crud.CRUDBase):
-    def __init__(
-        self,
-        *,
-        raises: dict[
-            str,
-            Union[bool, Union[Type[crud.CrudError], Type[crud.CrudIntegrityError]]]
-        ],
-        read_value: Any = None
-    ):
-        self.raises = raises
-        self.read_value = read_value
-        self.methods_called = []
-
-    def get(self, _db, _id):
-        self.methods_called.append("GET")
-        exc = self.raises["READ"]
+    def _get(_, _db, _id):
+        methods_called.append("GET")
+        exc = state["raises"]["READ"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
             raise crud.CrudError
         else:
-            return self.read_value
+            return state["read_value"]
 
-    def get_multi(self, _db, *, skip: int = 0, limit: int = 100):
-        self.methods_called.append("GET_MULTI")
-        exc = self.raises["READ"]
+    def _get_multi(_, _db, *, skip: int = 0, limit: int = 100):
+        methods_called.append("GET_MULTI")
+        exc = state["raises"]["READ"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
             raise crud.CrudError
         else:
-            return self.read_value[skip: skip + limit]
+            return state["read_value"][skip: skip + limit]
 
-    def get_all(self, _db):
-        self.methods_called.append("GET_ALL")
-        exc = self.raises["READ"]
+    def _get_all(_, _db):
+        methods_called.append("GET_ALL")
+        exc = state["raises"]["READ"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
             raise crud.CrudError
         else:
-            return self.read_value
+            return state["read_value"]
 
-    def create(self, _db, *, obj_in: schemas.ServiceCreate):
-        self.methods_called.append("CREATE")
-        exc = self.raises["CREATE"]
+    def _create(_, _db, *, obj_in: schemas.ServiceCreate):
+        methods_called.append("CREATE")
+        exc = state["raises"]["CREATE"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
@@ -196,15 +182,15 @@ class FakeCRUDBase(crud.CRUDBase):
             obj_in.id = 1
             return obj_in
 
-    def update(
-        self,
+    def _update(
+        _,
         _db,
         *,
         db_obj,
         obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]
     ):
-        self.methods_called.append("UPDATE")
-        exc = self.raises["UPDATE"]
+        methods_called.append("UPDATE")
+        exc = state["raises"]["UPDATE"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
@@ -224,12 +210,26 @@ class FakeCRUDBase(crud.CRUDBase):
                     setattr(db_obj, field, update_data[field])
             return db_obj
 
-    def delete(self, db: scoped_session, *, db_obj: dict[str, Any]) -> None:
-        self.methods_called.append("DELETE")
-        exc = self.raises["DELETE"]
+    def _delete(_, db: scoped_session, *, db_obj: dict[str, Any]) -> None:
+        methods_called.append("DELETE")
+        exc = state["raises"]["DELETE"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
             raise crud.CrudError
         else:
             return
+
+    monkeypatch.setattr(crud.base.CRUDBase, "get", _get)
+    monkeypatch.setattr(crud.base.CRUDBase, "get_multi", _get_multi)
+    monkeypatch.setattr(crud.base.CRUDBase, "get_all", _get_all)
+    monkeypatch.setattr(crud.base.CRUDBase, "create", _create)
+    monkeypatch.setattr(crud.base.CRUDBase, "update", _update)
+    monkeypatch.setattr(crud.base.CRUDBase, "delete", _delete)
+
+    return state, methods_called
+
+
+@dataclasses.dataclass
+class FakeORMModel:
+    id: int
