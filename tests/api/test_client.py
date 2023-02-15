@@ -5,7 +5,6 @@
 # LICENSE file in the root directory of this source tree.
 
 import dataclasses
-from typing import Any
 
 import pytest
 
@@ -396,6 +395,86 @@ def test_cmd_update_error(mock_client_model, mock_schema_from_orm):
     assert "UPDATE" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith("UPDATE - Cannot update object 1")
+
+
+def test_cmd_rename(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE": False}
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1", zip_code="1", city="CITY 1",
+        is_active=True,
+    )
+
+    response = api.client.rename(client_id=1, name="New client")
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "UPDATE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body.id == 1
+    assert response.body.name == "New client"
+    assert response.body.address == "Address 1"
+    assert response.body.zip_code == "1"
+    assert response.body.city == "CITY 1"
+    assert response.body.is_active
+
+
+def test_cmd_change_address(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE": False}
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1", zip_code="1", city="CITY 1",
+        is_active=True,
+    )
+
+    address = schemas.Address(
+        address="New address",
+        zip_code="67890",
+        city="New city",
+    )
+    response = api.client.change_address(client_id=1, address=address)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "UPDATE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body.id == 1
+    assert response.body.name == "Client 1"
+    assert response.body.address == "New address"
+    assert response.body.zip_code == "67890"
+    assert response.body.city == "New city"
+    assert response.body.is_active
+
+
+@pytest.mark.parametrize("activate", (True, False))
+def test_cmd_set_active(activate, mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE": False}
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1", zip_code="1", city="CITY 1",
+        is_active=not activate,
+    )
+    if activate:
+        response = api.client.set_active(client_id=1)
+    else:
+        response = api.client.set_inactive(client_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "UPDATE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body.id == 1
+    assert response.body.name == "Client 1"
+    assert response.body.address == "Address 1"
+    assert response.body.zip_code == "1"
+    assert response.body.city == "CITY 1"
+    assert response.body.is_active is activate
 
 
 def test_cmd_delete(mock_client_model, mock_schema_from_orm):

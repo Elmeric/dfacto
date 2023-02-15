@@ -10,12 +10,6 @@ from typing import Optional, Any
 from dfacto.models import models
 
 from .base import BaseSchema
-# from .basket import Basket
-
-
-# @dataclass
-# class BaseSchema:
-#     pass
 
 
 @dataclass()
@@ -79,12 +73,6 @@ class _ClientInDBBase(_ClientBase):
 # Additional properties to return from DB
 @dataclass
 class Client(_ClientInDBBase):
-    # basket: Basket
-
-    # def __post_init__(self) -> None:
-    #     self.code = "CL" + str(self.id).zfill(5)
-    #     # print(f"Code of client {self.name} is {self.code}")
-
     @property
     def code(self) -> str:
         return "CL" + str(self.id).zfill(5)
@@ -102,7 +90,6 @@ class Client(_ClientInDBBase):
             name=orm_obj.name,
             address=address,
             is_active=orm_obj.is_active,
-            # basket=Basket.from_orm(orm_obj.basket),
         )
 
 
@@ -110,38 +97,3 @@ class Client(_ClientInDBBase):
 @dataclass
 class ClientInDB(_ClientInDBBase):
     pass
-
-
-if __name__ == '__main__':
-    @dataclass
-    class OrmClient:
-        id: int
-        name: str
-        address: str
-        zip_code: str
-        city: str
-        is_active: bool
-
-    orm_obj = OrmClient(
-        id=1,
-        name="Client 1",
-        address="3 rue du coin",
-        zip_code="12345",
-        city="Ici",
-        is_active=True
-    )
-    cl1 = Client.from_orm(orm_obj)
-    print(cl1)
-    cl2 = Client(
-        id=2,
-        name="Client 2",
-        address=Address(
-            address="1 rue de l'église",
-            zip_code="67890",
-            city="La Bas",
-        ),
-        is_active=True
-    )
-    print(cl2)
-    print(cl1.code)
-    print(cl2.code)

@@ -35,6 +35,18 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Basket.from_orm(db_obj)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    def rename(self, client_id: int, name: str) -> CommandResponse:
+        return self.update(client_id, schemas.ClientUpdate(name=name))
+
+    def change_address(self, client_id: int, address: schemas.Address) -> CommandResponse:
+        return self.update(client_id, schemas.ClientUpdate(address=address))
+
+    def set_active(self, client_id: int) -> CommandResponse:
+        return self.update(client_id, schemas.ClientUpdate(is_active=True))
+
+    def set_inactive(self, client_id: int) -> CommandResponse:
+        return self.update(client_id, schemas.ClientUpdate(is_active=False))
+
     def delete(self, obj_id: int) -> CommandResponse:
         client_ = self.crud_object.get(self.Session, obj_id)
 
