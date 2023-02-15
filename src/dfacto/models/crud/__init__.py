@@ -11,5 +11,6 @@ from .base import (
     CrudIntegrityError,
     UpdateSchemaType,
 )
+from .client import CRUDClient, client
 from .service import CRUDService, service
 from .vat_rate import CRUDVatRate, vat_rate

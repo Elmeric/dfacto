@@ -9,11 +9,11 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models import db
-from .basket import _Basket
+from .basket import Basket
 from .invoice import InvoiceStatus, _Invoice
 
 
-class _Client(db.BaseModel):
+class Client(db.BaseModel):
     __tablename__ = "client"
 
     id: Mapped[db.intpk] = mapped_column(init=False)
@@ -23,7 +23,7 @@ class _Client(db.BaseModel):
     city: Mapped[str]
     is_active: Mapped[bool] = mapped_column(default=True)
 
-    basket: Mapped["_Basket"] = relationship(
+    basket: Mapped["Basket"] = relationship(
         init=False, back_populates="client", cascade="all, delete-orphan"
     )
     invoices: Mapped[list["_Invoice"]] = relationship(
@@ -32,9 +32,9 @@ class _Client(db.BaseModel):
         cascade="all, delete-orphan",
     )
 
-    @hybrid_property
-    def code(self) -> str:
-        return "CL" + str(self.id).zfill(5)
+    # @hybrid_property
+    # def code(self) -> str:
+    #     return "CL" + str(self.id).zfill(5)
 
     @hybrid_property
     def has_emitted_invoices(self) -> bool:
@@ -60,4 +60,4 @@ class _Client(db.BaseModel):
         ).scalar_subquery()
 
     def __post_init__(self) -> None:
-        self.basket = _Basket()
+        self.basket = Basket()

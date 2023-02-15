@@ -15,7 +15,7 @@ import sqlalchemy.orm
 from dfacto.models.basket import BasketModel
 from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.item import Item, ItemModel
-from dfacto.models.models import InvoiceStatus, _Basket, _Invoice, _Item
+from dfacto.models.models import InvoiceStatus, Basket, _Invoice, _Item
 # from dfacto.models.api.api_v1.service import ServiceModel
 from dfacto.models import api
 
@@ -95,7 +95,7 @@ class InvoiceModel:
     def create_from_basket(
         self, basket_id: int, clear_basket: bool = True
     ) -> CommandResponse:
-        bskt: Optional[_Basket] = self.Session.get(_Basket, basket_id)
+        bskt: Optional[Basket] = self.Session.get(Basket, basket_id)
         if bskt is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"INVOICE-CREATE - Basket {basket_id} not found."

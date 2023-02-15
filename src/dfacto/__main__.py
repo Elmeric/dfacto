@@ -99,14 +99,14 @@ def main():
         )
         print(cmd_report)
 
-    cl: models._Client = db.Session.get(models._Client, 1)
+    cl: models.Client = db.Session.get(models.Client, 1)
     if cl.has_emitted_invoices:
         print(f"Client {cl.name} has emitted invoices")
     else:
         print(f"Client {cl.name} has no emitted invoices")
 
-    c: models._Client = db.Session.execute(
-        select(models._Client).filter(models._Client.has_emitted_invoices)
+    c: models.Client = db.Session.execute(
+        select(models.Client).filter(models.Client.has_emitted_invoices)
     ).scalar()
     if c is not None:
         print(f"Client with emitted invoices: {c.name}, {c.invoices[0].code}")
@@ -122,7 +122,7 @@ def main():
     )
     print(cmd_report)
 
-    cl: models._Client = db.Session.get(models._Client, 1)
+    cl: models.Client = db.Session.get(models.Client, 1)
     cmd_report = invoice_model.create_from_basket(cl.basket.id)
     print(cmd_report)
 

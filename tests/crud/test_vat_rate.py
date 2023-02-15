@@ -130,6 +130,21 @@ def test_crud_get_multi_error(dbsession, init_vat_rates, mock_select):
         _vat_rates = crud.vat_rate.get_multi(dbsession)
 
 
+def test_crud_get_all(dbsession, init_vat_rates):
+    vat_rates = crud.vat_rate.get_all(dbsession)
+
+    for i, vat_rate in enumerate(vat_rates):
+        assert vat_rate is init_vat_rates[i]
+
+
+def test_crud_get_all_error(dbsession, init_vat_rates, mock_select):
+    state, _called = mock_select
+    state["failed"] = True
+
+    with pytest.raises(crud.CrudError):
+        _vat_rates = crud.vat_rate.get_all(dbsession)
+
+
 def test_crud_create(dbsession, init_vat_rates):
     vat_rate = crud.vat_rate.create(
         dbsession,

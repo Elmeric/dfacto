@@ -13,7 +13,7 @@ import sqlalchemy.orm
 
 from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.item import Item, ItemModel
-from dfacto.models.models import InvoiceStatus, _Basket, _Item
+from dfacto.models.models import InvoiceStatus, Basket, _Item
 # from dfacto.models.api.api_v1.service import ServiceModel
 from dfacto.models import api
 
@@ -62,7 +62,7 @@ class BasketModel:
     item_model: ItemModel
 
     def get(self, basket_id: int) -> Optional[Basket]:
-        basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
+        basket: Optional[Basket] = self.Session.get(Basket, basket_id)
         if basket is None:
             return
 
@@ -80,13 +80,13 @@ class BasketModel:
                 basket.client_id,
                 [self.item_model.get(it.id) for it in basket.items],
             )
-            for basket in self.Session.scalars(sa.select(_Basket)).all()
+            for basket in self.Session.scalars(sa.select(Basket)).all()
         ]
 
     def add_item(
         self, basket_id: int, service_id: int, quantity: int
     ) -> CommandResponse:
-        basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
+        basket: Optional[Basket] = self.Session.get(Basket, basket_id)
         if basket is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"BASKET-ADD-ITEM - Basket {basket_id} not found."
@@ -131,7 +131,7 @@ class BasketModel:
         service_id: Optional[int] = None,
         quantity: Optional[int] = None,
     ) -> CommandResponse:
-        basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
+        basket: Optional[Basket] = self.Session.get(Basket, basket_id)
         if basket is None:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -214,7 +214,7 @@ class BasketModel:
             return CommandResponse(CommandStatus.COMPLETED)
 
     def clear(self, basket_id: int) -> CommandResponse:
-        basket: Optional[_Basket] = self.Session.get(_Basket, basket_id)
+        basket: Optional[Basket] = self.Session.get(Basket, basket_id)
         if basket is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"BASKET-CLEAR - Basket {basket_id} not found."

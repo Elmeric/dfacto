@@ -66,7 +66,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def create(
         self, dbsession: scoped_session, *, obj_in: CreateSchemaType
     ) -> ModelType:
-        obj_in_data = dataclasses.asdict(obj_in)
+        obj_in_data = obj_in.flatten()
         db_obj = self.model(**obj_in_data)
         dbsession.add(db_obj)
         try:
@@ -92,7 +92,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             update_data = obj_in
         else:
             # update_data = obj_in.dict(exclude_unset=True)
-            update_data = dataclasses.asdict(obj_in)
+            update_data = obj_in.flatten()
 
         for field in obj_data:
             if (

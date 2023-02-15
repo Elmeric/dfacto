@@ -13,7 +13,7 @@ from sqlalchemy.schema import CheckConstraint
 from dfacto.models import db
 
 if TYPE_CHECKING:
-    from .basket import _Basket
+    from .basket import Basket
     from .invoice import _Invoice
     from .service import Service
 
@@ -42,5 +42,5 @@ class _Item(db.BaseModel):
     )
 
     service: Mapped["Service"] = relationship(init=False)
-    basket: Mapped["_Basket"] = relationship(back_populates="items", init=False)
+    basket: Mapped["Basket"] = relationship(back_populates="items", init=False)
     invoice: Mapped["_Invoice"] = relationship(back_populates="items", init=False)

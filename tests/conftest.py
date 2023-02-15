@@ -200,7 +200,8 @@ def mock_dfacto_model(monkeypatch):
             if isinstance(obj_in, dict):
                 update_data = obj_in
             else:
-                update_data = dataclasses.asdict(obj_in)
+                update_data = obj_in.flatten()
+                # update_data = dataclasses.asdict(obj_in)
             for field in obj_data:
                 if (
                     field in update_data

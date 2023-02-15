@@ -14,7 +14,7 @@ import sqlalchemy.orm
 from dfacto.models.basket import Basket, BasketModel
 from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.invoice import Invoice
-from dfacto.models.models import _Client
+from dfacto.models.models import Client
 
 
 @dataclass()
@@ -41,7 +41,7 @@ class ClientModel:
     basket_model: BasketModel
 
     def get(self, client_id: int) -> Optional[Client]:
-        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        client: Optional[Client] = self.Session.get(Client, client_id)
         if client is None:
             return
         return Client(
@@ -63,13 +63,13 @@ class ClientModel:
                 client.is_active,
                 self.basket_model.get(client.basket.id),
             )
-            for client in self.Session.scalars(sa.select(_Client)).all()
+            for client in self.Session.scalars(sa.select(Client)).all()
         ]
 
     def add(
         self, name: str, address: str, zip_code: str, city: str, is_active: bool = True
     ) -> CommandResponse:
-        client = _Client(
+        client = Client(
             name=name,
             address=address,
             zip_code=zip_code,
@@ -88,7 +88,7 @@ class ClientModel:
             return CommandResponse(CommandStatus.COMPLETED)
 
     def on_hold(self, client_id: int, hold: bool = True) -> CommandResponse:
-        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        client: Optional[Client] = self.Session.get(Client, client_id)
         if client is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-ON_HOLD - Client {client_id} not found."
@@ -111,7 +111,7 @@ class ClientModel:
             return CommandResponse(CommandStatus.COMPLETED)
 
     def rename(self, client_id: int, name: str) -> CommandResponse:
-        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        client: Optional[Client] = self.Session.get(Client, client_id)
         if client is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-RENAME - Client {client_id} not found."
@@ -132,7 +132,7 @@ class ClientModel:
             return CommandResponse(CommandStatus.COMPLETED)
 
     def change_address(self, client_id: int, address: Address) -> CommandResponse:
-        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        client: Optional[Client] = self.Session.get(Client, client_id)
         if client is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"CLIENT-ADDRESS - Client {client_id} not found."
@@ -153,7 +153,7 @@ class ClientModel:
             return CommandResponse(CommandStatus.COMPLETED)
 
     def delete(self, client_id: int) -> CommandResponse:
-        client: Optional[_Client] = self.Session.get(_Client, client_id)
+        client: Optional[Client] = self.Session.get(Client, client_id)
 
         if client is None:
             return CommandResponse(

@@ -12,11 +12,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from dfacto.models import db
 
 if TYPE_CHECKING:
-    from .client import _Client
+    from .client import Client
     from .item import _Item
 
 
-class _Basket(db.BaseModel):
+class Basket(db.BaseModel):
     __tablename__ = "basket"
 
     id: Mapped[db.intpk] = mapped_column(init=False)
@@ -27,7 +27,7 @@ class _Basket(db.BaseModel):
         ForeignKey("client.id"), init=False, unique=True
     )
 
-    client: Mapped["_Client"] = relationship(back_populates="basket", init=False)
+    client: Mapped["Client"] = relationship(back_populates="basket", init=False)
     items: Mapped[list["_Item"]] = relationship(
         back_populates="basket",
         init=False
