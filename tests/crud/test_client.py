@@ -685,7 +685,7 @@ def test_crud_clear_basket_commit_error(dbsession, init_items, mock_commit):
     assert basket.net_amount == expected_net_amount
 
 
-def test_schema_from_orm(dbsession, init_clients):
+def test_client_from_orm(dbsession, init_clients):
     client = init_clients[0]
 
     from_db = schemas.Client.from_orm(client)
@@ -695,3 +695,30 @@ def test_schema_from_orm(dbsession, init_clients):
     assert from_db.address == schemas.Address(client.address, client.zip_code, client.city)
     assert from_db.is_active is client.is_active
     assert from_db.code == f"CL{str(from_db.id).zfill(5)}"
+
+
+def test_basket_from_orm(dbsession, init_clients):
+    basket = init_clients[0].basket
+
+    from_db = schemas.Basket.from_orm(basket)
+
+    assert from_db.id == basket.id
+    assert from_db.raw_amount == basket.raw_amount
+    assert from_db.vat == basket.vat
+    assert from_db.net_amount == basket.net_amount
+    for i, item in enumerate(from_db.items):
+        assert item == schemas.Item.from_orm(basket.items[i])
+
+
+def test_item_from_orm(dbsession, init_items):
+    item = init_items[0]
+
+    from_db = schemas.Item.from_orm(item)
+
+    assert from_db.id == item.id
+    assert from_db.raw_amount == item.raw_amount
+    assert from_db.vat == item.vat
+    assert from_db.net_amount == item.net_amount
+    assert from_db.service_id == item.service_id
+    assert from_db.quantity == item.quantity
+    assert from_db.service == schemas.Service.from_orm(item.service)
