@@ -12,7 +12,7 @@ import sqlalchemy.exc
 import sqlalchemy.orm
 
 from dfacto.models.api.command import CommandResponse, CommandStatus
-from dfacto.models.models import _Item
+from dfacto.models.models import Item
 from dfacto.models.schemas import Service
 # from dfacto.models.api.api_v1.service import ServiceModel
 from dfacto.models import api
@@ -34,7 +34,7 @@ class ItemModel:
     # service_model: ServiceModel
 
     def get(self, item_id: int) -> Optional[Item]:
-        item: Optional[_Item] = self.Session.get(_Item, item_id)
+        item: Optional[Item] = self.Session.get(Item, item_id)
         if item is None:
             return
         return Item(
@@ -58,11 +58,11 @@ class ItemModel:
                 # self.service_model.get(item.service.id),
                 item.quantity,
             )
-            for item in self.Session.scalars(sa.select(_Item)).all()
+            for item in self.Session.scalars(sa.select(Item)).all()
         ]
 
     def delete(self, item_id: int) -> CommandResponse:
-        self.Session.execute(sa.delete(_Item).where(_Item.id == item_id))
+        self.Session.execute(sa.delete(Item).where(Item.id == item_id))
         try:
             self.Session.commit()
         except sa.exc.SQLAlchemyError:

@@ -40,7 +40,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 body = self.schema.from_orm(db_obj)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
-    def get_multi(self, skip: int = 0, limit: int = 10) -> CommandResponse:
+    def get_multi(self, *, skip: int = 0, limit: int = 10) -> CommandResponse:
         try:
             db_objs = self.crud_object.get_multi(self.Session, skip=skip, limit=limit)
         except crud.CrudError as exc:
@@ -76,7 +76,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
             body = self.schema.from_orm(db_obj)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
-    def update(self, obj_id: int, obj_in: crud.UpdateSchemaType) -> CommandResponse:
+    def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
         db_obj = self.crud_object.get(self.Session, obj_id)
         if db_obj is None:
             return CommandResponse(

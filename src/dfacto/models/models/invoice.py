@@ -14,9 +14,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models import db
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:   # pragma: no cover
     from .client import Client
-    from .item import _Item
+    from .item import Item
 
 
 class InvoiceStatus(enum.Enum):
@@ -41,7 +41,7 @@ class _Invoice(db.BaseModel):
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"), init=False)
 
     client: Mapped["Client"] = relationship(back_populates="invoices", init=False)
-    items: Mapped[list["_Item"]] = relationship(
+    items: Mapped[list["Item"]] = relationship(
         back_populates="invoice",
         init=False
         # back_populates="invoice", init=False, cascade="all, delete-orphan"

@@ -11,4 +11,4 @@ from dfacto.models import models    # noqa
 # from dfacto.models.models.client import Client
 # from dfacto.models.models.basket import Basket
 # from dfacto.models.models.invoice import _Invoice
-# from dfacto.models.models.item import _Item
+# from dfacto.models.models.item import Item

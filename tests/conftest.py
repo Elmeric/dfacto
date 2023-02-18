@@ -6,8 +6,9 @@
 
 # Cf. https://gist.github.com/kissgyorgy/e2365f25a213de44b9a2
 
-from typing import Union, Any, Type
+from typing import Union, Any
 import dataclasses
+import sys
 
 from sqlite3 import Connection as SQLite3Connection
 
@@ -129,6 +130,7 @@ def mock_select(monkeypatch):
             raise SQLAlchemyError("Select failed")
 
     monkeypatch.setattr("dfacto.models.crud.base.select", _select)
+    monkeypatch.setattr(sys.modules["dfacto.models.crud.client"], "select", _select)
 
     return state, called
 

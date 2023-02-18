@@ -76,7 +76,7 @@ def test_crud_set_default_error(dbsession, init_vat_rates, mock_commit):
 def test_crud_get(dbsession, init_vat_rates):
     vat_rates = init_vat_rates
 
-    vat_rate = crud.vat_rate.get(dbsession, id_=vat_rates[0].id)
+    vat_rate = crud.vat_rate.get(dbsession, vat_rates[0].id)
 
     assert vat_rate is vat_rates[0]
 
@@ -85,7 +85,7 @@ def test_crud_get_unknown(dbsession, init_vat_rates):
     vat_rates = init_vat_rates
     ids = [vr.id for vr in vat_rates]
 
-    vat_rate = crud.vat_rate.get(dbsession, id_=100)
+    vat_rate = crud.vat_rate.get(dbsession, 100)
 
     assert 100 not in ids
     assert vat_rate is None
@@ -98,7 +98,7 @@ def test_crud_get_error(dbsession, init_vat_rates, mock_get):
     vat_rates = init_vat_rates
 
     with pytest.raises(crud.CrudError):
-        _vat_rate = crud.vat_rate.get(dbsession, id_=vat_rates[0].id)
+        _vat_rate = crud.vat_rate.get(dbsession, vat_rates[0].id)
 
 
 @pytest.mark.parametrize(

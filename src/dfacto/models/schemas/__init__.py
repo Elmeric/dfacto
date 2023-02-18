@@ -7,7 +7,8 @@
 from dataclasses import dataclass
 
 from .base import BaseSchema
-from .basket import Basket, BasketInDB
+from .basket import Basket, BasketCreate, BasketInDB, BasketUpdate
 from .client import Client, ClientCreate, ClientInDB, ClientUpdate, Address
+from .item import Item, ItemCreate, ItemInDB, ItemUpdate
 from .service import Service, ServiceCreate, ServiceInDB, ServiceUpdate
 from .vat_rate import VatRate, VatRateCreate, VatRateInDB, VatRateUpdate

@@ -3,60 +3,62 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-
 from dataclasses import dataclass
 
 from dfacto.models import models
 
 from .base import BaseSchema
-from .item import Item
+from .service import Service
 
 
 @dataclass
-class _BasketBase(BaseSchema):
+class _ItemBase(BaseSchema):
     raw_amount: float
     vat: float
     net_amount: float
+    service_id: int
+    quantity: int
 
 
 @dataclass
-class _BasketDefaultsBase(BaseSchema):
+class _ItemDefaultsBase(BaseSchema):
     pass
 
 
 @dataclass
-class BasketCreate(_BasketBase):
-    client_id: int
-    is_active: bool = True
+class ItemCreate(_ItemBase):
+    quantity: int = 1
 
 
 @dataclass
-class BasketUpdate(_BasketDefaultsBase):
+class ItemUpdate(_ItemDefaultsBase):
     pass
 
 
 @dataclass
-class _BasketInDBBase(_BasketBase):
+class _ItemInDBBase(_ItemBase):
     id: int
 
 
 # Additional properties to return from DB
 @dataclass
-class Basket(_BasketInDBBase):
-    items: list[Item]
+class Item(_ItemInDBBase):
+    service: Service
 
     @classmethod
-    def from_orm(cls, orm_obj: models.Basket) -> "Basket":
+    def from_orm(cls, orm_obj: models.Item) -> "Item":
         return cls(
             id=orm_obj.id,
             raw_amount=orm_obj.raw_amount,
             vat=orm_obj.vat,
             net_amount=orm_obj.net_amount,
-            items=[Item.from_orm(item) for item in orm_obj.items]
+            service_id=orm_obj.service.id,
+            quantity=orm_obj.quantity,
+            service=Service.from_orm(orm_obj.service),
         )
 
 
 # Additional properties stored in DB
 @dataclass
-class BasketInDB(_BasketInDBBase):
-    client_id: int
+class ItemInDB(_ItemInDBBase):
+    pass

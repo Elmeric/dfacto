@@ -11,9 +11,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models import db
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:   # pragma: no cover
     from .client import Client
-    from .item import _Item
+    from .item import Item
 
 
 class Basket(db.BaseModel):
@@ -28,7 +28,7 @@ class Basket(db.BaseModel):
     )
 
     client: Mapped["Client"] = relationship(back_populates="basket", init=False)
-    items: Mapped[list["_Item"]] = relationship(
+    items: Mapped[list["Item"]] = relationship(
         back_populates="basket",
         init=False
         # back_populates="basket", init=False, cascade="all, delete-orphan"

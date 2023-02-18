@@ -24,9 +24,9 @@ class CRUDVatRate(
             select(self.model).where(self.model.is_default == True)
         ).first()
 
-    def set_default(self, dbsession: scoped_session, id_: int) -> None:
+    def set_default(self, dbsession: scoped_session, obj_id: int) -> None:
         old = self.get_default(dbsession)
-        new = self.get(dbsession, id_)
+        new = self.get(dbsession, obj_id)
         old.is_default = False
         new.is_default = True
         try:

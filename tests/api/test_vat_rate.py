@@ -338,7 +338,7 @@ def test_cmd_delete(mock_vat_rate_model, mock_schema_from_orm):
         id=4, name="Rate", rate=10.0, is_default=False, is_preset=False, services=[]
     )
 
-    response = api.vat_rate.delete(vat_rate_id=4)
+    response = api.vat_rate.delete(obj_id=4)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -354,7 +354,7 @@ def test_cmd_delete_preset(mock_vat_rate_model, mock_schema_from_orm):
         id=4, name="Rate", rate=10.0, is_default=False, is_preset=True, services=[]
     )
 
-    response = api.vat_rate.delete(vat_rate_id=4)
+    response = api.vat_rate.delete(obj_id=4)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
@@ -367,7 +367,7 @@ def test_cmd_delete_unknown(mock_vat_rate_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "DELETE": False}
     state["read_value"] = None
 
-    response = api.vat_rate.delete(vat_rate_id=4)
+    response = api.vat_rate.delete(obj_id=4)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
@@ -384,7 +384,7 @@ def test_cmd_delete_in_use(mock_vat_rate_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "DELETE": False}
     state["read_value"] = vat_rate
 
-    response = api.vat_rate.delete(vat_rate_id=4)
+    response = api.vat_rate.delete(obj_id=4)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
@@ -400,7 +400,7 @@ def test_cmd_delete_error(mock_vat_rate_model, mock_schema_from_orm):
                 id=4, name="Rate", rate=10.0, is_default=False, is_preset=False, services=[]
             )
 
-    response = api.vat_rate.delete(vat_rate_id=4)
+    response = api.vat_rate.delete(obj_id=4)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called

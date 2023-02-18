@@ -12,13 +12,13 @@ from sqlalchemy.schema import CheckConstraint
 
 from dfacto.models import db
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:   # pragma: no cover
     from .basket import Basket
     from .invoice import _Invoice
     from .service import Service
 
 
-class _Item(db.BaseModel):
+class Item(db.BaseModel):
     __tablename__ = "item"
     __table_args__ = (
         CheckConstraint(
@@ -29,9 +29,9 @@ class _Item(db.BaseModel):
     )
 
     id: Mapped[db.intpk] = mapped_column(init=False)
-    raw_amount: Mapped[float] = mapped_column(init=False)
-    vat: Mapped[float] = mapped_column(init=False)
-    net_amount: Mapped[float] = mapped_column(init=False)
+    raw_amount: Mapped[float]
+    vat: Mapped[float]
+    net_amount: Mapped[float]
     service_id: Mapped[int] = mapped_column(ForeignKey("service.id"))
     quantity: Mapped[int] = mapped_column(default=1)
     invoice_id: Mapped[Optional[int]] = mapped_column(

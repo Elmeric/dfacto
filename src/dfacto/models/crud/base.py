@@ -4,7 +4,6 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-import dataclasses
 from typing import Any, Generic, Optional, Type, TypeVar, Union, cast
 
 from sqlalchemy import select
@@ -31,9 +30,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """CRUD object with default methods to Create, Read, Update, Delete (CRUD)."""
         self.model = model
 
-    def get(self, dbsession: scoped_session, id_: Any) -> Optional[ModelType]:
+    def get(self, dbsession: scoped_session, obj_id: Any) -> Optional[ModelType]:
         try:
-            obj = dbsession.get(self.model, id_)
+            obj = dbsession.get(self.model, obj_id)
         except SQLAlchemyError as exc:
             raise CrudError from exc
         else:

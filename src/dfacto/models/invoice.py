@@ -15,7 +15,7 @@ import sqlalchemy.orm
 from dfacto.models.basket import BasketModel
 from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.item import Item, ItemModel
-from dfacto.models.models import InvoiceStatus, Basket, _Invoice, _Item
+from dfacto.models.models import InvoiceStatus, Basket, _Invoice, Item
 # from dfacto.models.api.api_v1.service import ServiceModel
 from dfacto.models import api
 
@@ -167,7 +167,7 @@ class InvoiceModel:
                 f"INVOICE-ADD-ITEM - Cannot add items to a non-draft invoice.",
             )
 
-        item = _Item(quantity=quantity, service_id=service_id)
+        item = Item(quantity=quantity, service_id=service_id)
         item.raw_amount = raw_amount = serv.unit_price * quantity
         item.vat = vat = raw_amount * serv.vat_rate.rate / 100
         item.net_amount = raw_amount + vat
@@ -211,7 +211,7 @@ class InvoiceModel:
                 f"INVOICE-UPDATE-ITEM - Cannot change items of a non-draft invoice.",
             )
 
-        item: Optional[_Item] = self.Session.get(_Item, item_id)
+        item: Optional[Item] = self.Session.get(Item, item_id)
         if item is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"INVOICE-UPDATE-ITEM - Item {item_id} not found."
@@ -250,7 +250,7 @@ class InvoiceModel:
         return CommandResponse(CommandStatus.COMPLETED)
 
     def remove_item(self, item_id: int) -> CommandResponse:
-        it: Optional[_Item] = self.Session.get(_Item, item_id)
+        it: Optional[Item] = self.Session.get(Item, item_id)
         if it is None:
             return CommandResponse(
                 CommandStatus.FAILED, f"INVOICE-REMOVE-ITEM - Item {item_id} not found."

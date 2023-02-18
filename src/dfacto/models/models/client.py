@@ -4,6 +4,8 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+from typing import cast
+
 from sqlalchemy import String, and_, case, exists, select
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -32,16 +34,12 @@ class Client(db.BaseModel):
         cascade="all, delete-orphan",
     )
 
-    # @hybrid_property
-    # def code(self) -> str:
-    #     return "CL" + str(self.id).zfill(5)
-
     @hybrid_property
     def has_emitted_invoices(self) -> bool:
         return any(invoice.status != InvoiceStatus.DRAFT for invoice in self.invoices)
 
     @has_emitted_invoices.expression
-    def has_emitted_invoices(cls):
+    def has_emitted_invoices(cls):  # pylint: disable=no-self-argument
         return select(
             case(
                 (
@@ -60,4 +58,4 @@ class Client(db.BaseModel):
         ).scalar_subquery()
 
     def __post_init__(self) -> None:
-        self.basket = Basket()
+        self.basket = cast(Mapped[Basket], Basket())

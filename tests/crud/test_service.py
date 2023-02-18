@@ -43,7 +43,7 @@ def test_crud_init():
 def test_crud_get(dbsession, init_services):
     services = init_services
 
-    service = crud.service.get(dbsession, id_=services[0].id)
+    service = crud.service.get(dbsession, services[0].id)
 
     assert service is services[0]
 
@@ -52,7 +52,7 @@ def test_crud_get_unknown(dbsession, init_services):
     services = init_services
     ids = [s.id for s in services]
 
-    service = crud.service.get(dbsession, id_=10)
+    service = crud.service.get(dbsession, 10)
 
     assert 10 not in ids
     assert service is None
@@ -65,7 +65,7 @@ def test_crud_get_error(dbsession, init_services, mock_get):
     services = init_services
 
     with pytest.raises(crud.CrudError):
-        _service = crud.service.get(dbsession, id_=services[0].id)
+        _service = crud.service.get(dbsession, services[0].id)
 
 
 @pytest.mark.parametrize(

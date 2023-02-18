@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import ClassVar, Type, TypedDict
+from typing import Type, TypedDict
 
 from dfacto.models import db, crud, schemas
 from dfacto.models.api.command import CommandResponse, CommandStatus
@@ -29,9 +29,9 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
             body=self.schema.from_orm(db_obj)
         )
 
-    def set_default(self, vat_rate_id: int) -> CommandResponse:
+    def set_default(self, obj_id: int) -> CommandResponse:
         try:
-            self.crud_object.set_default(self.Session, vat_rate_id)
+            self.crud_object.set_default(self.Session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -40,7 +40,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
         else:
             return CommandResponse(CommandStatus.COMPLETED)
 
-    def update(self, obj_id: int, obj_in: schemas.VatRateUpdate) -> CommandResponse:
+    def update(self, obj_id: int, *, obj_in: schemas.VatRateUpdate) -> CommandResponse:
         db_obj = self.crud_object.get(self.Session, obj_id)
         if db_obj is None:
             return CommandResponse(
@@ -67,35 +67,35 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
             body = self.schema.from_orm(db_obj)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
-    def delete(self, vat_rate_id: int) -> CommandResponse:
-        vat_rate = self.crud_object.get(self.Session, vat_rate_id)
+    def delete(self, obj_id: int) -> CommandResponse:
+        vat_rate_ = self.crud_object.get(self.Session, obj_id)
 
-        if vat_rate is None:
+        if vat_rate_ is None:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"DELETE - Object {vat_rate_id} not found.",
+                f"DELETE - Object {obj_id} not found.",
             )
 
-        if vat_rate.is_preset:
+        if vat_rate_.is_preset:
             return CommandResponse(
                 CommandStatus.REJECTED,
                 "DELETE - Preset VAT rates cannot be deleted.",
             )
 
-        in_use = vat_rate.services
+        in_use = vat_rate_.services
         if len(in_use) > 0:
             return CommandResponse(
                 CommandStatus.REJECTED,
-                f"DELETE - VAT rate with id {vat_rate_id} is used"
+                f"DELETE - VAT rate with id {obj_id} is used"
                 f" by at least '{in_use[0].name}' service.",
             )
 
         try:
-            self.crud_object.delete(self.Session, db_obj=vat_rate)
+            self.crud_object.delete(self.Session, db_obj=vat_rate_)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"DELETE - Cannot delete object {vat_rate_id}: {exc}",
+                f"DELETE - Cannot delete object {obj_id}: {exc}",
             )
         else:
             return CommandResponse(CommandStatus.COMPLETED)

@@ -5,11 +5,13 @@
 # LICENSE file in the root directory of this source tree.
 
 import dataclasses
+from typing import Optional
 
 import pytest
 
 from dfacto.models.api.command import CommandStatus
 from dfacto.models import crud, schemas, api
+from dfacto.models.models.invoice import InvoiceStatus
 from tests.conftest import FakeORMModel
 
 pytestmark = pytest.mark.api
@@ -46,6 +48,42 @@ class FakeORMBasket(FakeORMModel):
     items: list[str] = dataclasses.field(default_factory=list)
 
 
+@dataclasses.dataclass
+class FakeORMInvoice(FakeORMModel):
+    status: InvoiceStatus = InvoiceStatus.DRAFT
+
+
+@dataclasses.dataclass
+class FakeORMItem(FakeORMModel):
+    raw_amount: float
+    vat: float
+    net_amount: float
+    service_id: int
+    quantity: int = 1
+    service: "FakeORMService" = None
+    basket_id: Optional[int] = 1
+    invoice_id: Optional[int] = None
+    basket: "FakeORMBasket" = None
+    invoice: "FakeORMInvoice" = None
+
+
+@dataclasses.dataclass
+class FakeORMService(FakeORMModel):
+    unit_price: float
+    name: str = "Service"
+    vat_rate_id: int = 1
+    vat_rate: "FakeORMVatRate" = None
+
+
+@dataclasses.dataclass
+class FakeORMVatRate(FakeORMModel):
+    rate: float
+    name: str = "Rate"
+    is_default: bool = False
+    is_preset: bool = False
+    services: list["FakeORMService"] = dataclasses.field(default_factory=list)
+
+
 @pytest.fixture()
 def mock_schema_from_orm(monkeypatch):
     def _from_orm(obj):
@@ -53,6 +91,7 @@ def mock_schema_from_orm(monkeypatch):
 
     monkeypatch.setattr(schemas.Client, "from_orm", _from_orm)
     monkeypatch.setattr(schemas.Basket, "from_orm", _from_orm)
+    monkeypatch.setattr(schemas.Item, "from_orm", _from_orm)
 
 
 @pytest.fixture()
@@ -69,7 +108,45 @@ def mock_client_model(mock_dfacto_model, monkeypatch):
         else:
             return state["read_value"]
 
+    def _add_to_basket(_db, basket, service, quantity):
+        methods_called.append("ADD_TO_BASKET")
+        exc = state["raises"]["ADD_TO_BASKET"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["return_value"]
+
+    def _update_item_quantity(_db, db_obj, quantity):
+        methods_called.append("UPDATE_ITEM_QUANTITY")
+        exc = state["raises"]["UPDATE_ITEM_QUANTITY"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+
+    def _remove_from_basket(_db, db_obj):
+        methods_called.append("REMOVE_FROM_BASKET")
+        exc = state["raises"]["REMOVE_FROM_BASKET"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+
+    def _clear_basket(_db, db_obj):
+        methods_called.append("CLEAR_BASKET")
+        exc = state["raises"]["CLEAR_BASKET"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+
     monkeypatch.setattr(crud.client, "get_basket", _get_basket)
+    monkeypatch.setattr(crud.client, "add_to_basket", _add_to_basket)
+    monkeypatch.setattr(crud.client, "update_item_quantity", _update_item_quantity)
+    monkeypatch.setattr(crud.client, "remove_from_basket", _remove_from_basket)
+    monkeypatch.setattr(crud.client, "clear_basket", _clear_basket)
 
     return state, methods_called
 
@@ -124,21 +201,20 @@ def test_cmd_get_error(mock_client_model, mock_schema_from_orm):
 def test_cmd_get_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
-    state["read_value"] = FakeORMBasket(
+    expected_body = FakeORMBasket(
         id=1,
         raw_amount=100.0, vat=10.0, net_amount=110.0,
         client_id=1
     )
+    state["read_value"] = expected_body
 
-    response = api.client.get_basket(client_id=1)
+    response = api.client.get_basket(obj_id=1)
 
     assert len(methods_called) == 1
     assert "GET_BASKET" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.raw_amount == 100.0
-    assert response.body.vat == 10.0
-    assert response.body.net_amount == 110.0
+    assert response.reason is None
+    assert response.body == expected_body
 
 
 def test_cmd_get_basket_unknown(mock_client_model, mock_schema_from_orm):
@@ -146,24 +222,26 @@ def test_cmd_get_basket_unknown(mock_client_model, mock_schema_from_orm):
     state["raises"] = {"READ": False}
     state["read_value"] = None
 
-    response = api.client.get_basket(client_id=1)
+    response = api.client.get_basket(obj_id=1)
 
     assert len(methods_called) == 1
     assert "GET_BASKET" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason == "GET-BASKET - Basket of client 1 not found."
+    assert response.body is None
 
 
 def test_cmd_get_basket_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": True}
 
-    response = api.client.get_basket(client_id=1)
+    response = api.client.get_basket(obj_id=1)
 
     assert len(methods_called) == 1
     assert "GET_BASKET" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith("GET-BASKET - SQL or database error")
+    assert response.body is None
 
 
 def test_cmd_get_multi(mock_client_model, mock_schema_from_orm):
@@ -407,7 +485,7 @@ def test_cmd_rename(mock_client_model, mock_schema_from_orm):
         is_active=True,
     )
 
-    response = api.client.rename(client_id=1, name="New client")
+    response = api.client.rename(obj_id=1, name="New client")
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -436,7 +514,7 @@ def test_cmd_change_address(mock_client_model, mock_schema_from_orm):
         zip_code="67890",
         city="New city",
     )
-    response = api.client.change_address(client_id=1, address=address)
+    response = api.client.change_address(obj_id=1, address=address)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -461,9 +539,9 @@ def test_cmd_set_active(activate, mock_client_model, mock_schema_from_orm):
         is_active=not activate,
     )
     if activate:
-        response = api.client.set_active(client_id=1)
+        response = api.client.set_active(obj_id=1)
     else:
-        response = api.client.set_inactive(client_id=1)
+        response = api.client.set_inactive(obj_id=1)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -558,6 +636,24 @@ def test_cmd_delete_non_empty_basket(mock_client_model, mock_schema_from_orm):
     assert response.body is None
 
 
+def test_cmd_delete_get_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True, "DELETE": False}
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1", zip_code="1", city="CITY 1",
+        is_active=True,
+    )
+
+    response = api.client.delete(obj_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("DELETE - SQL or database error")
+
+
 def test_cmd_delete_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "DELETE": True}
@@ -575,3 +671,344 @@ def test_cmd_delete_error(mock_client_model, mock_schema_from_orm):
     assert "DELETE" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith("DELETE - Cannot delete object 1")
+
+
+def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_BASKET": False}
+    state["read_value"] = ("basket", "service")
+    return_value = FakeORMItem(
+        id=1,
+        raw_amount=100.0,
+        vat=10.0,
+        net_amount=110.0,
+        service_id=1,
+        quantity=2,
+        service=FakeORMService(
+            id=1,
+            unit_price=50.0,
+            name="Service 1",
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=10.0)
+        )
+    )
+    state["return_value"] = return_value
+
+    response = api.client.add_to_basket(1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 3
+    assert "GET_BASKET" in methods_called
+    assert "GET" in methods_called
+    assert "ADD_TO_BASKET" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body == return_value
+
+
+def test_cmd_add_to_basket_get_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True, "ADD_TO_BASKET": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.add_to_basket(1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 1
+    assert "GET_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("ADD-TO-BASKET - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_add_to_basket_unknown(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_BASKET": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.add_to_basket(1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 2
+    assert "GET_BASKET" in methods_called
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "ADD-TO-BASKET - Client 1 or service 1 not found."
+    assert response.body is None
+
+
+def test_cmd_add_to_basket_add_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_BASKET": True}
+    state["read_value"] = ("basket", "service")
+    state["return_value"] = None
+
+    response = api.client.add_to_basket(1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 3
+    assert "GET_BASKET" in methods_called
+    assert "GET" in methods_called
+    assert "ADD_TO_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("ADD-TO-BASKET - Cannot add to basket of client 1")
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+    )
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, quantity=2)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "UPDATE_ITEM_QUANTITY" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity_bad_quantity(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+    )
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, quantity=0)
+
+    assert len(methods_called) == 0
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "UPDATE-ITEM - Item quantity shall be at least one."
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity_get_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True, "UPDATE_ITEM_QUANTITY": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, quantity=2)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("BASKET-UPDATE-ITEM - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity_unknown(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, quantity=2)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "BASKET-UPDATE-ITEM - Item 1 not found."
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity_in_invoice(
+    mock_client_model, mock_schema_from_orm
+):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.EMITTED)
+    )
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, quantity=2)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "BASKET-UPDATE-ITEM - Cannot change items of a non-draft invoice."
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity_update_error(
+    mock_client_model, mock_schema_from_orm
+):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": True}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+    )
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, quantity=2)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "UPDATE_ITEM_QUANTITY" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("BASKET-UPDATE-ITEM - Cannot remove item 1")
+    assert response.body is None
+
+
+def test_cmd_remove_from_basket(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "REMOVE_FROM_BASKET": False}
+    state["read_value"] = "item"
+    state["return_value"] = None
+
+    response = api.client.remove_from_basket(1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "REMOVE_FROM_BASKET" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is None
+
+
+def test_cmd_remove_from_basket_get_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True, "REMOVE_FROM_BASKET": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.remove_from_basket(1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("REMOVE-FROM-BASKET - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_remove_from_basket_unknown(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "REMOVE_FROM_BASKET": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.remove_from_basket(1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "REMOVE-FROM-BASKET - Item 1 not found."
+    assert response.body is None
+
+
+def test_cmd_remove_from_basket_remove_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "REMOVE_FROM_BASKET": True}
+    state["read_value"] = "item"
+    state["return_value"] = None
+
+    response = api.client.remove_from_basket(1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "REMOVE_FROM_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("REMOVE-FROM-BASKET - Cannot remove item 1")
+    assert response.body is None
+
+
+def test_cmd_clear_basket(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "CLEAR_BASKET": False}
+    state["read_value"] = FakeORMBasket(
+        id=1,
+        raw_amount=100.0,
+        vat=10.0,
+        net_amount=110.0,
+        client_id=1,
+        items=["Item 1", "Item 2"]
+    )
+
+    response = api.client.clear_basket(1)
+
+    assert len(methods_called) == 2
+    assert "GET_BASKET" in methods_called
+    assert "CLEAR_BASKET" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is None
+
+
+def test_cmd_clear_basket_get_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True, "CLEAR_BASKET": False}
+    state["read_value"] = None
+
+    response = api.client.clear_basket(1)
+
+    assert len(methods_called) == 1
+    assert "GET_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("CLEAR-BASKET - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_clear_basket_unknown(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "CLEAR_BASKET": False}
+    state["read_value"] = None
+
+    response = api.client.clear_basket(1)
+
+    assert len(methods_called) == 1
+    assert "GET_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "CLEAR-BASKET - Basket of client 1 not found."
+    assert response.body is None
+
+
+def test_cmd_clear_basket_clear_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "CLEAR_BASKET": True}
+    state["read_value"] = FakeORMBasket(
+        id=1,
+        raw_amount=100.0,
+        vat=10.0,
+        net_amount=110.0,
+        client_id=1,
+        items=["Item 1", "Item 2"]
+    )
+
+    response = api.client.clear_basket(1)
+
+    assert len(methods_called) == 2
+    assert "GET_BASKET" in methods_called
+    assert "CLEAR_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("CLEAR-BASKET - Cannot clear basket of client 1")
+    assert response.body is None
