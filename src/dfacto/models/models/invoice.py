@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.schema import CheckConstraint
 
 from dfacto.models import db
 
@@ -27,18 +28,25 @@ class InvoiceStatus(enum.Enum):
     CANCELLED = 5
 
 
-class _Invoice(db.BaseModel):
+class Invoice(db.BaseModel):
     __tablename__ = "invoice"
+    __table_args__ = (
+        CheckConstraint(
+            "due_date > date",
+            name="due_date_is_after_date",
+        ),
+    )
 
     id: Mapped[db.intpk] = mapped_column(init=False)
     date: Mapped[date]
     due_date: Mapped[date]
+    client_id: Mapped[int] = mapped_column(ForeignKey("client.id"))
     raw_amount: Mapped[float] = mapped_column(default=0.0)
     vat: Mapped[float] = mapped_column(default=0.0)
-    net_amount: Mapped[float] = mapped_column(default=0.0)
+    # net_amount: Mapped[float] = mapped_column(default=0.0)
     status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
     #    status: Mapped[InvoiceStatus] = mapped_column(Enum(create_constraint=True, validate_strings=True))
-    client_id: Mapped[int] = mapped_column(ForeignKey("client.id"), init=False)
+    # client_id: Mapped[int] = mapped_column(ForeignKey("client.id"), init=False)
 
     client: Mapped["Client"] = relationship(back_populates="invoices", init=False)
     items: Mapped[list["Item"]] = relationship(
@@ -48,5 +56,9 @@ class _Invoice(db.BaseModel):
     )
 
     @hybrid_property
-    def code(self) -> str:
-        return "FC" + str(self.id).zfill(10)
+    def net_amount(self) -> float:
+        return self.raw_amount + self.vat
+
+    # @hybrid_property
+    # def code(self) -> str:
+    #     return "FC" + str(self.id).zfill(10)

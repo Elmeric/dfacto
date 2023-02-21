@@ -14,7 +14,7 @@ from dfacto.models import db
 
 if TYPE_CHECKING:   # pragma: no cover
     from .basket import Basket
-    from .invoice import _Invoice
+    from .invoice import Invoice
     from .service import Service
 
 
@@ -43,4 +43,4 @@ class Item(db.BaseModel):
 
     service: Mapped["Service"] = relationship(init=False)
     basket: Mapped["Basket"] = relationship(back_populates="items", init=False)
-    invoice: Mapped["_Invoice"] = relationship(back_populates="items", init=False)
+    invoice: Mapped["Invoice"] = relationship(back_populates="items", init=False)

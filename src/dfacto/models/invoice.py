@@ -15,7 +15,7 @@ import sqlalchemy.orm
 from dfacto.models.basket import BasketModel
 from dfacto.models.api.command import CommandResponse, CommandStatus
 from dfacto.models.item import Item, ItemModel
-from dfacto.models.models import InvoiceStatus, Basket, _Invoice, Item
+from dfacto.models.models import InvoiceStatus, Basket, Invoice, Item
 # from dfacto.models.api.api_v1.service import ServiceModel
 from dfacto.models import api
 
@@ -67,7 +67,7 @@ class InvoiceModel:
     basket_model: BasketModel
 
     def get(self, invoice_id: int) -> Optional[Invoice]:
-        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        invoice: Optional[Invoice] = self.Session.get(Invoice, invoice_id)
         if invoice is None:
             return
 
@@ -89,7 +89,7 @@ class InvoiceModel:
                 [self.item_model.get(it.id) for it in invoice.items],
                 invoice.status,
             )
-            for invoice in self.Session.scalars(sa.select(_Invoice)).all()
+            for invoice in self.Session.scalars(sa.select(Invoice)).all()
         ]
 
     def create_from_basket(
@@ -108,7 +108,7 @@ class InvoiceModel:
             )
 
         created_at = date.today()
-        invoice = _Invoice(
+        invoice = Invoice(
             date=created_at,
             due_date=created_at,
             raw_amount=bskt.raw_amount,
@@ -145,7 +145,7 @@ class InvoiceModel:
     def add_item(
         self, invoice_id: int, service_id: int, quantity: int
     ) -> CommandResponse:
-        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        invoice: Optional[Invoice] = self.Session.get(Invoice, invoice_id)
         if invoice is None:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -198,7 +198,7 @@ class InvoiceModel:
         service_id: Optional[int] = None,
         quantity: Optional[int] = None,
     ) -> CommandResponse:
-        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        invoice: Optional[Invoice] = self.Session.get(Invoice, invoice_id)
         if invoice is None:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -291,7 +291,7 @@ class InvoiceModel:
             return CommandResponse(CommandStatus.COMPLETED)
 
     def update_status(self, invoice_id: int, status: InvoiceStatus) -> CommandResponse:
-        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        invoice: Optional[Invoice] = self.Session.get(Invoice, invoice_id)
         if invoice is None:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -319,7 +319,7 @@ class InvoiceModel:
             return CommandResponse(CommandStatus.COMPLETED)
 
     def delete(self, invoice_id: int) -> CommandResponse:
-        invoice: Optional[_Invoice] = self.Session.get(_Invoice, invoice_id)
+        invoice: Optional[Invoice] = self.Session.get(Invoice, invoice_id)
         if invoice is None:
             return CommandResponse(
                 CommandStatus.FAILED,

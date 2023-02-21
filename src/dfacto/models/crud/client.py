@@ -29,6 +29,12 @@ class CRUDClient(
         else:
             return basket
 
+    def get_invoices(
+        self, dbsession: scoped_session, obj_id: int
+    ) -> list[models.Invoice]:
+        # TODO
+        pass
+
     def add_to_basket(
         self,
         dbsession: scoped_session,

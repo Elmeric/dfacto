@@ -36,6 +36,10 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Basket.from_orm(db_obj)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    def get_invoices(self, obj_id: int) -> CommandResponse:
+        # TODO
+        pass
+
     def rename(self, obj_id: int, name: str) -> CommandResponse:
         return self.update(obj_id, obj_in=schemas.ClientUpdate(name=name))
 

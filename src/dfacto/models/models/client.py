@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models import db
 from .basket import Basket
-from .invoice import InvoiceStatus, _Invoice
+from .invoice import InvoiceStatus, Invoice
 
 
 class Client(db.BaseModel):
@@ -28,7 +28,7 @@ class Client(db.BaseModel):
     basket: Mapped["Basket"] = relationship(
         init=False, back_populates="client", cascade="all, delete-orphan"
     )
-    invoices: Mapped[list["_Invoice"]] = relationship(
+    invoices: Mapped[list["Invoice"]] = relationship(
         init=False,
         back_populates="client",
         cascade="all, delete-orphan",
@@ -46,8 +46,8 @@ class Client(db.BaseModel):
                     exists()
                     .where(
                         and_(
-                            _Invoice.client_id == cls.id,
-                            _Invoice.status != "DRAFT",
+                            Invoice.client_id == cls.id,
+                            Invoice.status != "DRAFT",
                         )
                     )
                     .correlate(cls),

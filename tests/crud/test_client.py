@@ -179,7 +179,7 @@ def test_crud_get_multi_error(dbsession, init_clients, mock_select):
     state["failed"] = True
 
     with pytest.raises(crud.CrudError):
-        _clients = crud.vat_rate.get_multi(dbsession)
+        _clients = crud.client.get_multi(dbsession)
 
 
 def test_crud_get_all(dbsession, init_clients):

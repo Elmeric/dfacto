@@ -12,6 +12,7 @@ from .base import (
     UpdateSchemaType,
 )
 from .client import CRUDClient, client
+from .invoice import invoice
 from .item import item
 from .service import CRUDService, service
 from .vat_rate import CRUDVatRate, vat_rate
