@@ -5,8 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Type
+from typing import Type, Optional
 
+from dfacto.models.util import Period, PeriodFilter
 from dfacto.models import db, crud, schemas
 from dfacto.models.models import InvoiceStatus
 from dfacto.models.api.command import CommandResponse, CommandStatus
@@ -17,6 +18,18 @@ from .base import DFactoModel
 class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     crud_object: crud.CRUDClient = crud.client
     schema: Type[schemas.Client] = schemas.Client
+
+    def get_active(self) -> CommandResponse:
+        try:
+            clients = self.crud_object.get_active(self.Session)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-ACTIVE - SQL or database error: {exc}",
+            )
+        else:
+            body = [schemas.Client.from_orm(client_) for client_ in clients]
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def get_basket(self, obj_id: int) -> CommandResponse:
         try:
@@ -36,9 +49,55 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Basket.from_orm(db_obj)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
-    def get_invoices(self, obj_id: int) -> CommandResponse:
-        # TODO
-        pass
+    def get_invoices(
+        self,
+        obj_id: int,    # client id
+        *,
+        status: Optional[InvoiceStatus] = None,
+        filter_: Optional[PeriodFilter] = None,
+        period: Optional[Period] = None,
+    ) -> CommandResponse:
+        # filter on a given status (EMITTED, PAID,...), logged during a given period.
+        if filter_ is not None and period is not None:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                "'filter' and 'period' arguments are mutually exclusive.",
+            )
+        if filter_ is not None:
+            period = filter_.as_period()
+        # Here, period may be None if both filter and period was None
+        if period is None:
+            period = Period()   # i.e. from now to the epoch
+        if status is not None:
+            return self._get_invoices_by_status(obj_id, status=status, period=period)
+        else:
+            return self._get_invoices(obj_id, period=period)
+
+    def _get_invoices_by_status(self, obj_id: int, *, status: InvoiceStatus, period: Period):
+        try:
+            invoices = self.crud_object.get_invoices_by_status(
+                self.Session, obj_id, status=status, period=period
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-INVOICES - SQL or database error: {exc}",
+            )
+        else:
+            body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    def _get_invoices(self, obj_id: int, *, period: Period):
+        try:
+            invoices = self.crud_object.get_invoices(self.Session, obj_id, period=period)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-INVOICES - SQL or database error: {exc}",
+            )
+        else:
+            body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def rename(self, obj_id: int, name: str) -> CommandResponse:
         return self.update(obj_id, obj_in=schemas.ClientUpdate(name=name))

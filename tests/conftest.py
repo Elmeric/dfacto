@@ -6,19 +6,20 @@
 
 # Cf. https://gist.github.com/kissgyorgy/e2365f25a213de44b9a2
 
-from typing import Union, Any
+from typing import Union, Any, cast
 import dataclasses
 import sys
+from datetime import date, datetime
 
 from sqlite3 import Connection as SQLite3Connection
 
 import pytest
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
 from sqlalchemy.event import listen
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 
-from dfacto.models import db, crud, schemas
+from dfacto.models import db, crud, schemas, models
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -135,6 +136,19 @@ def mock_select(monkeypatch):
     return state, called
 
 
+FAKE_TIME = datetime(2023, 2, 22, 21, 54, 30)
+
+
+@pytest.fixture
+def mock_datetime_now(monkeypatch):
+
+    class mydatetime:
+        @classmethod
+        def now(cls):
+            return FAKE_TIME
+
+    monkeypatch.setattr(sys.modules["dfacto.models.crud.invoice"], "datetime", mydatetime)
+
 #
 # Mock some methods of the CRUDBase class used by all DFactoModel command API
 #
@@ -231,6 +245,122 @@ def mock_dfacto_model(monkeypatch):
     monkeypatch.setattr(crud.base.CRUDBase, "delete", _delete)
 
     return state, methods_called
+
+
+@dataclasses.dataclass
+class TestData:
+    vat_rates: list[models.VatRate]
+    services: list[models.Service]
+    clients: list[models.Client]
+    items: list[models.Item]
+    invoices: list[models.Invoice]
+
+
+@pytest.fixture
+def init_data(dbsession: scoped_session) -> TestData:
+    # VAT rates (5 preset rates, 3 custom rates)
+    db.init_db_data(dbsession)
+    for i in range(3):
+        vat_rate = models.VatRate(
+            name=f"Rate {i + 1}",   # Rate_1 to _3
+            rate=12.5 + 2.5*i       # 12.5, 15, 17.5
+        )
+        dbsession.add(vat_rate)
+    dbsession.commit()
+    vat_rates = cast(
+        list[models.VatRate],
+        dbsession.scalars(select(models.VatRate)).all()
+    )
+    # Services
+    for i in range(5):
+        service = models.Service(
+            name=f"Service_{i + 1}",    # Service_1 to _5
+            unit_price=100 + 10*i,      # 100, 110, 120, 130, 140
+            vat_rate_id=i + 1           # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
+        )
+        dbsession.add(service)
+    dbsession.commit()
+    services = cast(
+        list[models.Service],
+        dbsession.scalars(select(models.Service)).all()
+    )
+    # Clients
+    for i in range(5):
+        client = models.Client(
+            name=f"Client_{i + 1}",         # Client_1 to _5
+            address=f"Address_{i + 1}",     # Address_1 to _5
+            zip_code=f"1234{i + 1}",        # 12341 to 12345
+            city=f"CITY_{i + 1}",           # CITY_1 to _5
+        )
+        dbsession.add(client)
+    dbsession.commit()
+    clients = cast(
+        list[models.Client],
+        dbsession.scalars(select(models.Client)).all()
+    )
+    # Invoices (empty)
+    for i in range(5):
+        invoice = models.Invoice(
+            # date=date.today(),
+            # due_date=date.today() + timedelta(30),
+            client_id=clients[i % 5].id,
+            status=models.InvoiceStatus(i + 1)
+        )
+        dbsession.add(invoice)
+        dbsession.flush([invoice])
+        log = models.StatusLog(
+            invoice_id=invoice.id,
+            from_=datetime.now(),
+            to=None,
+            status=models.InvoiceStatus.DRAFT
+        )
+        dbsession.add(log)
+    dbsession.commit()
+    invoices = cast(
+        list[models.Invoice],
+        dbsession.scalars(select(models.Invoice)).all()
+    )
+    # Items
+    for i in range(20):
+        service = services[i % 5]
+        raw_amount = service.unit_price
+        vat = raw_amount * service.vat_rate.rate / 100
+        net_amount = raw_amount + vat
+        quantity = i + 1
+        item = models.Item(
+            raw_amount=raw_amount,
+            vat=vat,
+            net_amount=net_amount,
+            service_id=service.id,
+            quantity=quantity
+        )
+        if i < 10:
+            basket = clients[i % 5].basket
+            item.basket_id = basket.id
+            dbsession.add(item)
+            basket.raw_amount += raw_amount
+            basket.vat += vat
+            basket.net_amount += net_amount
+        else:
+            invoice = invoices[i % 5]
+            item.invoice_id = invoice.id
+            dbsession.add(item)
+            invoice.raw_amount += raw_amount
+            invoice.vat += vat
+            # invoice.net_amount += net_amount
+    dbsession.commit()
+    items = cast(
+        list[models.Item],
+        dbsession.scalars(select(models.Item)).all()
+    )
+
+    return TestData(
+        vat_rates=vat_rates,
+        services=services,
+        clients=clients,
+        items=items,
+        invoices=invoices,
+    )
 
 
 @dataclasses.dataclass

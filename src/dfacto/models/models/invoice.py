@@ -5,13 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from datetime import date
-from typing import TYPE_CHECKING
+from datetime import datetime
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.schema import CheckConstraint
 
 from dfacto.models import db
 
@@ -30,29 +29,24 @@ class InvoiceStatus(enum.Enum):
 
 class Invoice(db.BaseModel):
     __tablename__ = "invoice"
-    __table_args__ = (
-        CheckConstraint(
-            "due_date > date",
-            name="due_date_is_after_date",
-        ),
-    )
 
     id: Mapped[db.intpk] = mapped_column(init=False)
-    date: Mapped[date]
-    due_date: Mapped[date]
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"))
     raw_amount: Mapped[float] = mapped_column(default=0.0)
     vat: Mapped[float] = mapped_column(default=0.0)
-    # net_amount: Mapped[float] = mapped_column(default=0.0)
     status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
     #    status: Mapped[InvoiceStatus] = mapped_column(Enum(create_constraint=True, validate_strings=True))
-    # client_id: Mapped[int] = mapped_column(ForeignKey("client.id"), init=False)
 
     client: Mapped["Client"] = relationship(back_populates="invoices", init=False)
     items: Mapped[list["Item"]] = relationship(
         back_populates="invoice",
         init=False
         # back_populates="invoice", init=False, cascade="all, delete-orphan"
+    )
+    status_log: Mapped[list["StatusLog"]] = relationship(
+        back_populates="invoice",
+        init=False,
+        cascade="all, delete-orphan"
     )
 
     @hybrid_property
@@ -62,3 +56,15 @@ class Invoice(db.BaseModel):
     # @hybrid_property
     # def code(self) -> str:
     #     return "FC" + str(self.id).zfill(10)
+
+
+class StatusLog(db.BaseModel):
+    __tablename__ = "status_log"
+
+    id: Mapped[db.intpk] = mapped_column(init=False)
+    from_: Mapped[datetime]
+    invoice_id: Mapped[int] = mapped_column(ForeignKey("invoice.id"))
+    to: Mapped[Optional[datetime]] = mapped_column(default=None)
+    status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
+
+    invoice: Mapped["Invoice"] = relationship(back_populates="status_log", init=False)

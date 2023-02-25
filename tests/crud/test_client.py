@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from typing import cast
+from datetime import date
 
 import pytest
 import sqlalchemy as sa
@@ -12,6 +13,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
 from dfacto.models import db, crud, models, schemas
+from dfacto.models.util import Period
 
 pytestmark = pytest.mark.crud
 
@@ -26,6 +28,7 @@ def init_clients(dbsession: sa.orm.scoped_session) -> list[models.Client]:
             address=f"{i * 1} rue Nationale {i + 1}",
             zip_code=f"1234{i + 1}",
             city=f"CITY_{i + 1}",
+            is_active=False if i < 3 else True,
         )
         dbsession.add(client)
         dbsession.commit()
@@ -120,6 +123,22 @@ def test_crud_get_error(dbsession, init_clients, mock_get):
         _client = crud.client.get(dbsession, clients[0].id)
 
 
+def test_crud_get_active(dbsession, init_clients):
+    clients = crud.client.get_active(dbsession)
+
+    assert len(clients) == 2
+    assert clients[0] is init_clients[3]
+    assert clients[1] is init_clients[4]
+
+
+def test_crud_get_active_error(dbsession, init_clients, mock_select):
+    state, _called = mock_select
+    state["failed"] = True
+
+    with pytest.raises(crud.CrudError):
+        _clients = crud.client.get_active(dbsession)
+
+
 def test_crud_get_basket(dbsession, init_clients):
     clients = init_clients
 
@@ -195,6 +214,94 @@ def test_crud_get_all_error(dbsession, init_clients, mock_select):
 
     with pytest.raises(crud.CrudError):
         _clients = crud.client.get_all(dbsession)
+
+
+@pytest.mark.parametrize(
+    "period, expected",
+    (
+        (Period(), 1),
+        (Period(end=date(2022,12,31)), 0)
+    )
+)
+def test_crud_get_invoices(period, expected, dbsession, init_data):
+    test_data = init_data
+
+    invoices = crud.client.get_invoices(dbsession, test_data.clients[0].id, period=period)
+
+    assert len(invoices) == expected
+    if expected == 1:
+        assert invoices[0] is test_data.clients[0].invoices[0]
+
+
+def test_crud_get_invoices_unknown(dbsession, init_data):
+    test_data = init_data
+    ids = [c.id for c in test_data.clients]
+
+    invoices = crud.client.get_invoices(dbsession, 100, period=Period())
+
+    assert 100 not in ids
+    assert len(invoices) == 0
+
+
+def test_crud_get_invoice_error(dbsession, init_data, mock_select):
+    state, _called = mock_select
+    state["failed"] = True
+
+    test_data = init_data
+
+    with pytest.raises(crud.CrudError):
+        _invoices = crud.client.get_invoices(dbsession, test_data.clients[0].id, period=Period())
+
+
+@pytest.mark.parametrize(
+    "status, period, expected",
+    (
+        (models.InvoiceStatus.DRAFT, Period(), 1),
+        (models.InvoiceStatus.DRAFT, Period(end=date(2022,12,31)), 0),
+        (models.InvoiceStatus.PAID, Period(), 0),
+        (models.InvoiceStatus.PAID, Period(end=date(2022,12,31)), 0)
+    )
+)
+def test_crud_get_invoices_by_status(status, period, expected, dbsession, init_data):
+    test_data = init_data
+
+    invoices = crud.client.get_invoices_by_status(
+        dbsession,
+        test_data.clients[0].id,
+        status=status,
+        period=period
+    )
+
+    assert len(invoices) == expected
+    if expected == 1:
+        assert invoices[0] is test_data.clients[0].invoices[0]
+
+
+def test_crud_get_invoices_by_status_unknown(dbsession, init_data):
+    test_data = init_data
+    ids = [c.id for c in test_data.clients]
+
+    invoices = crud.client.get_invoices_by_status(
+        dbsession, 100, status=models.InvoiceStatus.DRAFT, period=Period()
+    )
+
+    assert 100 not in ids
+    assert len(invoices) == 0
+
+
+def test_crud_get_invoice_by_status_error(dbsession, init_data, mock_select):
+    state, _called = mock_select
+    state["failed"] = True
+
+    test_data = init_data
+
+    with pytest.raises(crud.CrudError):
+        _invoices = crud.client.get_invoices_by_status(
+            dbsession,
+            test_data.clients[0].id,
+            status=models.InvoiceStatus.DRAFT,
+            period=Period()
+        )
 
 
 @pytest.mark.parametrize("is_active, expected", ((False, False), (None, True)))
@@ -332,7 +439,7 @@ def test_crud_update_partial(dbsession, init_clients):
     assert updated.address == client.address
     assert updated.zip_code == address.zip_code
     assert updated.city == client.city
-    assert updated.is_active
+    assert not updated.is_active
     try:
         c = dbsession.get(models.Client, updated.id)
     except sa.exc.SQLAlchemyError:
@@ -341,7 +448,7 @@ def test_crud_update_partial(dbsession, init_clients):
     assert c.address == client.address
     assert c.zip_code == address.zip_code
     assert c.city == client.city
-    assert c.is_active
+    assert not c.is_active
 
 
 def test_crud_update_idem(dbsession, init_clients, mock_commit):

@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 import dataclasses
-from datetime import date, timedelta
+from datetime import date, datetime
 from typing import cast
 
 import pytest
@@ -13,116 +13,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
 from dfacto.models import db, crud, models, schemas
+from tests.conftest import FAKE_TIME
 
 pytestmark = pytest.mark.crud
-
-
-@dataclasses.dataclass
-class TestData:
-    vat_rates: list[models.VatRate]
-    services: list[models.Service]
-    clients: list[models.Client]
-    items: list[models.Item]
-    invoices: list[models.Invoice]
-
-
-@pytest.fixture
-def init_data(dbsession: sa.orm.scoped_session) -> TestData:
-    # VAT rates (5 preset rates, 3 custom rates)
-    db.init_db_data(dbsession)
-    for i in range(3):
-        vat_rate = models.VatRate(
-            name=f"Rate {i + 1}",   # Rate_1 to _3
-            rate=12.5 + 2.5*i       # 12.5, 15, 17.5
-        )
-        dbsession.add(vat_rate)
-    dbsession.commit()
-    vat_rates = cast(
-        list[models.VatRate],
-        dbsession.scalars(sa.select(models.VatRate)).all()
-    )
-    # Services
-    for i in range(5):
-        service = models.Service(
-            name=f"Service_{i + 1}",    # Service_1 to _5
-            unit_price=100 + 10*i,      # 100, 110, 120, 130, 140
-            vat_rate_id=i + 1           # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
-        )
-        dbsession.add(service)
-    dbsession.commit()
-    services = cast(
-        list[models.Service],
-        dbsession.scalars(sa.select(models.Service)).all()
-    )
-    # Clients
-    for i in range(5):
-        client = models.Client(
-            name=f"Client_{i + 1}",         # Client_1 to _5
-            address=f"Address_{i + 1}",     # Address_1 to _5
-            zip_code=f"1234{i + 1}",        # 12341 to 12345
-            city=f"CITY_{i + 1}",           # CITY_1 to _5
-        )
-        dbsession.add(client)
-    dbsession.commit()
-    clients = cast(
-        list[models.Client],
-        dbsession.scalars(sa.select(models.Client)).all()
-    )
-    # Invoices (empty)
-    for i in range(5):
-        invoice = models.Invoice(
-            date=date.today(),
-            due_date=date.today() + timedelta(30),
-            client_id=clients[i % 5].id,
-            status=models.InvoiceStatus(i + 1)
-        )
-        dbsession.add(invoice)
-    dbsession.commit()
-    invoices = cast(
-        list[models.Invoice],
-        dbsession.scalars(sa.select(models.Invoice)).all()
-    )
-    # Items
-    for i in range(20):
-        service = services[i % 5]
-        raw_amount = service.unit_price
-        vat = raw_amount * service.vat_rate.rate / 100
-        net_amount = raw_amount + vat
-        quantity = i + 1
-        item = models.Item(
-            raw_amount=raw_amount,
-            vat=vat,
-            net_amount=net_amount,
-            service_id=service.id,
-            quantity=quantity
-        )
-        if i < 10:
-            basket = clients[i % 5].basket
-            item.basket_id = basket.id
-            dbsession.add(item)
-            basket.raw_amount += raw_amount
-            basket.vat += vat
-            basket.net_amount += net_amount
-        else:
-            invoice = invoices[i % 5]
-            item.invoice_id = invoice.id
-            dbsession.add(item)
-            invoice.raw_amount += raw_amount
-            invoice.vat += vat
-            # invoice.net_amount += net_amount
-    dbsession.commit()
-    items = cast(
-        list[models.Item],
-        dbsession.scalars(sa.select(models.Item)).all()
-    )
-
-    return TestData(
-        vat_rates=vat_rates,
-        services=services,
-        clients=clients,
-        items=items,
-        invoices=invoices,
-    )
 
 
 def test_crud_init():
@@ -155,39 +48,6 @@ def test_crud_get_error(dbsession, init_data, mock_get):
 
     with pytest.raises(crud.CrudError):
         _invoice = crud.invoice.get(dbsession, test_data.invoices[0].id)
-#
-#
-# def test_crud_get_basket(dbsession, init_clients):
-#     clients = init_clients
-#
-#     basket = crud.client.get_basket(dbsession, clients[0].id)
-#
-#     assert basket is clients[0].basket
-#     assert basket.raw_amount == 0.0
-#     assert basket.vat == 0.0
-#     assert basket.net_amount == 0.0
-#     assert basket.client_id == clients[0].id
-#     assert len(basket.items) == 0
-#
-#
-# def test_crud_get_basket_unknown(dbsession, init_clients):
-#     clients = init_clients
-#     ids = [c.id for c in clients]
-#
-#     basket = crud.client.get_basket(dbsession, 100)
-#
-#     assert 100 not in ids
-#     assert basket is None
-#
-#
-# def test_crud_get_basket_error(dbsession, init_clients, mock_select):
-#     state, _called = mock_select
-#     state["failed"] = True
-#
-#     clients = init_clients
-#
-#     with pytest.raises(crud.CrudError):
-#         _client = crud.client.get_basket(dbsession, clients[0].id)
 
 
 @pytest.mark.parametrize(
@@ -234,37 +94,51 @@ def test_crud_get_all_error(dbsession, init_data, mock_select):
         _invoices = crud.invoice.get_all(dbsession)
 
 
-@pytest.mark.parametrize("is_active, expected", ((False, False), (None, True)))
-def test_crud_create(is_active, expected, dbsession, init_data):
+@pytest.mark.parametrize(
+    "kwargs",
+    (
+        {},
+        {"raw_amount": 10.0},
+        {"raw_amount": 10.0, "vat": 1.0},
+        {"raw_amount": 10.0, "vat": 1.0, "status": models.InvoiceStatus.DRAFT},
+    )
+)
+def test_crud_create(kwargs, dbsession, init_data, mock_datetime_now):
     client = init_data.clients[1]
     invoice = crud.invoice.create(
         dbsession,
         obj_in=schemas.InvoiceCreate(
             client_id=client.id,
-            date=date.today(),
-            due_date=date.today() + timedelta(90),
+            **kwargs,
         )
     )
 
+    raw_amount = kwargs.get("raw_amount", 0.0)
+    vat = kwargs.get("vat", 0.0)
+    status = kwargs.get("status", models.InvoiceStatus.DRAFT)
     assert invoice.id is not None
     assert invoice.client_id == client.id
-    assert invoice.date == date.today()
-    assert invoice.due_date == date.today() + timedelta(90)
-    assert invoice.raw_amount == 0.0
-    assert invoice.vat == 0.0
-    assert invoice.net_amount == 0.0
-    assert invoice.status is models.InvoiceStatus.DRAFT
+    assert invoice.raw_amount == raw_amount
+    assert invoice.vat == vat
+    assert invoice.net_amount == raw_amount + vat
+    assert invoice.status is status
+    assert len(invoice.status_log) == 1
+    assert invoice.status_log[0].status is models.InvoiceStatus.DRAFT
+    assert invoice.status_log[0].from_ == FAKE_TIME
+    assert invoice.status_log[0].to is None
     try:
         inv = dbsession.get(models.Invoice, invoice.id)
     except sa.exc.SQLAlchemyError:
         inv = None
     assert inv.client_id == client.id
-    assert inv.date == date.today()
-    assert inv.due_date == date.today() + timedelta(90)
-    assert inv.raw_amount == 0.0
-    assert inv.vat == 0.0
-    assert inv.net_amount == 0.0
-    assert inv.status is models.InvoiceStatus.DRAFT
+    assert inv.raw_amount == raw_amount
+    assert inv.vat == vat
+    assert inv.net_amount == raw_amount + vat
+    assert inv.status is status
+    assert len(inv.status_log) == 1
+    assert inv.status_log[0].status is models.InvoiceStatus.DRAFT
+    assert inv.status_log[0].from_ == FAKE_TIME
+    assert inv.status_log[0].to is None
 #
 #
 # def test_crud_create_duplicate(dbsession, init_clients):

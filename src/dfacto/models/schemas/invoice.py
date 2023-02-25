@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import datetime
 
 from dfacto.models import models
 
@@ -18,9 +18,6 @@ class _InvoiceBase(BaseSchema):
     client_id: int
     raw_amount: float
     vat: float
-    # net_amount: float
-    date: date
-    due_date: date
     status: models.InvoiceStatus
 
 
@@ -33,9 +30,6 @@ class _InvoiceDefaultsBase(BaseSchema):
 class InvoiceCreate(_InvoiceBase):
     raw_amount: float = 0.0
     vat: float = 0.0
-    # net_amount: float = 0.0
-    date: date = date.today()
-    due_date: date = date.today() + timedelta(30)
     status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
 
 
@@ -51,8 +45,28 @@ class _InvoiceInDBBase(_InvoiceBase):
 
 # Additional properties to return from DB
 @dataclass
+class StatusLog(BaseSchema):
+    id: int
+    status: models.InvoiceStatus
+    from_: datetime
+    to: datetime
+    invoice: "Invoice"
+
+    @classmethod
+    def from_orm(cls, orm_obj: models.StatusLog) -> "StatusLog":
+        return cls(
+            id=orm_obj.id,
+            status=orm_obj.status,
+            from_=orm_obj.from_,
+            to=orm_obj.to,
+            invoice=Invoice.from_orm(orm_obj.invoice),
+        )
+
+
+@dataclass
 class Invoice(_InvoiceInDBBase):
     items: list[Item]
+    actions: list[StatusLog]
 
     @property
     def code(self) -> str:
@@ -62,17 +76,16 @@ class Invoice(_InvoiceInDBBase):
     def from_orm(cls, orm_obj: models.Invoice) -> "Invoice":
         return cls(
             id=orm_obj.id,
-            date=orm_obj.date,
-            due_date=orm_obj.due_date,
             raw_amount=orm_obj.raw_amount,
             vat=orm_obj.vat,
-            # net_amount=orm_obj.net_amount,
             status=orm_obj.status,
-            items=[Item.from_orm(item) for item in orm_obj.items]
+            client_id=orm_obj.client_id,
+            items=[Item.from_orm(item) for item in orm_obj.items],
+            actions=[StatusLog.from_orm(action) for action in orm_obj.status_log],
         )
 
 
 # Additional properties stored in DB
 @dataclass
 class InvoiceInDB(_InvoiceInDBBase):
-    client_id: int
+    pass

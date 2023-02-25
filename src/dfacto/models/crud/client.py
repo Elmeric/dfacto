@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Optional
+from typing import Optional, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import scoped_session
@@ -12,6 +12,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from dfacto.models import models
 from dfacto.models import schemas
+from dfacto.models.util import Period
 
 from .base import CRUDBase, CrudError
 
@@ -19,6 +20,19 @@ from .base import CRUDBase, CrudError
 class CRUDClient(
     CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpdate]
 ):
+    def get_active(self, dbsession: scoped_session) -> list[models.Client]:
+        try:
+            clients = cast(
+                list[models.Client],
+                dbsession.scalars(
+                    select(models.Client).where(models.Client.is_active == True)
+                ).all()
+            )
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        else:
+            return clients
+
     def get_basket(self, dbsession: scoped_session, obj_id: int) -> Optional[models.Basket]:
         try:
             basket = dbsession.scalars(
@@ -30,10 +44,49 @@ class CRUDClient(
             return basket
 
     def get_invoices(
-        self, dbsession: scoped_session, obj_id: int
+        self, dbsession: scoped_session, obj_id: int, *, period: Period
     ) -> list[models.Invoice]:
-        # TODO
-        pass
+        try:
+            invoices = cast(
+                list[models.Invoice],
+                dbsession.scalars(
+                    select(models.Invoice)
+                    .join(models.StatusLog)
+                    .where(models.Invoice.client_id == obj_id)
+                    .where(models.StatusLog.status == models.InvoiceStatus.DRAFT)
+                    .where(models.StatusLog.from_ >= period.start_time)
+                    .where(models.StatusLog.from_ <= period.end_time)
+                ).all()
+            )
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        else:
+            return invoices
+
+    def get_invoices_by_status(
+        self,
+        dbsession: scoped_session,
+        obj_id: int,
+        *,
+        status: models.InvoiceStatus,
+        period: Period
+    ) -> list[models.Invoice]:
+        try:
+            invoices = cast(
+                list[models.Invoice],
+                dbsession.scalars(
+                    select(models.Invoice)
+                    .join(models.StatusLog)
+                    .where(models.Invoice.client_id == obj_id)
+                    .where(models.StatusLog.status == status)
+                    .where(models.StatusLog.from_ >= period.start_time)
+                    .where(models.StatusLog.from_ <= period.end_time)
+                ).all()
+            )
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        else:
+            return invoices
 
     def add_to_basket(
         self,

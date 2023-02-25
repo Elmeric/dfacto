@@ -6,12 +6,14 @@
 
 import dataclasses
 from typing import Optional
+from datetime import date
 
 import pytest
 
 from dfacto.models.api.command import CommandStatus
 from dfacto.models import crud, schemas, api
 from dfacto.models.models.invoice import InvoiceStatus
+from dfacto.models.util import Period, PeriodFilter
 from tests.conftest import FakeORMModel
 
 pytestmark = pytest.mark.api
@@ -92,14 +94,45 @@ def mock_schema_from_orm(monkeypatch):
     monkeypatch.setattr(schemas.Client, "from_orm", _from_orm)
     monkeypatch.setattr(schemas.Basket, "from_orm", _from_orm)
     monkeypatch.setattr(schemas.Item, "from_orm", _from_orm)
+    monkeypatch.setattr(schemas.Invoice, "from_orm", _from_orm)
 
 
 @pytest.fixture()
 def mock_client_model(mock_dfacto_model, monkeypatch):
     state, methods_called = mock_dfacto_model
 
+    def _get_active(_db):
+        methods_called.append("GET_ACTIVE")
+        exc = state["raises"]["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["read_value"]
+
     def _get_basket(_db, _id):
         methods_called.append("GET_BASKET")
+        exc = state["raises"]["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["read_value"]
+
+    def _get_invoices(_db, _id, period):
+        methods_called.append("GET_INVOICES")
+        exc = state["raises"]["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["read_value"]
+
+    def _get_invoices_by_status(_db, _id, status, period):
+        methods_called.append("GET_INVOICES_BY_STATUS")
         exc = state["raises"]["READ"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
@@ -142,7 +175,10 @@ def mock_client_model(mock_dfacto_model, monkeypatch):
         elif exc:
             raise crud.CrudError
 
+    monkeypatch.setattr(crud.client, "get_active", _get_active)
     monkeypatch.setattr(crud.client, "get_basket", _get_basket)
+    monkeypatch.setattr(crud.client, "get_invoices", _get_invoices)
+    monkeypatch.setattr(crud.client, "get_invoices_by_status", _get_invoices_by_status)
     monkeypatch.setattr(crud.client, "add_to_basket", _add_to_basket)
     monkeypatch.setattr(crud.client, "update_item_quantity", _update_item_quantity)
     monkeypatch.setattr(crud.client, "remove_from_basket", _remove_from_basket)
@@ -198,6 +234,41 @@ def test_cmd_get_error(mock_client_model, mock_schema_from_orm):
     assert response.reason.startswith("GET - SQL or database error")
 
 
+def test_cmd_get_active(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False}
+    expected_body = [
+        FakeORMClient(
+            id=1,
+            name="Name 1",
+            address="Address", zip_code="12345", city="CITY",
+            is_active=True,
+        )
+    ]
+    state["read_value"] = expected_body
+
+    response = api.client.get_active()
+
+    assert len(methods_called) == 1
+    assert "GET_ACTIVE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body == expected_body
+
+
+def test_cmd_get_active_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True}
+
+    response = api.client.get_active()
+
+    assert len(methods_called) == 1
+    assert "GET_ACTIVE" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("GET-ACTIVE - SQL or database error")
+    assert response.body is None
+
+
 def test_cmd_get_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
@@ -241,6 +312,61 @@ def test_cmd_get_basket_error(mock_client_model, mock_schema_from_orm):
     assert "GET_BASKET" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith("GET-BASKET - SQL or database error")
+    assert response.body is None
+
+
+@pytest.mark.parametrize(
+    "kwargs, called",
+    (
+        ({}, "GET_INVOICES"),
+        ({"status": InvoiceStatus.DRAFT}, "GET_INVOICES_BY_STATUS"),
+        ({"filter_": PeriodFilter.CURRENT_MONTH}, "GET_INVOICES"),
+        ({"period": Period(end=date(2022, 12, 31))}, "GET_INVOICES"),
+        ({"status": InvoiceStatus.DRAFT, "filter_": PeriodFilter.CURRENT_MONTH}, "GET_INVOICES_BY_STATUS",)
+    )
+)
+def test_cmd_get_invoices(kwargs, called, mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False}
+    expected_body = [FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)]
+    state["read_value"] = expected_body
+
+    response = api.client.get_invoices(obj_id=1, **kwargs)
+
+    assert len(methods_called) == 1
+    assert called in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body == expected_body
+
+
+def test_cmd_get_invoices_rejected(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False}
+    expected_body = [FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)]
+    state["read_value"] = expected_body
+
+    response = api.client.get_invoices(
+        obj_id=1,
+        filter_=PeriodFilter.CURRENT_MONTH,
+        period=Period(end=date(2022, 12, 31))
+    )
+
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "'filter' and 'period' arguments are mutually exclusive."
+    assert response.body is None
+
+
+def test_cmd_get_invoices_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True}
+
+    response = api.client.get_invoices(obj_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET_INVOICES" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("GET-INVOICES - SQL or database error")
     assert response.body is None
 
 
