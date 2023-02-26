@@ -16,9 +16,9 @@ from .item import Item
 @dataclass
 class _InvoiceBase(BaseSchema):
     client_id: int
-    raw_amount: float
-    vat: float
-    status: models.InvoiceStatus
+    # raw_amount: float
+    # vat: float
+    # status: models.InvoiceStatus
 
 
 @dataclass
@@ -28,9 +28,10 @@ class _InvoiceDefaultsBase(BaseSchema):
 
 @dataclass
 class InvoiceCreate(_InvoiceBase):
-    raw_amount: float = 0.0
-    vat: float = 0.0
-    status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
+    pass
+    # raw_amount: float = 0.0
+    # vat: float = 0.0
+    # status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
 
 
 @dataclass
@@ -41,6 +42,9 @@ class InvoiceUpdate(_InvoiceDefaultsBase):
 @dataclass
 class _InvoiceInDBBase(_InvoiceBase):
     id: int
+    raw_amount: float
+    vat: float
+    status: models.InvoiceStatus
 
 
 # Additional properties to return from DB

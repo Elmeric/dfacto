@@ -27,7 +27,7 @@ class Basket(db.BaseModel):
         ForeignKey("client.id"), init=False, unique=True
     )
 
-    client: Mapped["Client"] = relationship(back_populates="basket", init=False)
+    # client: Mapped["Client"] = relationship(back_populates="basket", init=False)
     items: Mapped[list["Item"]] = relationship(
         back_populates="basket",
         init=False

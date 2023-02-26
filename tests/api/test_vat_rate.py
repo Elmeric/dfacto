@@ -4,33 +4,14 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-import dataclasses
-
 import pytest
 
 from dfacto.models.api.command import CommandStatus
 from dfacto.models import crud, schemas, api
-from tests.conftest import FakeORMModel
+from tests.conftest import FakeORMVatRate
 from tests.api.test_service import FakeORMService
 
 pytestmark = pytest.mark.api
-
-
-@dataclasses.dataclass
-class FakeORMVatRate(FakeORMModel):
-    rate: float
-    name: str = "Rate"
-    is_default: bool = False
-    is_preset: bool = False
-    services: list["FakeORMService"] = dataclasses.field(default_factory=list)
-
-
-@pytest.fixture()
-def mock_schema_from_orm(monkeypatch):
-    def _from_orm(obj):
-        return obj
-
-    monkeypatch.setattr(schemas.VatRate, "from_orm", _from_orm)
 
 
 @pytest.fixture()

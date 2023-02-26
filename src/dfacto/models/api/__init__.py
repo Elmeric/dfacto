@@ -8,3 +8,4 @@ from .command import CommandResponse, CommandStatus
 from .api_v1.client import client
 from .api_v1.vat_rate import vat_rate
 from .api_v1.service import service
+from .api_v1.invoice import invoice

@@ -94,28 +94,32 @@ def test_crud_get_all_error(dbsession, init_data, mock_select):
         _invoices = crud.invoice.get_all(dbsession)
 
 
-@pytest.mark.parametrize(
-    "kwargs",
-    (
-        {},
-        {"raw_amount": 10.0},
-        {"raw_amount": 10.0, "vat": 1.0},
-        {"raw_amount": 10.0, "vat": 1.0, "status": models.InvoiceStatus.DRAFT},
-    )
-)
-def test_crud_create(kwargs, dbsession, init_data, mock_datetime_now):
+# @pytest.mark.parametrize(
+#     "kwargs",
+#     (
+#         {},
+#         {"raw_amount": 10.0},
+#         {"raw_amount": 10.0, "vat": 1.0},
+#         {"raw_amount": 10.0, "vat": 1.0, "status": models.InvoiceStatus.DRAFT},
+#     )
+# )
+def test_crud_create(dbsession, init_data, mock_datetime_now):
+# def test_crud_create(kwargs, dbsession, init_data, mock_datetime_now):
     client = init_data.clients[1]
     invoice = crud.invoice.create(
         dbsession,
         obj_in=schemas.InvoiceCreate(
             client_id=client.id,
-            **kwargs,
+            # **kwargs,
         )
     )
 
-    raw_amount = kwargs.get("raw_amount", 0.0)
-    vat = kwargs.get("vat", 0.0)
-    status = kwargs.get("status", models.InvoiceStatus.DRAFT)
+    raw_amount = 0.0
+    vat = 0.0
+    status = models.InvoiceStatus.DRAFT
+    # raw_amount = kwargs.get("raw_amount", 0.0)
+    # vat = kwargs.get("vat", 0.0)
+    # status = kwargs.get("status", models.InvoiceStatus.DRAFT)
     assert invoice.id is not None
     assert invoice.client_id == client.id
     assert invoice.raw_amount == raw_amount
@@ -139,54 +143,30 @@ def test_crud_create(kwargs, dbsession, init_data, mock_datetime_now):
     assert inv.status_log[0].status is models.InvoiceStatus.DRAFT
     assert inv.status_log[0].from_ == FAKE_TIME
     assert inv.status_log[0].to is None
-#
-#
-# def test_crud_create_duplicate(dbsession, init_clients):
-#     address = schemas.Address(
-#         address="1 rue de l'église",
-#         zip_code="67890",
-#         city="La Bas",
-#     )
-#     with pytest.raises(crud.CrudError):
-#         _client = crud.client.create(
-#             dbsession,
-#             obj_in=schemas.ClientCreate(
-#                 name="Client_1",
-#                 address=address,
-#                 is_active=True
-#             )
-#         )
-#     assert len(
-#         dbsession.scalars(
-#             sa.select(models.Client).where(models.Client.name == "Client_1")
-#         ).all()
-#     ) == 1
-#
-#
-# def test_crud_create_error(dbsession, init_clients, mock_commit):
-#     state, _called = mock_commit
-#     state["failed"] = True
-#
-#     address = schemas.Address(
-#         address="1 rue de l'église",
-#         zip_code="67890",
-#         city="La Bas",
-#     )
-#     with pytest.raises(crud.CrudError):
-#         _client = crud.client.create(
-#             dbsession,
-#             obj_in=schemas.ClientCreate(
-#                 name="Super client",
-#                 address=address,
-#                 is_active=True
-#             )
-#         )
-#     assert (
-#         dbsession.scalars(
-#             sa.select(models.Client).where(models.Client.name == "Super client")
-#         ).first()
-#         is None
-#     )
+
+
+def test_crud_create_error(dbsession, init_data, mock_commit):
+    state, _called = mock_commit
+    state["failed"] = True
+
+    client = init_data.clients[1]
+    initial_invoices_count = len(client.invoices)
+    initial_log_count = len(dbsession.scalars(sa.select(models.StatusLog)).all())
+
+    with pytest.raises(crud.CrudError):
+        _invoice = crud.invoice.create(
+            dbsession,
+            obj_in=schemas.InvoiceCreate(client_id=client.id)
+        )
+    assert len(client.invoices) == initial_invoices_count
+    assert len(
+        (
+            dbsession.scalars(
+                sa.select(models.Invoice).where(models.Invoice.client_id == client.id)
+            ).all()
+        )
+    ) == initial_invoices_count
+    assert len(dbsession.scalars(sa.select(models.StatusLog)).all()) == initial_log_count
 #
 #
 # def test_crud_update(dbsession, init_clients):

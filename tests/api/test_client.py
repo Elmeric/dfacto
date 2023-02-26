@@ -4,8 +4,6 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-import dataclasses
-from typing import Optional
 from datetime import date
 
 import pytest
@@ -14,87 +12,9 @@ from dfacto.models.api.command import CommandStatus
 from dfacto.models import crud, schemas, api
 from dfacto.models.models.invoice import InvoiceStatus
 from dfacto.models.util import Period, PeriodFilter
-from tests.conftest import FakeORMModel
+from tests.conftest import FakeORMVatRate, FakeORMService, FakeORMClient, FakeORMItem, FakeORMBasket, FakeORMInvoice
 
 pytestmark = pytest.mark.api
-
-
-@dataclasses.dataclass
-class FakeORMClient(FakeORMModel):
-    name: str
-    address: str
-    zip_code: str
-    city: str
-    is_active: bool = True
-    basket: "FakeORMBasket" = None
-    # invoices: list["FakeORMInvoice"] = dataclasses.field(default_factory=list)
-    invoices: list[str] = dataclasses.field(default_factory=list)
-
-    def __post_init__(self):
-        if self.basket is None:
-            self.basket = FakeORMBasket(
-                id=1, raw_amount=0.0, vat=0.0, net_amount=0.0, client_id=self.id, items=[]
-            )
-
-    @property
-    def has_emitted_invoices(self):
-        return any(invoice != "DRAFT" for invoice in self.invoices)
-
-
-@dataclasses.dataclass
-class FakeORMBasket(FakeORMModel):
-    raw_amount: float
-    vat: float
-    net_amount: float
-    client_id: int
-    items: list[str] = dataclasses.field(default_factory=list)
-
-
-@dataclasses.dataclass
-class FakeORMInvoice(FakeORMModel):
-    status: InvoiceStatus = InvoiceStatus.DRAFT
-
-
-@dataclasses.dataclass
-class FakeORMItem(FakeORMModel):
-    raw_amount: float
-    vat: float
-    net_amount: float
-    service_id: int
-    quantity: int = 1
-    service: "FakeORMService" = None
-    basket_id: Optional[int] = 1
-    invoice_id: Optional[int] = None
-    basket: "FakeORMBasket" = None
-    invoice: "FakeORMInvoice" = None
-
-
-@dataclasses.dataclass
-class FakeORMService(FakeORMModel):
-    unit_price: float
-    name: str = "Service"
-    vat_rate_id: int = 1
-    vat_rate: "FakeORMVatRate" = None
-
-
-@dataclasses.dataclass
-class FakeORMVatRate(FakeORMModel):
-    rate: float
-    name: str = "Rate"
-    is_default: bool = False
-    is_preset: bool = False
-    services: list["FakeORMService"] = dataclasses.field(default_factory=list)
-
-
-@pytest.fixture()
-def mock_schema_from_orm(monkeypatch):
-    def _from_orm(obj):
-        return obj
-
-    monkeypatch.setattr(schemas.Client, "from_orm", _from_orm)
-    monkeypatch.setattr(schemas.Basket, "from_orm", _from_orm)
-    monkeypatch.setattr(schemas.Item, "from_orm", _from_orm)
-    monkeypatch.setattr(schemas.Invoice, "from_orm", _from_orm)
 
 
 @pytest.fixture()
@@ -272,11 +192,18 @@ def test_cmd_get_active_error(mock_client_model, mock_schema_from_orm):
 def test_cmd_get_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
-    expected_body = FakeORMBasket(
+    client = FakeORMClient(
         id=1,
-        raw_amount=100.0, vat=10.0, net_amount=110.0,
-        client_id=1
-    )
+        name="Name 1",
+        address="Address", zip_code="12345", city="CITY"
+        )
+    client.basket.items = ["item1", "item2"]
+    expected_body = client.basket
+    # expected_body = FakeORMBasket(
+    #     id=1,
+    #     raw_amount=100.0, vat=10.0, net_amount=110.0,
+    #     client_id=1
+    # )
     state["read_value"] = expected_body
 
     response = api.client.get_basket(obj_id=1)
@@ -720,9 +647,9 @@ def test_cmd_delete_has_emitted_invoices(mock_client_model, mock_schema_from_orm
         name="Client 1",
         address="Address 1", zip_code="1", city="CITY 1",
         is_active=True,
-        basket=FakeORMBasket(
-            id=1, raw_amount=100.0, vat=10.0, net_amount=110.0, client_id=1, items=["Item 1"]
-        ),
+        # basket=FakeORMBasket(
+        #     id=1, raw_amount=100.0, vat=10.0, net_amount=110.0, client_id=1, items=["Item 1"]
+        # ),
         invoices=["EMITTED"],
     )
     state, methods_called = mock_client_model
@@ -745,10 +672,11 @@ def test_cmd_delete_non_empty_basket(mock_client_model, mock_schema_from_orm):
         name="Client 1",
         address="Address 1", zip_code="1", city="CITY 1",
         is_active=True,
-        basket=FakeORMBasket(
-            id=1, raw_amount=100.0, vat=10.0, net_amount=110.0, client_id=1, items=["Item 1"]
-        )
+        # basket=FakeORMBasket(
+        #     id=1, raw_amount=100.0, vat=10.0, net_amount=110.0, client_id=1, items=["Item 1"]
+        # )
     )
+    client.basket.items = ["items1", "items2"]
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "DELETE": False}
     state["read_value"] = client
@@ -1071,14 +999,21 @@ def test_cmd_remove_from_basket_remove_error(mock_client_model, mock_schema_from
 def test_cmd_clear_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": False}
-    state["read_value"] = FakeORMBasket(
+    client = FakeORMClient(
         id=1,
-        raw_amount=100.0,
-        vat=10.0,
-        net_amount=110.0,
-        client_id=1,
-        items=["Item 1", "Item 2"]
-    )
+        name="Name 1",
+        address="Address", zip_code="12345", city="CITY"
+        )
+    client.basket.items = ["item1", "item2"]
+    state["read_value"] = client.basket
+    # state["read_value"] = FakeORMBasket(
+    #     id=1,
+    #     raw_amount=100.0,
+    #     vat=10.0,
+    #     net_amount=110.0,
+    #     client_id=1,
+    #     items=["Item 1", "Item 2"]
+    # )
 
     response = api.client.clear_basket(1)
 
@@ -1121,14 +1056,21 @@ def test_cmd_clear_basket_unknown(mock_client_model, mock_schema_from_orm):
 def test_cmd_clear_basket_clear_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": True}
-    state["read_value"] = FakeORMBasket(
+    client = FakeORMClient(
         id=1,
-        raw_amount=100.0,
-        vat=10.0,
-        net_amount=110.0,
-        client_id=1,
-        items=["Item 1", "Item 2"]
-    )
+        name="Name 1",
+        address="Address", zip_code="12345", city="CITY"
+        )
+    client.basket.items = ["item1", "item2"]
+    state["read_value"] = client.basket
+    # state["read_value"] = FakeORMBasket(
+    #     id=1,
+    #     raw_amount=100.0,
+    #     vat=10.0,
+    #     net_amount=110.0,
+    #     client_id=1,
+    #     items=["Item 1", "Item 2"]
+    # )
 
     response = api.client.clear_basket(1)
 

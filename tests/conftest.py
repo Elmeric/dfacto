@@ -6,7 +6,7 @@
 
 # Cf. https://gist.github.com/kissgyorgy/e2365f25a213de44b9a2
 
-from typing import Union, Any, cast
+from typing import Union, Any, cast, Optional
 import dataclasses
 import sys
 from datetime import date, datetime
@@ -148,6 +148,20 @@ def mock_datetime_now(monkeypatch):
             return FAKE_TIME
 
     monkeypatch.setattr(sys.modules["dfacto.models.crud.invoice"], "datetime", mydatetime)
+
+
+@pytest.fixture()
+def mock_schema_from_orm(monkeypatch):
+    def _from_orm(obj):
+        return obj
+
+    monkeypatch.setattr(schemas.VatRate, "from_orm", _from_orm)
+    monkeypatch.setattr(schemas.Service, "from_orm", _from_orm)
+    monkeypatch.setattr(schemas.Client, "from_orm", _from_orm)
+    monkeypatch.setattr(schemas.Basket, "from_orm", _from_orm)
+    monkeypatch.setattr(schemas.Item, "from_orm", _from_orm)
+    monkeypatch.setattr(schemas.Invoice, "from_orm", _from_orm)
+
 
 #
 # Mock some methods of the CRUDBase class used by all DFactoModel command API
@@ -366,3 +380,71 @@ def init_data(dbsession: scoped_session) -> TestData:
 @dataclasses.dataclass
 class FakeORMModel:
     id: int
+
+
+@dataclasses.dataclass
+class FakeORMClient(FakeORMModel):
+    name: str
+    address: str
+    zip_code: str
+    city: str
+    is_active: bool = True
+    basket: "FakeORMBasket" = None
+    # invoices: list["FakeORMInvoice"] = dataclasses.field(default_factory=list)
+    invoices: list[str] = dataclasses.field(default_factory=list)
+
+    def __post_init__(self):
+        if self.basket is None:
+            self.basket = FakeORMBasket(
+                id=1, raw_amount=0.0, vat=0.0, net_amount=0.0, client_id=self.id, items=[]
+            )
+
+    @property
+    def has_emitted_invoices(self):
+        return any(invoice != "DRAFT" for invoice in self.invoices)
+
+
+@dataclasses.dataclass
+class FakeORMBasket(FakeORMModel):
+    raw_amount: float
+    vat: float
+    net_amount: float
+    client_id: int
+    # client: "FakeORMClient"
+    items: list[str] = dataclasses.field(default_factory=list)
+
+
+@dataclasses.dataclass
+class FakeORMInvoice(FakeORMModel):
+    status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
+
+
+@dataclasses.dataclass
+class FakeORMItem(FakeORMModel):
+    raw_amount: float
+    vat: float
+    net_amount: float
+    service_id: int
+    quantity: int = 1
+    service: "FakeORMService" = None
+    basket_id: Optional[int] = 1
+    invoice_id: Optional[int] = None
+    basket: "FakeORMBasket" = None
+    invoice: "FakeORMInvoice" = None
+
+
+@dataclasses.dataclass
+class FakeORMService(FakeORMModel):
+    unit_price: float
+    name: str = "Service"
+    vat_rate_id: int = 1
+    vat_rate: "FakeORMVatRate" = None
+
+
+@dataclasses.dataclass
+class FakeORMVatRate(FakeORMModel):
+    rate: float
+    name: str = "Rate"
+    is_default: bool = False
+    is_preset: bool = False
+    services: list["FakeORMService"] = dataclasses.field(default_factory=list)

@@ -47,5 +47,14 @@ class CRUDInvoice(
             dbsession.refresh(db_obj)
             return db_obj
 
+    def create_from_basket(
+        self,
+        dbsession: scoped_session,
+        basket: models.Basket,
+        *,
+        clear_basket: bool = True
+    ) -> models.Invoice:
+        pass
+
 
 invoice = CRUDInvoice(models.Invoice)
