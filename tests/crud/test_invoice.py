@@ -94,39 +94,24 @@ def test_crud_get_all_error(dbsession, init_data, mock_select):
         _invoices = crud.invoice.get_all(dbsession)
 
 
-# @pytest.mark.parametrize(
-#     "kwargs",
-#     (
-#         {},
-#         {"raw_amount": 10.0},
-#         {"raw_amount": 10.0, "vat": 1.0},
-#         {"raw_amount": 10.0, "vat": 1.0, "status": models.InvoiceStatus.DRAFT},
-#     )
-# )
 def test_crud_create(dbsession, init_data, mock_datetime_now):
-# def test_crud_create(kwargs, dbsession, init_data, mock_datetime_now):
     client = init_data.clients[1]
+
     invoice = crud.invoice.create(
         dbsession,
-        obj_in=schemas.InvoiceCreate(
-            client_id=client.id,
-            # **kwargs,
-        )
+        obj_in=schemas.InvoiceCreate(client_id=client.id)
     )
 
-    raw_amount = 0.0
-    vat = 0.0
-    status = models.InvoiceStatus.DRAFT
-    # raw_amount = kwargs.get("raw_amount", 0.0)
-    # vat = kwargs.get("vat", 0.0)
-    # status = kwargs.get("status", models.InvoiceStatus.DRAFT)
     assert invoice.id is not None
     assert invoice.client_id == client.id
-    assert invoice.raw_amount == raw_amount
-    assert invoice.vat == vat
-    assert invoice.net_amount == raw_amount + vat
-    assert invoice.status is status
+    assert invoice.raw_amount == 0.0
+    assert invoice.vat == 0.0
+    assert invoice.net_amount == 0.0
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    assert invoice.client is client
+    assert len(invoice.items) == 0
     assert len(invoice.status_log) == 1
+    assert invoice.status_log[0].invoice_id == invoice.id
     assert invoice.status_log[0].status is models.InvoiceStatus.DRAFT
     assert invoice.status_log[0].from_ == FAKE_TIME
     assert invoice.status_log[0].to is None
@@ -135,11 +120,14 @@ def test_crud_create(dbsession, init_data, mock_datetime_now):
     except sa.exc.SQLAlchemyError:
         inv = None
     assert inv.client_id == client.id
-    assert inv.raw_amount == raw_amount
-    assert inv.vat == vat
-    assert inv.net_amount == raw_amount + vat
-    assert inv.status is status
+    assert inv.raw_amount == 0.0
+    assert inv.vat == 0.0
+    assert inv.net_amount == 0.0
+    assert inv.status is models.InvoiceStatus.DRAFT
+    assert inv.client is client
+    assert len(inv.items) == 0
     assert len(inv.status_log) == 1
+    assert inv.status_log[0].invoice_id == inv.id
     assert inv.status_log[0].status is models.InvoiceStatus.DRAFT
     assert inv.status_log[0].from_ == FAKE_TIME
     assert inv.status_log[0].to is None
@@ -158,6 +146,70 @@ def test_crud_create_error(dbsession, init_data, mock_commit):
             dbsession,
             obj_in=schemas.InvoiceCreate(client_id=client.id)
         )
+    assert len(client.invoices) == initial_invoices_count
+    assert len(
+        (
+            dbsession.scalars(
+                sa.select(models.Invoice).where(models.Invoice.client_id == client.id)
+            ).all()
+        )
+    ) == initial_invoices_count
+    assert len(dbsession.scalars(sa.select(models.StatusLog)).all()) == initial_log_count
+
+
+@pytest.mark.parametrize("clear", (True, False))
+def test_crud_invoice_from_basket(clear, dbsession, init_data, mock_datetime_now):
+    client = init_data.clients[1]
+    basket = client.basket
+    raw_amount = basket.raw_amount
+    vat = basket.vat
+    items_count = len(basket.items)
+    assert items_count > 0
+
+    invoice = crud.invoice.invoice_from_basket(dbsession, client.basket)
+
+    assert invoice.id is not None
+    assert invoice.client_id == client.id
+    assert invoice.raw_amount == raw_amount
+    assert invoice.vat == vat
+    assert invoice.net_amount == raw_amount + vat
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    assert invoice.client is client
+    assert len(invoice.items) == items_count
+    assert len(invoice.status_log) == 1
+    assert invoice.status_log[0].invoice_id == invoice.id
+    assert invoice.status_log[0].status is models.InvoiceStatus.DRAFT
+    assert invoice.status_log[0].from_ == FAKE_TIME
+    assert invoice.status_log[0].to is None
+
+    inv = dbsession.get(models.Invoice, invoice.id)
+    assert inv.client_id == client.id
+    assert inv.raw_amount == raw_amount
+    assert inv.vat == vat
+    assert inv.net_amount == raw_amount + vat
+    assert inv.status is models.InvoiceStatus.DRAFT
+    assert inv.client is client
+    assert len(inv.items) == items_count
+    assert len(inv.status_log) == 1
+    assert inv.status_log[0].invoice_id == inv.id
+    assert inv.status_log[0].status is models.InvoiceStatus.DRAFT
+    assert inv.status_log[0].from_ == FAKE_TIME
+    assert inv.status_log[0].to is None
+
+    if clear:
+        assert len(basket.items) == 0
+
+
+def test_crud_invoice_from_basket_error(dbsession, init_data, mock_commit):
+    state, _called = mock_commit
+    state["failed"] = True
+
+    client = init_data.clients[1]
+    initial_invoices_count = len(client.invoices)
+    initial_log_count = len(dbsession.scalars(sa.select(models.StatusLog)).all())
+
+    with pytest.raises(crud.CrudError):
+        _invoice = crud.invoice.invoice_from_basket(dbsession, client.basket)
     assert len(client.invoices) == initial_invoices_count
     assert len(
         (

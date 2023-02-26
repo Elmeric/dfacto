@@ -107,6 +107,36 @@ def mock_client_model(mock_dfacto_model, monkeypatch):
     return state, methods_called
 
 
+@pytest.fixture()
+def mock_invoice_model(mock_dfacto_model, monkeypatch):
+    state, methods_called = mock_dfacto_model
+
+    def _create(_db, obj_in):
+        methods_called.append("CREATE")
+        exc = state["raises"]["CREATE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+
+    def _create_from_basket(_db, basket, clear_basket):
+        methods_called.append("CREATE_FROM_BASKET")
+        exc = state["raises"]["CREATE_FROM_BASKET"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+
+    monkeypatch.setattr(crud.invoice, "create", _create)
+    monkeypatch.setattr(crud.invoice, "invoice_from_basket", _create_from_basket)
+
+    return state, methods_called
+
+
 def test_cmd_get(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
@@ -1079,4 +1109,134 @@ def test_cmd_clear_basket_clear_error(mock_client_model, mock_schema_from_orm):
     assert "CLEAR_BASKET" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith("CLEAR-BASKET - Cannot clear basket of client 1")
+    assert response.body is None
+
+
+def test_cmd_create_invoice(mock_invoice_model, mock_schema_from_orm):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"CREATE": False}
+
+    response = api.client.create_invoice(obj_id=1)
+
+    assert len(methods_called) == 1
+    assert "CREATE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body is not None
+
+
+def test_cmd_create_invoice_error(mock_invoice_model, mock_schema_from_orm):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"CREATE": True}
+
+    response = api.client.create_invoice(obj_id=1)
+
+    assert len(methods_called) == 1
+    assert "CREATE" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith(
+        "CREATE-INVOICE - Cannot create an invoice for client 1"
+    )
+    assert response.body is None
+
+
+@pytest.mark.parametrize("clear", (True, False))
+def test_cmd_invoice_from_basket(
+    clear, mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CREATE_FROM_BASKET": False}
+    client = FakeORMClient(
+        id=1,
+        name="Name 1",
+        address="Address", zip_code="12345", city="CITY"
+        )
+    client.basket.items = ["item1", "item2"]
+    state["read_value"] = client.basket
+
+    response = api.client.invoice_from_basket(obj_id=1, clear_basket=clear)
+
+    assert len(methods_called) == 2
+    assert "GET_BASKET" in methods_called
+    assert "CREATE_FROM_BASKET" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body is not None
+
+
+def test_cmd_invoice_from_empty_basket(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CREATE": False}
+    client = FakeORMClient(
+        id=1,
+        name="Name 1",
+        address="Address", zip_code="12345", city="CITY"
+        )
+    state["read_value"] = client.basket
+    assert len(client.basket.items) == 0
+
+    response = api.client.invoice_from_basket(obj_id=1, clear_basket=False)
+
+    assert len(methods_called) == 2
+    assert "GET_BASKET" in methods_called
+    assert "CREATE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body is not None
+
+
+def test_cmd_invoice_from_basket_get_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": True, "CREATE_FROM_BASKET": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.invoice_from_basket(obj_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("CREATE-FROM-BASKET - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_invoice_from_basket_unknown(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CREATE_FROM_BASKET": False}
+    state["read_value"] = None
+
+    response = api.client.invoice_from_basket(obj_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "CREATE_FROM-BASKET - Basket of client 1 not found."
+    assert response.body is None
+
+
+def test_cmd_invoice_from_basket_create_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CREATE_FROM_BASKET": True}
+    client = FakeORMClient(
+        id=1,
+        name="Name 1",
+        address="Address", zip_code="12345", city="CITY"
+        )
+    client.basket.items = ["item1", "item2"]
+    state["read_value"] = client.basket
+
+    response = api.client.invoice_from_basket(obj_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET_BASKET" in methods_called
+    assert "CREATE_FROM_BASKET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith(
+        "CREATE_FROM-BASKET - Cannot create invoice from basket of client 1"
+    )
     assert response.body is None

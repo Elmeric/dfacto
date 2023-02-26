@@ -25,6 +25,7 @@ class CRUDInvoice(
         db_obj = self.model(**obj_in_data)
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
+
         now = datetime.now()
         # dbsession.execute(
         #     update(models.StatusLog)
@@ -38,6 +39,7 @@ class CRUDInvoice(
             status=models.InvoiceStatus.DRAFT
         )
         dbsession.add(log)
+
         try:
             dbsession.commit()
         except SQLAlchemyError as exc:
@@ -47,14 +49,46 @@ class CRUDInvoice(
             dbsession.refresh(db_obj)
             return db_obj
 
-    def create_from_basket(
+    def invoice_from_basket(
         self,
         dbsession: scoped_session,
         basket: models.Basket,
         *,
         clear_basket: bool = True
     ) -> models.Invoice:
-        pass
+        db_obj = models.Invoice(
+            client_id=basket.client_id,
+            raw_amount=basket.raw_amount,
+            vat=basket.vat,
+            status=models.InvoiceStatus.DRAFT,
+        )
+        for item in basket.items:
+            db_obj.items.append(item)
+            if clear_basket:
+                basket.raw_amount -= item.raw_amount
+                basket.vat -= item.vat
+                basket.net_amount -= item.net_amount
+                item.basket_id = None
+        dbsession.add(db_obj)
+        dbsession.flush([db_obj])
+
+        now = datetime.now()
+        log = models.StatusLog(
+            invoice_id=db_obj.id,
+            from_=now,
+            to=None,
+            status=models.InvoiceStatus.DRAFT
+        )
+        dbsession.add(log)
+
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            dbsession.rollback()
+            raise CrudError() from exc
+        else:
+            dbsession.refresh(db_obj)
+            return db_obj
 
 
 invoice = CRUDInvoice(models.Invoice)

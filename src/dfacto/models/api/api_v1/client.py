@@ -272,5 +272,61 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
+    # TODO:
+    # create_invoice (create empty invoice)
+    # create_from_basket
+    # add_item, update_item_quantity, remove_item, clear (if draft)
+    # mark_as: emitted, paid, reminded, cancelled
+    # delete (if draft)
+    # get: by status, for a period of time
+
+    def create_invoice(self, obj_id: int) -> CommandResponse:
+        try:
+            db_obj = crud.invoice.create(
+                self.Session, obj_in=schemas.InvoiceCreate(obj_id)
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CREATE-INVOICE - Cannot create an invoice for client {obj_id}: {exc}",
+            )
+        else:
+            body = self.schema.from_orm(db_obj)
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    def invoice_from_basket(
+        self, obj_id: int, clear_basket: bool = True
+    ) -> CommandResponse:
+        try:
+            basket = crud.client.get_basket(self.Session, obj_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CREATE-FROM-BASKET - SQL or database error: {exc}",
+            )
+        else:
+            if basket is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"CREATE_FROM-BASKET - Basket of client {obj_id} not found.",
+                )
+            if len(basket.items) <= 0:
+                # No items in basket of client: create an empty invoice
+                return self.create_invoice(obj_id)
+
+            try:
+                inv = crud.invoice.invoice_from_basket(
+                    self.Session, basket, clear_basket=clear_basket
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"CREATE_FROM-BASKET - Cannot create invoice from basket of client "
+                    f"{obj_id}: {exc}",
+                )
+            else:
+                body = schemas.Invoice.from_orm(inv)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
+
 
 client = ClientModel(db.Session)
