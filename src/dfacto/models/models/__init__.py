@@ -6,7 +6,7 @@
 
 from .basket import Basket
 from .client import Client
-from .invoice import InvoiceStatus, Invoice, StatusLog
+from .invoice import Invoice, InvoiceStatus, StatusLog
 from .item import Item
 from .service import Service
 from .vat_rate import VatRate

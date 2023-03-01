@@ -6,10 +6,10 @@
 
 import pytest
 
+from dfacto.models import api, crud, schemas
 from dfacto.models.api.command import CommandStatus
-from dfacto.models import crud, schemas, api
-from tests.conftest import FakeORMVatRate
 from tests.api.test_service import FakeORMService
+from tests.conftest import FakeORMVatRate
 
 pytestmark = pytest.mark.api
 
@@ -20,17 +20,17 @@ def mock_vat_rate_model(mock_dfacto_model, monkeypatch):
 
     def _get_default(_db):
         methods_called.append("GET_DEFAULT")
-        exc = state["raises"]["READ"]
+        exc = state["raises"]["GET_DEFAULT"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
             raise crud.CrudError
         else:
-            return state["read_value"]
+            return state["default_value"]
 
-    def _set_default(_db, obj_id: int):
+    def _set_default(_db, old_default, new_default):
         methods_called.append("SET_DEFAULT")
-        exc = state["raises"]["UPDATE"]
+        exc = state["raises"]["SET_DEFAULT"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
@@ -83,73 +83,73 @@ def test_cmd_get_error(mock_vat_rate_model, mock_schema_from_orm):
     assert response.reason.startswith("GET - SQL or database error")
 
 
-def test_cmd_get_default_1(mock_vat_rate_model, mock_schema_from_orm):
-    state, methods_called = mock_vat_rate_model
-    state["raises"] = {"READ": False}
-    state["read_value"] = FakeORMVatRate(id=1, name="Rate 1", rate=0.0, is_default=True)
-
-    response = api.vat_rate.get_default()
-
-    assert len(methods_called) == 1
-    assert "GET_DEFAULT" in methods_called
-    assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.rate == 0.0
-    assert response.body.name == "Rate 1"
-    assert response.body.is_default
-    assert not response.body.is_preset
-
-
 def test_cmd_get_default(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
-    state["raises"] = {"READ": False}
-    state["read_value"] = FakeORMVatRate(id=1, name="Rate 1", rate=0.0, is_default=True)
+    state["raises"] = {"GET_DEFAULT": False}
+    state["default_value"] = FakeORMVatRate(
+        id=1, name="Rate 1", rate=0.0, is_default=True
+    )
 
     response = api.vat_rate.get_default()
 
     assert len(methods_called) == 1
     assert "GET_DEFAULT" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.rate == 0.0
-    assert response.body.name == "Rate 1"
-    assert response.body.is_default
-    assert not response.body.is_preset
+    assert response.reason is None
+    assert response.body is not None
 
 
 def test_cmd_set_default(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
-    state["raises"] = {"UPDATE": False}
+    state["raises"] = {"GET_DEFAULT": False, "READ": False, "SET_DEFAULT": False}
+    state["default_value"] = FakeORMVatRate(
+        id=1, name="Rate 1", rate=0.0, is_default=True
+    )
+    state["read_value"] = FakeORMVatRate(
+        id=6, name="Rate 1", rate=0.0, is_default=False
+    )
 
     response = api.vat_rate.set_default(6)
 
-    assert len(methods_called) == 1
+    assert len(methods_called) == 3
+    assert "GET_DEFAULT" in methods_called
+    assert "GET" in methods_called
     assert "SET_DEFAULT" in methods_called
     assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
     assert response.body is None
 
 
 def test_cmd_set_default_error(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
-    state["raises"] = {"UPDATE": True}
+    state["raises"] = {"GET_DEFAULT": False, "READ": False, "SET_DEFAULT": True}
+    state["default_value"] = FakeORMVatRate(
+        id=1, name="Rate 1", rate=0.0, is_default=True
+    )
+    state["read_value"] = FakeORMVatRate(
+        id=6, name="Rate 1", rate=0.0, is_default=False
+    )
 
     response = api.vat_rate.set_default(6)
 
-    assert len(methods_called) == 1
+    assert len(methods_called) == 3
+    assert "GET_DEFAULT" in methods_called
+    assert "GET" in methods_called
     assert "SET_DEFAULT" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith("SET_DEFAULT - SQL or database error")
+    assert response.body is None
 
 
 def test_cmd_get_multi(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False}
     state["read_value"] = [
-            FakeORMVatRate(id=1, name="Rate 1", rate=10.0),
-            FakeORMVatRate(id=2, name="Rate 2", rate=20.0),
-            FakeORMVatRate(id=3, name="Rate 3", rate=30.0),
-            FakeORMVatRate(id=4, name="Rate 4", rate=40.0),
-        ]
+        FakeORMVatRate(id=1, name="Rate 1", rate=10.0),
+        FakeORMVatRate(id=2, name="Rate 2", rate=20.0),
+        FakeORMVatRate(id=3, name="Rate 3", rate=30.0),
+        FakeORMVatRate(id=4, name="Rate 4", rate=40.0),
+    ]
 
     response = api.vat_rate.get_multi(skip=1, limit=2)
 
@@ -181,9 +181,9 @@ def test_cmd_get_all(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False}
     state["read_value"] = [
-            FakeORMVatRate(id=2, name="Rate 2", rate=20.0),
-            FakeORMVatRate(id=3, name="Rate 3", rate=30.0),
-        ]
+        FakeORMVatRate(id=2, name="Rate 2", rate=20.0),
+        FakeORMVatRate(id=3, name="Rate 3", rate=30.0),
+    ]
 
     response = api.vat_rate.get_all()
 
@@ -243,13 +243,10 @@ def test_cmd_update(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "UPDATE": False}
     state["read_value"] = FakeORMVatRate(
-            id=1, name="Rate", rate=100.0, is_default=False, is_preset=False, services=[]
-        )
-
-    response = api.vat_rate.update(
-        obj_id=1,
-        obj_in=schemas.VatRateUpdate(rate=20.0)
+        id=1, name="Rate", rate=100.0, is_default=False, is_preset=False, services=[]
     )
+
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=20.0))
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -264,10 +261,7 @@ def test_cmd_update_unknown(mock_vat_rate_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "UPDATE": False}
     state["read_value"] = None
 
-    response = api.vat_rate.update(
-        obj_id=1,
-        obj_in=schemas.VatRateUpdate(rate=20.0)
-    )
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=20.0))
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
@@ -279,13 +273,10 @@ def test_cmd_update_preset(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "UPDATE": False}
     state["read_value"] = FakeORMVatRate(
-            id=1, name="Rate", rate=10.0, is_default=False, is_preset=True, services=[]
-        )
-
-    response = api.vat_rate.update(
-        obj_id=1,
-        obj_in=schemas.VatRateUpdate(rate=20.0)
+        id=1, name="Rate", rate=10.0, is_default=False, is_preset=True, services=[]
     )
+
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=20.0))
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
@@ -300,10 +291,7 @@ def test_cmd_update_error(mock_vat_rate_model, mock_schema_from_orm):
         id=1, name="Rate", rate=100.0, is_default=False, is_preset=False, services=[]
     )
 
-    response = api.vat_rate.update(
-        obj_id=1,
-        obj_in=schemas.VatRateUpdate(rate=200.0)
-    )
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=200.0))
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -359,8 +347,13 @@ def test_cmd_delete_unknown(mock_vat_rate_model, mock_schema_from_orm):
 def test_cmd_delete_in_use(mock_vat_rate_model, mock_schema_from_orm):
     service = FakeORMService(id=1, name="Service 1", unit_price=100.0)
     vat_rate = FakeORMVatRate(
-                id=4, name="Rate", rate=10.0, is_default=False, is_preset=False, services=[service]
-            )
+        id=4,
+        name="Rate",
+        rate=10.0,
+        is_default=False,
+        is_preset=False,
+        services=[service],
+    )
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "DELETE": False}
     state["read_value"] = vat_rate
@@ -370,7 +363,10 @@ def test_cmd_delete_in_use(mock_vat_rate_model, mock_schema_from_orm):
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.REJECTED
-    assert response.reason == "DELETE - VAT rate with id 4 is used by at least 'Service 1' service."
+    assert (
+        response.reason
+        == "DELETE - VAT rate with id 4 is used by at least 'Service 1' service."
+    )
     assert response.body is None
 
 
@@ -378,8 +374,8 @@ def test_cmd_delete_error(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "DELETE": crud.CrudError}
     state["read_value"] = FakeORMVatRate(
-                id=4, name="Rate", rate=10.0, is_default=False, is_preset=False, services=[]
-            )
+        id=4, name="Rate", rate=10.0, is_default=False, is_preset=False, services=[]
+    )
 
     response = api.vat_rate.delete(obj_id=4)
 

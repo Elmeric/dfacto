@@ -77,46 +77,60 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
-        db_obj = self.crud_object.get(self.Session, obj_id)
-        if db_obj is None:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"UPDATE - Object {obj_id} not found.",
-            )
-
         try:
-            db_obj = self.crud_object.update(
-                self.Session, db_obj=db_obj, obj_in=obj_in
-            )
+            db_obj = self.crud_object.get(self.Session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"UPDATE - Cannot update object {obj_id}: {exc}",
+                f"UPDATE - SQL or database error: {exc}",
             )
         else:
-            body = self.schema.from_orm(db_obj)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+            if db_obj is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"UPDATE - Object {obj_id} not found.",
+                )
+
+            try:
+                db_obj = self.crud_object.update(
+                    self.Session, db_obj=db_obj, obj_in=obj_in
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"UPDATE - Cannot update object {obj_id}: {exc}",
+                )
+            else:
+                body = self.schema.from_orm(db_obj)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def delete(self, obj_id: int) -> CommandResponse:
-        db_obj = self.crud_object.get(self.Session, obj_id)
-        if db_obj is None:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"DELETE - Object {obj_id} not found.",
-            )
-
         try:
-            self.crud_object.delete(self.Session, db_obj=db_obj)
-        except crud.CrudIntegrityError:
-            return CommandResponse(
-                CommandStatus.REJECTED,
-                f"DELETE - Object {obj_id}"
-                f" is used by at least one other object.",
-            )
+            db_obj = self.crud_object.get(self.Session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"DELETE - Cannot delete object {obj_id}: {exc}",
+                f"DELETE - SQL or database error: {exc}",
             )
         else:
-            return CommandResponse(CommandStatus.COMPLETED)
+            if db_obj is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"DELETE - Object {obj_id} not found.",
+                )
+
+            try:
+                self.crud_object.delete(self.Session, db_obj=db_obj)
+            except crud.CrudIntegrityError:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"DELETE - Object {obj_id}"
+                    f" is used by at least one other object.",
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"DELETE - Cannot delete object {obj_id}: {exc}",
+                )
+            else:
+                return CommandResponse(CommandStatus.COMPLETED)

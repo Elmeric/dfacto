@@ -3,16 +3,12 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-import dataclasses
-from datetime import date, datetime
-from typing import cast
 
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session
 
-from dfacto.models import db, crud, models, schemas
+from dfacto.models import crud, models, schemas
 from tests.conftest import FAKE_TIME
 
 pytestmark = pytest.mark.crud
@@ -56,8 +52,8 @@ def test_crud_get_error(dbsession, init_data, mock_get):
         ({}, 0, None),
         ({"limit": 2}, 0, 2),
         ({"skip": 2}, 2, None),
-        ({"skip": 2, "limit": 2}, 2, 2)
-    )
+        ({"skip": 2, "limit": 2}, 2, 2),
+    ),
 )
 def test_crud_get_multi(kwargs, offset, length, dbsession, init_data):
     invoices = init_data.invoices
@@ -98,8 +94,7 @@ def test_crud_create(dbsession, init_data, mock_datetime_now):
     client = init_data.clients[1]
 
     invoice = crud.invoice.create(
-        dbsession,
-        obj_in=schemas.InvoiceCreate(client_id=client.id)
+        dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id)
     )
 
     assert invoice.id is not None
@@ -143,18 +138,24 @@ def test_crud_create_error(dbsession, init_data, mock_commit):
 
     with pytest.raises(crud.CrudError):
         _invoice = crud.invoice.create(
-            dbsession,
-            obj_in=schemas.InvoiceCreate(client_id=client.id)
+            dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id)
         )
     assert len(client.invoices) == initial_invoices_count
-    assert len(
-        (
-            dbsession.scalars(
-                sa.select(models.Invoice).where(models.Invoice.client_id == client.id)
-            ).all()
+    assert (
+        len(
+            (
+                dbsession.scalars(
+                    sa.select(models.Invoice).where(
+                        models.Invoice.client_id == client.id
+                    )
+                ).all()
+            )
         )
-    ) == initial_invoices_count
-    assert len(dbsession.scalars(sa.select(models.StatusLog)).all()) == initial_log_count
+        == initial_invoices_count
+    )
+    assert (
+        len(dbsession.scalars(sa.select(models.StatusLog)).all()) == initial_log_count
+    )
 
 
 @pytest.mark.parametrize("clear", (True, False))
@@ -211,457 +212,522 @@ def test_crud_invoice_from_basket_error(dbsession, init_data, mock_commit):
     with pytest.raises(crud.CrudError):
         _invoice = crud.invoice.invoice_from_basket(dbsession, client.basket)
     assert len(client.invoices) == initial_invoices_count
-    assert len(
-        (
-            dbsession.scalars(
-                sa.select(models.Invoice).where(models.Invoice.client_id == client.id)
-            ).all()
+    assert (
+        len(
+            (
+                dbsession.scalars(
+                    sa.select(models.Invoice).where(
+                        models.Invoice.client_id == client.id
+                    )
+                ).all()
+            )
         )
-    ) == initial_invoices_count
-    assert len(dbsession.scalars(sa.select(models.StatusLog)).all()) == initial_log_count
-#
-#
-# def test_crud_update(dbsession, init_clients):
-#     client = init_clients[0]
-#
-#     address = schemas.Address(
-#         address="1 rue de l'église",
-#         zip_code="67890",
-#         city="La Bas",
-#     )
-#     updated = crud.client.update(
-#         dbsession,
-#         db_obj=client,
-#         obj_in=schemas.ClientUpdate(
-#             name="Super client",
-#             address=address,
-#             is_active=False
-#         )
-#     )
-#
-#     assert updated.id == client.id
-#     assert updated.name == "Super client"
-#     assert updated.address == address.address
-#     assert updated.zip_code == address.zip_code
-#     assert updated.city == address.city
-#     assert not updated.is_active
-#     try:
-#         c = dbsession.get(models.Client, updated.id)
-#     except sa.exc.SQLAlchemyError:
-#         c = None
-#     assert c.name == "Super client"
-#     assert c.address == address.address
-#     assert c.zip_code == address.zip_code
-#     assert c.city == address.city
-#     assert not c.is_active
-#
-#
-# def test_crud_update_partial(dbsession, init_clients):
-#     client = init_clients[0]
-#
-#     address = schemas.Address(
-#         address=client.address,
-#         zip_code="67890",
-#         city=client.city,
-#     )
-#     updated = crud.client.update(
-#         dbsession,
-#         db_obj=client,
-#         obj_in=schemas.ClientUpdate(address=address)
-#     )
-#
-#     assert updated.id == client.id
-#     assert updated.name == client.name
-#     assert updated.address == client.address
-#     assert updated.zip_code == address.zip_code
-#     assert updated.city == client.city
-#     assert updated.is_active
-#     try:
-#         c = dbsession.get(models.Client, updated.id)
-#     except sa.exc.SQLAlchemyError:
-#         c = None
-#     assert c.name == client.name
-#     assert c.address == client.address
-#     assert c.zip_code == address.zip_code
-#     assert c.city == client.city
-#     assert c.is_active
-#
-#
-# def test_crud_update_idem(dbsession, init_clients, mock_commit):
-#     state, called = mock_commit
-#     state["failed"] = False
-#
-#     client = init_clients[0]
-#
-#     address = schemas.Address(
-#         address=client.address,
-#         zip_code=client.zip_code,
-#         city=client.city,
-#     )
-#     updated = crud.client.update(
-#         dbsession,
-#         db_obj=client,
-#         obj_in=schemas.ClientUpdate(address=address)
-#     )
-#
-#     assert updated == client
-#     assert len(called) == 0
-#
-#
-# def test_crud_update_error(dbsession, init_clients, mock_commit):
-#     state, called = mock_commit
-#     state["failed"] = True
-#
-#     client = init_clients[0]
-#
-#     with pytest.raises(crud.CrudError):
-#         _updated = crud.client.update(
-#             dbsession,
-#             db_obj=client,
-#             obj_in=schemas.ClientUpdate(name="Wonderful client")
-#         )
-#
-#     assert (
-#         dbsession.scalars(
-#             sa.select(models.Client).where(models.Client.name == "Wonderful client")
-#         ).first()
-#         is None
-#     )
-#
-#
-# def test_crud_delete(dbsession, init_clients):
-#     client = init_clients[0]
-#     assert dbsession.get(models.Client, client.id) is not None
-#
-#     crud.client.delete(dbsession, db_obj=client)
-#
-#     assert dbsession.get(models.Client, client.id) is None
-#
-#
-# def test_crud_delete_error(dbsession, init_clients, mock_commit):
-#     state, called = mock_commit
-#     state["failed"] = True
-#
-#     client = init_clients[0]
-#     assert dbsession.get(models.Client, client.id) is not None
-#
-#     with pytest.raises(crud.CrudError):
-#         crud.client.delete(dbsession, db_obj=client)
-#
-#     assert dbsession.get(models.Client, client.id) is not None
-#
-#
-# def test_crud_add_to_basket(dbsession, init_clients, init_services):
-#     client = init_clients[0]
-#     service = init_services[0]
-#
-#     item = crud.client.add_to_basket(
-#         dbsession, basket=client.basket, service=service, quantity=2
-#     )
-#
-#     assert item.service_id == service.id
-#     assert item.quantity == 2
-#     assert item.raw_amount == service.unit_price * 2
-#     assert item.vat == service.vat_rate.rate
-#     assert item.net_amount == item.raw_amount + item.vat
-#     assert item.basket_id == client.basket.id
-#     assert len(client.basket.items) == 1
-#     assert client.basket.items[0] == item
-#     assert client.basket.raw_amount == item.raw_amount
-#     assert client.basket.vat == item.vat
-#     assert client.basket.net_amount == item.net_amount
-#
-#
-# def test_crud_add_to_basket_default_qty(dbsession, init_clients, init_services):
-#     client = init_clients[0]
-#     service = init_services[0]
-#
-#     item = crud.client.add_to_basket(dbsession, basket=client.basket, service=service)
-#
-#     assert item.service_id == service.id
-#     assert item.quantity == 1
-#     assert item.raw_amount == service.unit_price
-#     assert item.vat == service.vat_rate.rate
-#     assert item.net_amount == item.raw_amount + item.vat
-#     assert item.basket_id == client.basket.id
-#     assert len(client.basket.items) == 1
-#     assert client.basket.items[0] == item
-#     assert client.basket.raw_amount == item.raw_amount
-#     assert client.basket.vat == item.vat
-#     assert client.basket.net_amount == item.net_amount
-#
-#
-# def test_crud_add_to_basket_commit_error(
-#     dbsession, init_clients, init_services, mock_commit
-# ):
-#     state, _called = mock_commit
-#     state["failed"] = True
-#
-#     client = init_clients[0]
-#     service = init_services[0]
-#
-#     with pytest.raises(crud.CrudError):
-#         _item = crud.client.add_to_basket(
-#             dbsession, basket=client.basket, service=service, quantity=2
-#         )
-#
-#     assert len(client.basket.items) == 0
-#     assert client.basket.raw_amount == 0.0
-#     assert client.basket.vat == 0.0
-#     assert client.basket.net_amount == 0.0
-#
-#
-# def test_crud_update_item_quantity(dbsession, init_items):
-#     item = init_items[0]
-#     assert item.quantity == 1
-#     basket = item.basket
-#     raw_amount = item.raw_amount
-#     vat = item.vat
-#     net_amount = item.net_amount
-#     expected_raw_amount = raw_amount * 2
-#     expected_vat = vat * 2
-#     expected_net_amount = net_amount * 2
-#     expected_basket_raw_amount = basket.raw_amount - raw_amount + expected_raw_amount
-#     expected_basket_vat = basket.vat - vat + expected_vat
-#     expected_basket_net_amount = basket.net_amount - net_amount + expected_net_amount
-#
-#     crud.client.update_item_quantity(dbsession, db_obj=item, quantity=2)
-#
-#     assert item.quantity == 2
-#     assert item.raw_amount == expected_raw_amount
-#     assert item.vat == expected_vat
-#     assert item.net_amount == expected_net_amount
-#     assert basket.raw_amount == expected_basket_raw_amount
-#     assert basket.vat == expected_basket_vat
-#     assert basket.net_amount == expected_basket_net_amount
-#
-#
-# def test_crud_update_item_quantity_commit_error(dbsession, init_items, mock_commit):
-#     state, _called = mock_commit
-#     state["failed"] = True
-#
-#     item = init_items[0]
-#     assert item.quantity == 1
-#     basket = item.basket
-#     expected_raw_amount = item.raw_amount
-#     expected_vat = item.vat
-#     expected_net_amount = item.net_amount
-#     expected_basket_raw_amount = basket.raw_amount
-#     expected_basket_vat = basket.vat
-#     expected_basket_net_amount = basket.net_amount
-#
-#     with pytest.raises(crud.CrudError):
-#         crud.client.update_item_quantity(dbsession, db_obj=item, quantity=2)
-#
-#     assert item.quantity == 1
-#     assert item.raw_amount == expected_raw_amount
-#     assert item.vat == expected_vat
-#     assert item.net_amount == expected_net_amount
-#     assert basket.raw_amount == expected_basket_raw_amount
-#     assert basket.vat == expected_basket_vat
-#     assert basket.net_amount == expected_basket_net_amount
-#
-#
-# def test_crud_remove_from_basket_no_invoice(dbsession, init_items):
-#     item = init_items[0]
-#     item_id = item.id
-#     basket = item.basket
-#     expected_raw_amount = basket.raw_amount - item.raw_amount
-#     expected_vat = basket.vat - item.vat
-#     expected_net_amount = basket.net_amount - item.net_amount
-#
-#     crud.client.remove_from_basket(dbsession, db_obj=item)
-#
-#     assert (
-#         dbsession.scalars(
-#             sa.select(models.Item).where(models.Item.id == item_id)
-#         ).first()
-#         is None
-#     )
-#
-#     assert len(basket.items) == 1
-#     assert basket.raw_amount == expected_raw_amount
-#     assert basket.vat == expected_vat
-#     assert basket.net_amount == expected_net_amount
-#
-#
-# @pytest.mark.xfail(reason="Invoices not implemented")
-# def test_crud_remove_from_basket_in_invoice(dbsession, init_items):
-#     # TODO
-#     item = init_items[0]
-#     item_id = item.id
-#     basket = item.basket
-#     expected_raw_amount = basket.raw_amount - item.raw_amount
-#     expected_vat = basket.vat - item.vat
-#     expected_net_amount = basket.net_amount - item.net_amount
-#
-#     crud.client.remove_from_basket(dbsession, db_obj=item)
-#
-#     it = dbsession.scalars(
-#         sa.select(models.Item).where(models.Item.id == item_id)
-#     ).first()
-#     assert it == item
-#
-#     assert len(basket.items) == 1
-#     assert basket.raw_amount == expected_raw_amount
-#     assert basket.vat == expected_vat
-#     assert basket.net_amount == expected_net_amount
-#
-#
-# def test_crud_remove_from_basket_commit_error(dbsession, init_items, mock_commit):
-#     state, _called = mock_commit
-#     state["failed"] = True
-#
-#     item = init_items[0]
-#     item_id = item.id
-#     basket = item.basket
-#     raw_amount = basket.raw_amount
-#     vat = basket.vat
-#     net_amount = basket.net_amount
-#
-#     with pytest.raises(crud.CrudError):
-#         crud.client.remove_from_basket(dbsession, db_obj=item)
-#
-#     it = dbsession.scalars(
-#         sa.select(models.Item).where(models.Item.id == item_id)
-#     ).first()
-#     assert it == item
-#
-#     assert len(basket.items) == 2
-#     assert basket.items[0] == it
-#     assert basket.raw_amount == raw_amount
-#     assert basket.vat == vat
-#     assert basket.net_amount == net_amount
-#
-#
-# def test_crud_clear_basket_no_invoice(dbsession, init_items):
-#     item1 = init_items[0]
-#     item_id1 = item1.id
-#     basket = item1.basket
-#     item2 = init_items[5]
-#     item_id2 = item2.id
-#     assert basket == item2.basket
-#     expected_raw_amount = basket.raw_amount - item1.raw_amount - item2.raw_amount
-#     expected_vat = basket.vat - item1.vat - item2.vat
-#     expected_net_amount = basket.net_amount - item1.net_amount - item2.net_amount
-#
-#     crud.client.clear_basket(dbsession, db_obj=basket)
-#
-#     assert (
-#         dbsession.scalars(
-#             sa.select(models.Item).where(models.Item.id == item_id1)
-#         ).first()
-#         is None
-#     )
-#     assert (
-#         dbsession.scalars(
-#             sa.select(models.Item).where(models.Item.id == item_id2)
-#         ).first()
-#         is None
-#     )
-#
-#     assert len(basket.items) == 0
-#     assert basket.raw_amount == expected_raw_amount
-#     assert basket.vat == expected_vat
-#     assert basket.net_amount == expected_net_amount
-#
-#
-# @pytest.mark.xfail(reason="Invoices not implemented")
-# def test_crud_clear_basket_in_invoice(dbsession, init_items):
-#     # TODO
-#     item1 = init_items[0]
-#     item_id1 = item1.id
-#     basket = item1.basket
-#     item2 = init_items[5]
-#     item_id2 = item2.id
-#     assert basket == item2.basket
-#     expected_raw_amount = basket.raw_amount - item1.raw_amount - item2.raw_amount
-#     expected_vat = basket.vat - item1.vat - item2.vat
-#     expected_net_amount = basket.net_amount - item1.net_amount - item2.net_amount
-#
-#     crud.client.clear_basket(dbsession, db_obj=basket)
-#
-#     it1 = dbsession.scalars(
-#         sa.select(models.Item).where(models.Item.id == item_id1)
-#     ).first()
-#     assert it1 == item1
-#     it2 = dbsession.scalars(
-#         sa.select(models.Item).where(models.Item.id == item_id2)
-#     ).first()
-#     assert it2 == item2
-#
-#     assert len(basket.items) == 0
-#     assert basket.raw_amount == expected_raw_amount
-#     assert basket.vat == expected_vat
-#     assert basket.net_amount == expected_net_amount
-#
-#
-# def test_crud_clear_basket_commit_error(dbsession, init_items, mock_commit):
-#     state, _called = mock_commit
-#     state["failed"] = True
-#
-#     item1 = init_items[0]
-#     item_id1 = item1.id
-#     basket = item1.basket
-#     item2 = init_items[5]
-#     item_id2 = item2.id
-#     assert basket == item2.basket
-#     expected_raw_amount = basket.raw_amount
-#     expected_vat = basket.vat
-#     expected_net_amount = basket.net_amount
-#
-#     with pytest.raises(crud.CrudError):
-#         crud.client.clear_basket(dbsession, db_obj=basket)
-#
-#     it1 = dbsession.scalars(
-#         sa.select(models.Item).where(models.Item.id == item_id1)
-#     ).first()
-#     assert it1 == item1
-#     it2 = dbsession.scalars(
-#         sa.select(models.Item).where(models.Item.id == item_id2)
-#     ).first()
-#     assert it2 == item2
-#
-#     assert len(basket.items) == 2
-#     assert basket.raw_amount == expected_raw_amount
-#     assert basket.vat == expected_vat
-#     assert basket.net_amount == expected_net_amount
-#
-#
-# def test_client_from_orm(dbsession, init_clients):
-#     client = init_clients[0]
-#
-#     from_db = schemas.Client.from_orm(client)
-#
-#     assert from_db.id == client.id
-#     assert from_db.name == client.name
-#     assert from_db.address == schemas.Address(client.address, client.zip_code, client.city)
-#     assert from_db.is_active is client.is_active
-#     assert from_db.code == f"CL{str(from_db.id).zfill(5)}"
-#
-#
-# def test_basket_from_orm(dbsession, init_clients):
-#     basket = init_clients[0].basket
-#
-#     from_db = schemas.Basket.from_orm(basket)
-#
-#     assert from_db.id == basket.id
-#     assert from_db.raw_amount == basket.raw_amount
-#     assert from_db.vat == basket.vat
-#     assert from_db.net_amount == basket.net_amount
-#     for i, item in enumerate(from_db.items):
-#         assert item == schemas.Item.from_orm(basket.items[i])
-#
-#
-# def test_item_from_orm(dbsession, init_items):
-#     item = init_items[0]
-#
-#     from_db = schemas.Item.from_orm(item)
-#
-#     assert from_db.id == item.id
-#     assert from_db.raw_amount == item.raw_amount
-#     assert from_db.vat == item.vat
-#     assert from_db.net_amount == item.net_amount
-#     assert from_db.service_id == item.service_id
-#     assert from_db.quantity == item.quantity
-#     assert from_db.service == schemas.Service.from_orm(item.service)
+        == initial_invoices_count
+    )
+    assert (
+        len(dbsession.scalars(sa.select(models.StatusLog)).all()) == initial_log_count
+    )
+
+
+def test_crud_add_item(dbsession, init_data):
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    items_count = len(invoice.items)
+    raw_amount = invoice.raw_amount
+    vat = invoice.vat
+    service = init_data.services[1]
+
+    item = crud.invoice.add_item(
+        dbsession, invoice_=invoice, service=service, quantity=2
+    )
+
+    assert item.service_id == service.id
+    assert item.quantity == 2
+    assert item.raw_amount == service.unit_price * 2
+    assert item.vat == service.vat_rate.rate * service.unit_price * 2 / 100
+    assert item.net_amount == item.raw_amount + item.vat
+    assert item.invoice_id == invoice.id
+    assert len(invoice.items) == items_count + 1
+    assert invoice.items[items_count] == item
+    assert invoice.raw_amount == raw_amount + item.raw_amount
+    assert invoice.vat == vat + item.vat
+    assert invoice.net_amount == raw_amount + vat + item.net_amount
+
+
+def test_crud_add_item_default_qty(dbsession, init_data):
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    items_count = len(invoice.items)
+    raw_amount = invoice.raw_amount
+    vat = invoice.vat
+    service = init_data.services[1]
+
+    item = crud.invoice.add_item(dbsession, invoice_=invoice, service=service)
+
+    assert item.service_id == service.id
+    assert item.quantity == 1
+    assert item.raw_amount == service.unit_price
+    assert item.vat == service.vat_rate.rate * service.unit_price / 100
+    assert item.net_amount == item.raw_amount + item.vat
+    assert item.invoice_id == invoice.id
+    assert len(invoice.items) == items_count + 1
+    assert invoice.items[items_count] == item
+    assert invoice.raw_amount == raw_amount + item.raw_amount
+    assert invoice.vat == vat + item.vat
+    assert invoice.net_amount == raw_amount + vat + item.net_amount
+
+
+def test_crud_add_item_non_draft(dbsession, init_data):
+    client = init_data.clients[1]
+    invoice = client.invoices[0]
+    assert invoice.status is not models.InvoiceStatus.DRAFT
+    items_count = len(invoice.items)
+    raw_amount = invoice.raw_amount
+    vat = invoice.vat
+    service = init_data.services[1]
+
+    with pytest.raises(AssertionError):
+        _item = crud.invoice.add_item(
+            dbsession, invoice_=invoice, service=service, quantity=2
+        )
+
+    assert len(invoice.items) == items_count
+    assert invoice.raw_amount == raw_amount
+    assert invoice.vat == vat
+    assert invoice.net_amount == raw_amount + vat
+
+
+def test_crud_add_item_commit_error(dbsession, init_data, mock_commit):
+    state, _called = mock_commit
+    state["failed"] = True
+
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    items_count = len(invoice.items)
+    raw_amount = invoice.raw_amount
+    vat = invoice.vat
+    service = init_data.services[1]
+
+    with pytest.raises(crud.CrudError):
+        _item = crud.invoice.add_item(
+            dbsession, invoice_=invoice, service=service, quantity=2
+        )
+
+    assert len(invoice.items) == items_count
+    assert invoice.raw_amount == raw_amount
+    assert invoice.vat == vat
+    assert invoice.net_amount == raw_amount + vat
+
+
+def test_crud_clear_invoice_no_basket(dbsession, init_data):
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    item_ids = [item.id for item in invoice.items]
+    assert all([item not in client.basket.items for item in invoice.items])
+
+    crud.invoice.clear_invoice(dbsession, invoice_=invoice)
+
+    for item_id in item_ids:
+        assert (
+            dbsession.scalars(
+                sa.select(models.Item).where(models.Item.id == item_id)
+            ).first()
+            is None
+        )
+
+    assert len(invoice.items) == 0
+    assert invoice.raw_amount == 0.0
+    assert invoice.vat == 0.0
+
+
+def test_crud_clear_invoice_in_basket(dbsession, init_data):
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    item_ids = [item.id for item in invoice.items]
+    invoice.items[0].basket_id = client.basket.id
+    item_in_basket = invoice.items[0]
+
+    crud.invoice.clear_invoice(dbsession, invoice_=invoice)
+
+    it1 = dbsession.scalars(
+        sa.select(models.Item).where(models.Item.id == item_ids[0])
+    ).first()
+    assert it1 == item_in_basket
+
+    assert len(invoice.items) == 0
+    assert invoice.raw_amount == 0.0
+    assert invoice.vat == 0.0
+
+
+def test_crud_clear_invoice_non_draft(dbsession, init_data):
+    client = init_data.clients[1]
+    invoice = client.invoices[0]
+    assert invoice.status is not models.InvoiceStatus.DRAFT
+    items = [(item.id, item) for item in invoice.items]
+    items_count = len(invoice.items)
+    expected_raw_amount = invoice.raw_amount
+    expected_vat = invoice.vat
+
+    with pytest.raises(AssertionError):
+        crud.invoice.clear_invoice(dbsession, invoice_=invoice)
+
+    for item_id, item in items:
+        it = dbsession.scalars(
+            sa.select(models.Item).where(models.Item.id == item_id)
+        ).first()
+        assert it == item
+
+    assert len(invoice.items) == items_count
+    assert invoice.raw_amount == expected_raw_amount
+    assert invoice.vat == expected_vat
+
+
+def test_crud_clear_invoice_commit_error(dbsession, init_data, mock_commit):
+    state, _called = mock_commit
+    state["failed"] = True
+
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    items = [(item.id, item) for item in invoice.items]
+    items_count = len(invoice.items)
+    expected_raw_amount = invoice.raw_amount
+    expected_vat = invoice.vat
+
+    with pytest.raises(crud.CrudError):
+        crud.invoice.clear_invoice(dbsession, invoice_=invoice)
+
+    for item_id, item in items:
+        it = dbsession.scalars(
+            sa.select(models.Item).where(models.Item.id == item_id)
+        ).first()
+        assert it == item
+
+    assert len(invoice.items) == items_count
+    assert invoice.raw_amount == expected_raw_amount
+    assert invoice.vat == expected_vat
+
+
+def test_crud_delete_invoice_no_basket(dbsession, init_data):
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    item_ids = [item.id for item in invoice.items]
+    assert len(item_ids) > 0
+    log_ids = [log.id for log in invoice.status_log]
+    assert len(log_ids) > 0
+    assert all([item not in client.basket.items for item in invoice.items])
+
+    crud.invoice.delete_invoice(dbsession, invoice_=invoice)
+
+    assert (
+        dbsession.scalars(
+            sa.select(models.Invoice).where(models.Invoice.id == invoice_id)
+        ).first()
+        is None
+    )
+    for item_id in item_ids:
+        assert (
+            dbsession.scalars(
+                sa.select(models.Item).where(models.Item.id == item_id)
+            ).first()
+            is None
+        )
+    for log_id in log_ids:
+        assert (
+            dbsession.scalars(
+                sa.select(models.StatusLog).where(models.StatusLog.id == log_id)
+            ).first()
+            is None
+        )
+
+
+def test_crud_delete_invoice_in_basket(dbsession, init_data):
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    item_ids = [item.id for item in invoice.items]
+    assert len(item_ids) > 1
+    log_ids = [log.id for log in invoice.status_log]
+    assert len(log_ids) > 0
+    invoice.items[0].basket_id = client.basket.id
+    item_in_basket = invoice.items[0]
+
+    crud.invoice.delete_invoice(dbsession, invoice_=invoice)
+
+    assert (
+        dbsession.scalars(
+            sa.select(models.Invoice).where(models.Invoice.id == invoice_id)
+        ).first()
+        is None
+    )
+
+    assert (
+        dbsession.scalars(
+            sa.select(models.Item).where(models.Item.id == item_ids[0])
+        ).first()
+        == item_in_basket
+    )
+    for item_id in item_ids[1:]:
+        assert (
+            dbsession.scalars(
+                sa.select(models.Item).where(models.Item.id == item_id)
+            ).first()
+            is None
+        )
+    for log_id in log_ids:
+        assert (
+            dbsession.scalars(
+                sa.select(models.StatusLog).where(models.StatusLog.id == log_id)
+            ).first()
+            is None
+        )
+
+
+def test_crud_delete_invoice_non_draft(dbsession, init_data):
+    client = init_data.clients[1]
+    invoice = client.invoices[0]
+    assert invoice.status is not models.InvoiceStatus.DRAFT
+    items = [(item.id, item) for item in invoice.items]
+    items_count = len(invoice.items)
+    assert items_count > 0
+    logs = [(log.id, log) for log in invoice.status_log]
+    logs_count = len(invoice.status_log)
+    assert logs_count > 0
+    expected_raw_amount = invoice.raw_amount
+    expected_vat = invoice.vat
+
+    with pytest.raises(AssertionError):
+        crud.invoice.delete_invoice(dbsession, invoice_=invoice)
+
+    for item_id, item in items:
+        it = dbsession.scalars(
+            sa.select(models.Item).where(models.Item.id == item_id)
+        ).first()
+        assert it == item
+    for log_id, log in logs:
+        lg = dbsession.scalars(
+            sa.select(models.StatusLog).where(models.StatusLog.id == log_id)
+        ).first()
+        assert lg == log
+    assert len(invoice.items) == items_count
+    assert len(invoice.status_log) == logs_count
+    assert invoice.raw_amount == expected_raw_amount
+    assert invoice.vat == expected_vat
+
+
+def test_crud_delete_invoice_commit_error(dbsession, init_data, mock_commit):
+    state, _called = mock_commit
+    state["failed"] = True
+
+    client = init_data.clients[0]
+    invoice = client.invoices[0]
+    assert invoice.status is models.InvoiceStatus.DRAFT
+    items = [(item.id, item) for item in invoice.items]
+    items_count = len(invoice.items)
+    assert items_count > 0
+    logs = [(log.id, log) for log in invoice.status_log]
+    logs_count = len(invoice.status_log)
+    assert logs_count > 0
+    expected_raw_amount = invoice.raw_amount
+    expected_vat = invoice.vat
+
+    with pytest.raises(crud.CrudError):
+        crud.invoice.delete_invoice(dbsession, invoice_=invoice)
+
+    for item_id, item in items:
+        it = dbsession.scalars(
+            sa.select(models.Item).where(models.Item.id == item_id)
+        ).first()
+        assert it == item
+    for log_id, log in logs:
+        lg = dbsession.scalars(
+            sa.select(models.StatusLog).where(models.StatusLog.id == log_id)
+        ).first()
+        assert lg == log
+    assert len(invoice.items) == items_count
+    assert len(invoice.status_log) == logs_count
+    assert invoice.raw_amount == expected_raw_amount
+    assert invoice.vat == expected_vat
+
+
+def test_crud_cancel_invoice(dbsession, init_data, mock_datetime_now):
+    client = init_data.clients[1]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is models.InvoiceStatus.EMITTED
+    last_log = invoice.status_log[0]
+    assert last_log.to is None
+
+    crud.invoice.cancel_invoice(dbsession, invoice_=invoice)
+
+    assert invoice.status is models.InvoiceStatus.CANCELLED
+    status_log = dbsession.scalars(
+        sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
+    ).all()
+    assert status_log[0] is last_log
+    assert status_log[0].to == FAKE_TIME
+    assert status_log[1].status is models.InvoiceStatus.CANCELLED
+    assert status_log[1].from_ == FAKE_TIME
+    assert status_log[1].to is None
+
+
+def test_crud_cancel_invoice_bad_status(dbsession, init_data):
+    client = init_data.clients[3]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is models.InvoiceStatus.PAID
+    last_log = invoice.status_log[0]
+    assert last_log.to is None
+    logs_count = len(invoice.status_log)
+
+    with pytest.raises(AssertionError):
+        crud.invoice.cancel_invoice(dbsession, invoice_=invoice)
+
+    assert invoice.status is models.InvoiceStatus.PAID
+    status_log = dbsession.scalars(
+        sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
+    ).all()
+    assert len(status_log) == logs_count
+    assert status_log[0] is last_log
+    assert status_log[0].to is None
+    assert status_log[0].status is models.InvoiceStatus.PAID
+
+
+def test_crud_cancel_invoice_commit_error(dbsession, init_data, mock_commit):
+    state, _called = mock_commit
+    state["failed"] = True
+
+    client = init_data.clients[1]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is models.InvoiceStatus.EMITTED
+    last_log = invoice.status_log[0]
+    assert last_log.to is None
+    logs_count = len(invoice.status_log)
+
+    with pytest.raises(crud.CrudError):
+        crud.invoice.cancel_invoice(dbsession, invoice_=invoice)
+
+    assert invoice.status is models.InvoiceStatus.EMITTED
+    status_log = dbsession.scalars(
+        sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
+    ).all()
+    assert len(status_log) == logs_count
+    assert status_log[0] is last_log
+    assert status_log[0].to is None
+    assert status_log[0].status is models.InvoiceStatus.EMITTED
+
+
+@pytest.mark.parametrize(
+    "status, client_idx, prev_status",
+    (
+        (models.InvoiceStatus.EMITTED, 0, models.InvoiceStatus.DRAFT),  # from DRAFT
+        (
+            models.InvoiceStatus.REMINDED,
+            1,
+            models.InvoiceStatus.EMITTED,
+        ),  # from EMITTED
+        (models.InvoiceStatus.PAID, 1, models.InvoiceStatus.EMITTED),  # from EMITTED
+        (
+            models.InvoiceStatus.CANCELLED,
+            2,
+            models.InvoiceStatus.REMINDED,
+        ),  # from REMINDED
+    ),
+)
+def test_crud_mark_as(
+    status, client_idx, prev_status, dbsession, init_data, mock_datetime_now
+):
+    client = init_data.clients[client_idx]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is prev_status
+    last_log = invoice.status_log[0]
+    assert last_log.to is None
+
+    crud.invoice.mark_as(dbsession, invoice_=invoice, status=status)
+
+    assert invoice.status is status
+    status_log = dbsession.scalars(
+        sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
+    ).all()
+    assert status_log[0] is last_log
+    assert status_log[0].to == FAKE_TIME
+    assert status_log[1].status is status
+    assert status_log[1].from_ == FAKE_TIME
+    assert status_log[1].to is None
+
+
+def test_crud_mark_as_bad_status(dbsession, init_data):
+    client = init_data.clients[3]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is models.InvoiceStatus.PAID
+    last_log = invoice.status_log[0]
+    assert last_log.to is None
+    logs_count = len(invoice.status_log)
+
+    with pytest.raises(AssertionError):
+        crud.invoice.mark_as(
+            dbsession, invoice_=invoice, status=models.InvoiceStatus.DRAFT
+        )
+
+    assert invoice.status is models.InvoiceStatus.PAID
+    status_log = dbsession.scalars(
+        sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
+    ).all()
+    assert len(status_log) == logs_count
+    assert status_log[0] is last_log
+    assert status_log[0].to is None
+    assert status_log[0].status is models.InvoiceStatus.PAID
+
+
+def test_crud_mark_as_commit_error(dbsession, init_data, mock_commit):
+    state, _called = mock_commit
+    state["failed"] = True
+
+    client = init_data.clients[1]
+    invoice = client.invoices[0]
+    invoice_id = invoice.id
+    assert invoice.status is models.InvoiceStatus.EMITTED
+    last_log = invoice.status_log[0]
+    assert last_log.to is None
+    logs_count = len(invoice.status_log)
+
+    with pytest.raises(crud.CrudError):
+        crud.invoice.mark_as(
+            dbsession, invoice_=invoice, status=models.InvoiceStatus.PAID
+        )
+
+    assert invoice.status is models.InvoiceStatus.EMITTED
+    status_log = dbsession.scalars(
+        sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
+    ).all()
+    assert len(status_log) == logs_count
+    assert status_log[0] is last_log
+    assert status_log[0].to is None
+    assert status_log[0].status is models.InvoiceStatus.EMITTED
+
+
+def test_invoice_from_orm(dbsession, init_data):
+    invoice = init_data.invoices[0]
+
+    from_db = schemas.Invoice.from_orm(invoice)
+
+    assert from_db.id == invoice.id
+    assert from_db.raw_amount == invoice.raw_amount
+    assert from_db.vat == invoice.vat
+    assert from_db.status == invoice.status
+    assert from_db.client_id == invoice.client_id
+    for i, item in enumerate(from_db.items):
+        assert item == schemas.Item.from_orm(invoice.items[i])
+    for i, log in enumerate(from_db.status_log):
+        assert log == schemas.StatusLog.from_orm(invoice.status_log[i])

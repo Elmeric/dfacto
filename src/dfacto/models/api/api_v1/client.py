@@ -5,12 +5,13 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Type, Optional
+from typing import Optional, Type
 
-from dfacto.models.util import Period, PeriodFilter
-from dfacto.models import db, crud, schemas
-from dfacto.models.models import InvoiceStatus
+from dfacto.models import crud, db, schemas
 from dfacto.models.api.command import CommandResponse, CommandStatus
+from dfacto.models.models import InvoiceStatus
+from dfacto.models.util import Period, PeriodFilter
+
 from .base import DFactoModel
 
 
@@ -33,25 +34,25 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def get_basket(self, obj_id: int) -> CommandResponse:
         try:
-            db_obj = self.crud_object.get_basket(self.Session, obj_id)
+            basket = self.crud_object.get_basket(self.Session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
                 f"GET-BASKET - SQL or database error: {exc}",
             )
         else:
-            if db_obj is None:
+            if basket is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
                     f"GET-BASKET - Basket of client {obj_id} not found.",
                 )
             else:
-                body = schemas.Basket.from_orm(db_obj)
+                body = schemas.Basket.from_orm(basket)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def get_invoices(
         self,
-        obj_id: int,    # client id
+        obj_id: int,  # client id
         *,
         status: Optional[InvoiceStatus] = None,
         filter_: Optional[PeriodFilter] = None,
@@ -67,13 +68,15 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             period = filter_.as_period()
         # Here, period may be None if both filter and period was None
         if period is None:
-            period = Period()   # i.e. from now to the epoch
+            period = Period()  # i.e. from now to the epoch
         if status is not None:
             return self._get_invoices_by_status(obj_id, status=status, period=period)
         else:
             return self._get_invoices(obj_id, period=period)
 
-    def _get_invoices_by_status(self, obj_id: int, *, status: InvoiceStatus, period: Period):
+    def _get_invoices_by_status(
+        self, obj_id: int, *, status: InvoiceStatus, period: Period
+    ):
         try:
             invoices = self.crud_object.get_invoices_by_status(
                 self.Session, obj_id, status=status, period=period
@@ -89,7 +92,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def _get_invoices(self, obj_id: int, *, period: Period):
         try:
-            invoices = self.crud_object.get_invoices(self.Session, obj_id, period=period)
+            invoices = self.crud_object.get_invoices(
+                self.Session, obj_id, period=period
+            )
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -130,13 +135,6 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return CommandResponse(
                     CommandStatus.REJECTED,
                     f"DELETE - Client {client_.name} has non-DRAFT invoices"
-                    f" and cannot be deleted.",
-                )
-
-            if len(client_.basket.items) > 0:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"DELETE - Client {client_.name} has a non-empty basket"
                     f" and cannot be deleted.",
                 )
 
@@ -182,7 +180,51 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Item.from_orm(it)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
-    def update_item_quantity(self, item_id: int, *, quantity: int) -> CommandResponse:
+    def add_to_invoice(
+        self, obj_id: int, *, invoice_id: int, service_id: int, quantity: int = 1
+    ) -> CommandResponse:
+        try:
+            invoice = crud.invoice.get(self.Session, invoice_id)
+            service = crud.service.get(self.Session, service_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"ADD-TO-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            if invoice is None or service is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"ADD-TO-INVOICE - Invoice {invoice_id} or "
+                    f"service {service_id} not found.",
+                )
+            if invoice.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"ADD-TO-INVOICE - Invoice {invoice_id} is not owned by client {obj_id}.",
+                )
+            if invoice.status is not InvoiceStatus.DRAFT:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"ADD-TO-INVOICE - Cannot add items to a non-draft invoice.",
+                )
+
+            try:
+                it = crud.invoice.add_item(
+                    self.Session, invoice=invoice, service=service, quantity=quantity
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"ADD-TO-INVOICE - Cannot add to invoice {invoice_id}: {exc}",
+                )
+            else:
+                body = schemas.Item.from_orm(it)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    def update_item_quantity(
+        self, obj_id: int, *, item_id: int, quantity: int
+    ) -> CommandResponse:
         if quantity <= 0:
             return CommandResponse(
                 CommandStatus.REJECTED,
@@ -194,55 +236,93 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"BASKET-UPDATE-ITEM - SQL or database error: {exc}",
+                f"UPDATE-ITEM - SQL or database error: {exc}",
             )
         else:
             if item is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
-                    f"BASKET-UPDATE-ITEM - Item {item_id} not found.",
+                    f"UPDATE-ITEM - Item {item_id} not found.",
                 )
 
+            basket = item.basket
+            if basket is not None and basket.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"UPDATE-ITEM - Item {item_id} is not part of the "
+                    f"basket of client {obj_id}.",
+                )
             invoice = item.invoice
+            if invoice is not None and invoice.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"UPDATE-ITEM - Item {item_id} is not part of any "
+                    f"invoice of client {obj_id}.",
+                )
             if invoice is not None and invoice.status != InvoiceStatus.DRAFT:
                 return CommandResponse(
                     CommandStatus.REJECTED,
-                    "BASKET-UPDATE-ITEM - Cannot change items of a non-draft invoice.",
+                    "UPDATE-ITEM - Cannot change items of a non-draft invoice.",
                 )
 
             try:
                 self.crud_object.update_item_quantity(
-                    self.Session, db_obj=item, quantity=quantity
+                    self.Session, item=item, quantity=quantity
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
-                    f"BASKET-UPDATE-ITEM - Cannot remove item {item_id}: {exc}",
+                    f"UPDATE-ITEM - Cannot remove item {item_id}: {exc}",
                 )
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
-    def remove_from_basket(self, item_id: int) -> CommandResponse:
+    def remove_item(self, obj_id: int, *, item_id: int) -> CommandResponse:
         try:
             item = crud.item.get(self.Session, item_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"REMOVE-FROM-BASKET - SQL or database error: {exc}",
+                f"REMOVE-ITEM - SQL or database error: {exc}",
             )
         else:
             if item is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
-                    f"REMOVE-FROM-BASKET - Item {item_id} not found.",
+                    f"REMOVE-ITEM - Item {item_id} not found.",
+                )
+
+            basket = item.basket
+            if basket is not None and basket.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"REMOVE-ITEM - Item {item_id} is not part of the "
+                    f"basket of client {obj_id}.",
+                )
+            invoice = item.invoice
+            if invoice is not None and invoice.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"REMOVE-ITEM - Item {item_id} is not part of any "
+                    f"invoice of client {obj_id}.",
+                )
+            if invoice is not None and invoice.status != InvoiceStatus.DRAFT:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    "REMOVE-ITEM - Cannot remove items from a non-draft invoice.",
+                )
+            if basket is not None and invoice is not None:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    "REMOVE-ITEM - Cannot remove items used both by the basket and an invoice.",
                 )
 
             try:
-                self.crud_object.remove_from_basket(self.Session, db_obj=item)
+                self.crud_object.remove_item(self.Session, item=item)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
-                    f"REMOVE-FROM-BASKET - Cannot remove item {item_id}: {exc}",
+                    f"REMOVE-ITEM - Cannot remove item {item_id}: {exc}",
                 )
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
@@ -263,7 +343,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
-                self.crud_object.clear_basket(self.Session, db_obj=basket)
+                self.crud_object.clear_basket(self.Session, basket=basket)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -273,16 +353,12 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return CommandResponse(CommandStatus.COMPLETED)
 
     # TODO:
-    # create_invoice (create empty invoice)
-    # create_from_basket
-    # add_item, update_item_quantity, remove_item, clear (if draft)
-    # mark_as: emitted, paid, reminded, cancelled
-    # delete (if draft)
-    # get: by status, for a period of time
-
+    # preview: render as html using a Jinja template
+    # emit: send in pdf in an email (optional, check yagmail or sendgrid or sendinblue. Examples on Real Python)
+    # remind: send a reminder in an email (optional)
     def create_invoice(self, obj_id: int) -> CommandResponse:
         try:
-            db_obj = crud.invoice.create(
+            invoice = crud.invoice.create(
                 self.Session, obj_in=schemas.InvoiceCreate(obj_id)
             )
         except crud.CrudError as exc:
@@ -291,7 +367,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 f"CREATE-INVOICE - Cannot create an invoice for client {obj_id}: {exc}",
             )
         else:
-            body = self.schema.from_orm(db_obj)
+            body = self.schema.from_orm(invoice)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def invoice_from_basket(
@@ -315,7 +391,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return self.create_invoice(obj_id)
 
             try:
-                inv = crud.invoice.invoice_from_basket(
+                invoice = crud.invoice.invoice_from_basket(
                     self.Session, basket, clear_basket=clear_basket
                 )
             except crud.CrudError as exc:
@@ -325,8 +401,139 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     f"{obj_id}: {exc}",
                 )
             else:
-                body = schemas.Invoice.from_orm(inv)
+                body = schemas.Invoice.from_orm(invoice)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    def clear_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._clear_or_delete_invoice(obj_id, invoice_id, clear_only=True)
+
+    def delete_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._clear_or_delete_invoice(obj_id, invoice_id, clear_only=False)
+
+    def _clear_or_delete_invoice(
+        self, obj_id: int, invoice_id: int, clear_only: bool = False
+    ) -> CommandResponse:
+        action = "clear" if clear_only else "delete"
+        try:
+            invoice = crud.invoice.get(self.Session, invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"{action.upper()}-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            if invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"{action.upper()}-INVOICE - Invoice {invoice_id} not found.",
+                )
+            if invoice.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"{action.upper()}-INVOICE - Invoice {invoice_id} is not an invoice of "
+                    f"client {obj_id}.",
+                )
+            if invoice.status != InvoiceStatus.DRAFT:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"{action.upper()}-INVOICE - Cannot {action} a non-draft invoice.",
+                )
+
+            try:
+                if clear_only:
+                    crud.invoice.clear_invoice(self.Session, invoice_=invoice)
+                else:
+                    crud.invoice.delete_invoice(self.Session, invoice_=invoice)
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"{action.upper()}-INVOICE - Cannot {action} invoice {invoice_id} of "
+                    f"client {obj_id}: {exc}",
+                )
+            else:
+                return CommandResponse(CommandStatus.COMPLETED)
+
+    def cancel_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.CANCELLED)
+
+    def mark_as_emitted(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.EMITTED)
+
+    def mark_as_reminded(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.REMINDED)
+
+    def mark_as_paid(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.PAID)
+
+    def mark_as_cancelled(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.CANCELLED)
+
+    def _mark_as(
+        self, obj_id: int, invoice_id: int, status: InvoiceStatus
+    ) -> CommandResponse:
+        """
+        None	    Create_invoice	            DRAFT
+        DRAFT	    (emit) mark_as_emitted	    EMITTED
+        DRAFT	    delete_invoice	            None
+        EMITTED	    mark_as_paid	            PAID
+        EMITTED	    (remind) mark_as_reminded	REMINDED
+        EMITTED	    cancel_invoice	            CANCELLED
+        REMINDED	mark_as_paid	            PAID
+        REMINDED	(remind) mark_as_reminded	REMINDED
+        REMINDED	cancel_invoice	            CANCELLED
+        """
+        assert status in (
+            InvoiceStatus.EMITTED,
+            InvoiceStatus.REMINDED,
+            InvoiceStatus.PAID,
+            InvoiceStatus.CANCELLED,
+        )
+
+        try:
+            invoice = crud.invoice.get(self.Session, invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"MARK_AS-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            if invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"MARK_AS-INVOICE - Invoice {invoice_id} not found.",
+                )
+            if invoice.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"MARK_AS-INVOICE - Invoice {invoice_id} is not an invoice of "
+                    f"client {obj_id}.",
+                )
+            valid_status = {
+                InvoiceStatus.EMITTED: (InvoiceStatus.DRAFT,),
+                InvoiceStatus.REMINDED: (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED),
+                InvoiceStatus.PAID: (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED),
+                InvoiceStatus.CANCELLED: (
+                    InvoiceStatus.EMITTED,
+                    InvoiceStatus.REMINDED,
+                ),
+            }
+            if invoice.status not in valid_status[status]:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"MARK_AS-INVOICE - Invoice status transition from {invoice.status} "
+                    f"to {status} is not allowed.",
+                )
+
+            try:
+                crud.invoice.mark_as(self.Session, invoice_=invoice, status=status)
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"MARK_AS-INVOICE - Cannot mark invoice {invoice_id} of "
+                    f"client {obj_id} as {status}: {exc}",
+                )
+            else:
+                return CommandResponse(CommandStatus.COMPLETED)
 
 
 client = ClientModel(db.Session)

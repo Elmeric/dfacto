@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import sqlite3 as sqlite
+
 import sqlalchemy as sa
 import sqlalchemy.event
 import sqlalchemy.orm

@@ -54,7 +54,7 @@ class VatRate(_VatRateInDBBase):
             name=orm_obj.name,
             rate=orm_obj.rate,
             is_default=orm_obj.is_default,
-            is_preset=orm_obj.is_preset
+            is_preset=orm_obj.is_preset,
         )
 
 

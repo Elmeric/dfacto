@@ -7,8 +7,9 @@
 from dataclasses import dataclass
 from typing import Type, TypedDict
 
-from dfacto.models import db, crud, schemas
+from dfacto.models import crud, db, schemas
 from dfacto.models.api.command import CommandResponse, CommandStatus
+
 from .base import DFactoModel
 
 
@@ -23,82 +24,119 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
     schema: Type[schemas.VatRate] = schemas.VatRate
 
     def get_default(self) -> CommandResponse:
-        db_obj = self.crud_object.get_default(self.Session)
-        return CommandResponse(
-            CommandStatus.COMPLETED,
-            body=self.schema.from_orm(db_obj)
-        )
+        try:
+            vat_rate_ = self.crud_object.get_default(self.Session)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET_DEFAULT - SQL or database error: {exc}",
+            )
+        else:
+            if vat_rate_ is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    "GET_DEFAULT - Default VAT rate not found.",
+                )
+            else:
+                body = self.schema.from_orm(vat_rate_)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def set_default(self, obj_id: int) -> CommandResponse:
         try:
-            self.crud_object.set_default(self.Session, obj_id)
+            old = self.crud_object.get_default(self.Session)
+            new = self.crud_object.get(self.Session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"SET_DEFAULT - SQL or database error: {exc}"
+                f"UPDATE - SQL or database error: {exc}",
             )
         else:
-            return CommandResponse(CommandStatus.COMPLETED)
+            if new is old:
+                return CommandResponse(CommandStatus.COMPLETED)
+
+            try:
+                self.crud_object.set_default(
+                    self.Session, old_default=old, new_default=new
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED, f"SET_DEFAULT - SQL or database error: {exc}"
+                )
+            else:
+                return CommandResponse(CommandStatus.COMPLETED)
 
     def update(self, obj_id: int, *, obj_in: schemas.VatRateUpdate) -> CommandResponse:
-        db_obj = self.crud_object.get(self.Session, obj_id)
-        if db_obj is None:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"UPDATE - Object {obj_id} not found.",
-            )
-
-        if db_obj.is_preset:
-            return CommandResponse(
-                CommandStatus.REJECTED,
-                "UPDATE - Preset VAT rates cannot be changed.",
-            )
-
         try:
-            db_obj = self.crud_object.update(
-                self.Session, db_obj=db_obj, obj_in=obj_in
-            )
+            vat_rate_ = self.crud_object.get(self.Session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"UPDATE - Cannot update object {obj_id}: {exc}",
+                f"UPDATE - SQL or database error: {exc}",
             )
         else:
-            body = self.schema.from_orm(db_obj)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+            if vat_rate_ is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"UPDATE - Object {obj_id} not found.",
+                )
+
+            if vat_rate_.is_preset:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    "UPDATE - Preset VAT rates cannot be changed.",
+                )
+
+            try:
+                vat_rate_ = self.crud_object.update(
+                    self.Session, db_obj=vat_rate_, obj_in=obj_in
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"UPDATE - Cannot update object {obj_id}: {exc}",
+                )
+            else:
+                body = self.schema.from_orm(vat_rate_)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def delete(self, obj_id: int) -> CommandResponse:
-        vat_rate_ = self.crud_object.get(self.Session, obj_id)
-
-        if vat_rate_ is None:
-            return CommandResponse(
-                CommandStatus.FAILED,
-                f"DELETE - Object {obj_id} not found.",
-            )
-
-        if vat_rate_.is_preset:
-            return CommandResponse(
-                CommandStatus.REJECTED,
-                "DELETE - Preset VAT rates cannot be deleted.",
-            )
-
-        in_use = vat_rate_.services
-        if len(in_use) > 0:
-            return CommandResponse(
-                CommandStatus.REJECTED,
-                f"DELETE - VAT rate with id {obj_id} is used"
-                f" by at least '{in_use[0].name}' service.",
-            )
-
         try:
-            self.crud_object.delete(self.Session, db_obj=vat_rate_)
+            vat_rate_ = self.crud_object.get(self.Session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"DELETE - Cannot delete object {obj_id}: {exc}",
+                f"DELETE - SQL or database error: {exc}",
             )
         else:
-            return CommandResponse(CommandStatus.COMPLETED)
+            if vat_rate_ is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"DELETE - Object {obj_id} not found.",
+                )
+
+            if vat_rate_.is_preset:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    "DELETE - Preset VAT rates cannot be deleted.",
+                )
+
+            in_use = vat_rate_.services
+            if len(in_use) > 0:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"DELETE - VAT rate with id {obj_id} is used"
+                    f" by at least '{in_use[0].name}' service.",
+                )
+
+            try:
+                self.crud_object.delete(self.Session, db_obj=vat_rate_)
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"DELETE - Cannot delete object {obj_id}: {exc}",
+                )
+            else:
+                return CommandResponse(CommandStatus.COMPLETED)
 
 
 vat_rate = VatRateModel(db.Session)

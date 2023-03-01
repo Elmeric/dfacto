@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
-from dfacto.models import db, crud, models, schemas
+from dfacto.models import crud, db, models, schemas
 
 pytestmark = pytest.mark.crud
 
@@ -22,15 +22,13 @@ def init_vat_rates(dbsession: sa.orm.scoped_session) -> list[models.VatRate]:
 
     for i in range(3):
         vat_rate = models.VatRate(
-            name=f"Rate {i + 1}",
-            rate=12.5 + 2.5*i     # 12.5, 15, 17.5
+            name=f"Rate {i + 1}", rate=12.5 + 2.5 * i  # 12.5, 15, 17.5
         )
         dbsession.add(vat_rate)
         dbsession.commit()
 
     vat_rates = cast(
-        list[models.VatRate],
-        dbsession.scalars(sa.select(models.VatRate)).all()
+        list[models.VatRate], dbsession.scalars(sa.select(models.VatRate)).all()
     )
     return vat_rates
 
@@ -46,14 +44,14 @@ def test_crud_get_default(dbsession, init_vat_rates):
 
 
 def test_crud_set_default(dbsession, init_vat_rates):
-    previous = init_vat_rates[0]
+    old = init_vat_rates[0]
     new = init_vat_rates[6]
-    assert previous.is_default
+    assert old.is_default
     assert not new.is_default
 
-    crud.vat_rate.set_default(dbsession, new.id)
+    crud.vat_rate.set_default(dbsession, old_default=old, new_default=new)
 
-    assert not previous.is_default
+    assert not old.is_default
     assert new.is_default
 
 
@@ -61,15 +59,15 @@ def test_crud_set_default_error(dbsession, init_vat_rates, mock_commit):
     state, _called = mock_commit
     state["failed"] = True
 
-    previous = init_vat_rates[0]
+    old = init_vat_rates[0]
     new = init_vat_rates[6]
-    assert previous.is_default
+    assert old.is_default
     assert not new.is_default
 
     with pytest.raises(crud.CrudError):
-        crud.vat_rate.set_default(dbsession, new.id)
+        crud.vat_rate.set_default(dbsession, old_default=old, new_default=new)
 
-    assert previous.is_default
+    assert old.is_default
     assert not new.is_default
 
 
@@ -107,8 +105,8 @@ def test_crud_get_error(dbsession, init_vat_rates, mock_get):
         ({}, 0, None),
         ({"limit": 2}, 0, 2),
         ({"skip": 2}, 2, None),
-        ({"skip": 2, "limit": 2}, 2, 2)
-    )
+        ({"skip": 2, "limit": 2}, 2, 2),
+    ),
 )
 def test_crud_get_multi(kwargs, offset, length, dbsession, init_vat_rates):
     vat_rates = init_vat_rates
@@ -147,8 +145,7 @@ def test_crud_get_all_error(dbsession, init_vat_rates, mock_select):
 
 def test_crud_create(dbsession, init_vat_rates):
     vat_rate = crud.vat_rate.create(
-        dbsession,
-        obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
+        dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
     )
 
     assert vat_rate.id is not None
@@ -172,8 +169,7 @@ def test_crud_create_error(dbsession, init_vat_rates, mock_commit):
 
     with pytest.raises(crud.CrudError):
         _vat_rate = crud.vat_rate.create(
-            dbsession,
-            obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
+            dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
         )
     assert (
         dbsession.scalars(
@@ -190,7 +186,7 @@ def test_crud_update(obj_in_factory, dbsession, init_vat_rates):
     updated = crud.vat_rate.update(
         dbsession,
         db_obj=vat_rate,
-        obj_in=obj_in_factory(name="A super rate!", rate=50.0)
+        obj_in=obj_in_factory(name="A super rate!", rate=50.0),
     )
 
     assert updated.id == vat_rate.id
@@ -213,11 +209,11 @@ def test_crud_update_is_default_failed(set_default, obj_id, dbsession, init_vat_
     vat_rate = init_vat_rates[obj_id]
 
     assert vat_rate.is_default is not set_default
-    with pytest.raises(crud.CrudError):
+    with pytest.raises(AssertionError, match="Use 'set_default' instead"):
         _updated = crud.vat_rate.update(
             dbsession,
             db_obj=vat_rate,
-            obj_in=dict(name="A super rate!", rate=50.0, is_default=set_default)
+            obj_in=dict(name="A super rate!", rate=50.0, is_default=set_default),
         )
 
     try:
@@ -236,9 +232,7 @@ def test_crud_update_is_default_success(set_default, obj_id, dbsession, init_vat
 
     assert vat_rate.is_default is set_default
     _updated = crud.vat_rate.update(
-        dbsession,
-        db_obj=vat_rate,
-        obj_in=dict(is_default=set_default)
+        dbsession, db_obj=vat_rate, obj_in=dict(is_default=set_default)
     )
 
     try:
@@ -255,9 +249,7 @@ def test_crud_update_partial(dbsession, init_vat_rates):
     vat_rate = init_vat_rates[6]
 
     updated = crud.vat_rate.update(
-        dbsession,
-        db_obj=vat_rate,
-        obj_in=schemas.VatRateUpdate(rate=50.0)
+        dbsession, db_obj=vat_rate, obj_in=schemas.VatRateUpdate(rate=50.0)
     )
 
     assert updated.id == vat_rate.id
@@ -282,9 +274,7 @@ def test_crud_update_idem(dbsession, init_vat_rates, mock_commit):
     vat_rate = init_vat_rates[0]
 
     updated = crud.vat_rate.update(
-        dbsession,
-        db_obj=vat_rate,
-        obj_in=schemas.VatRateUpdate(rate=vat_rate.rate)
+        dbsession, db_obj=vat_rate, obj_in=schemas.VatRateUpdate(rate=vat_rate.rate)
     )
 
     assert updated is vat_rate
@@ -299,9 +289,7 @@ def test_crud_update_error(dbsession, init_vat_rates, mock_commit):
 
     with pytest.raises(crud.CrudError):
         _updated = crud.vat_rate.update(
-            dbsession,
-            db_obj=vat_rate,
-            obj_in=schemas.VatRateUpdate(rate=30.0)
+            dbsession, db_obj=vat_rate, obj_in=schemas.VatRateUpdate(rate=30.0)
         )
 
     assert (

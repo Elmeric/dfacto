@@ -4,8 +4,9 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+from dfacto.models import models  # noqa
 from dfacto.models.db.base_model import BaseModel  # noqa
-from dfacto.models import models    # noqa
+
 # from dfacto.models.models.vat_rate import VatRate
 # from dfacto.models.models.service import Service
 # from dfacto.models.models.client import Client

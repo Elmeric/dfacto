@@ -12,7 +12,7 @@ from sqlalchemy.schema import CheckConstraint
 
 from dfacto.models import db
 
-if TYPE_CHECKING:   # pragma: no cover
+if TYPE_CHECKING:  # pragma: no cover
     from .basket import Basket
     from .invoice import Invoice
     from .service import Service

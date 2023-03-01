@@ -8,7 +8,6 @@ import enum
 from datetime import date, datetime, timedelta
 from typing import NamedTuple, Optional
 
-
 # def quarter_from_month(month: int) -> int:
 #     return (month - 1) // 3 + 1
 #
@@ -45,7 +44,9 @@ class Period(NamedTuple):
 
     @classmethod
     def from_last_month(cls):
-        end = date.today().replace(day=1) - timedelta(days=1)   # veille du 1er jour du mois en cours
+        end = date.today().replace(day=1) - timedelta(
+            days=1
+        )  # veille du 1er jour du mois en cours
         start = end.replace(day=1)
         return cls(start, end)
 
@@ -72,7 +73,9 @@ class Period(NamedTuple):
 
     @classmethod
     def from_last_year(cls):
-        end = date.today().replace(day=1, month=1) - timedelta(days=1)   # veille du 1er jour de l'année en cours
+        end = date.today().replace(day=1, month=1) - timedelta(
+            days=1
+        )  # veille du 1er jour de l'année en cours
         start = end.replace(day=1, month=1)
         return cls(start, end)
 
@@ -90,6 +93,6 @@ class PeriodFilter(enum.Enum):
         return getattr(Period, method)()
 
 
-if __name__ == '__main__':
-        for f in PeriodFilter:
-            print(f.name, f.as_period())
+if __name__ == "__main__":
+    for f in PeriodFilter:
+        print(f.name, f.as_period())

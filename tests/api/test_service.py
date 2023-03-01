@@ -6,8 +6,8 @@
 
 import pytest
 
+from dfacto.models import api, crud, schemas
 from dfacto.models.api.command import CommandStatus
-from dfacto.models import crud, schemas, api
 from tests.conftest import FakeORMService
 
 pytestmark = pytest.mark.api
@@ -57,11 +57,11 @@ def test_cmd_get_multi(mock_dfacto_model, mock_schema_from_orm):
     state, methods_called = mock_dfacto_model
     state["raises"] = {"READ": False}
     state["read_value"] = [
-                FakeORMService(id=1, name="Service 1", unit_price=100.0),
-                FakeORMService(id=2, name="Service 2", unit_price=200.0),
-                FakeORMService(id=3, name="Service 3", unit_price=300.0),
-                FakeORMService(id=4, name="Service 4", unit_price=400.0),
-            ]
+        FakeORMService(id=1, name="Service 1", unit_price=100.0),
+        FakeORMService(id=2, name="Service 2", unit_price=200.0),
+        FakeORMService(id=3, name="Service 3", unit_price=300.0),
+        FakeORMService(id=4, name="Service 4", unit_price=400.0),
+    ]
 
     response = api.service.get_multi(skip=1, limit=2)
 
@@ -93,9 +93,9 @@ def test_cmd_get_all(mock_dfacto_model, mock_schema_from_orm):
     state, methods_called = mock_dfacto_model
     state["raises"] = {"READ": False}
     state["read_value"] = [
-                FakeORMService(id=2, name="Service 2", unit_price=200.0),
-                FakeORMService(id=3, name="Service 3", unit_price=300.0),
-            ]
+        FakeORMService(id=2, name="Service 2", unit_price=200.0),
+        FakeORMService(id=3, name="Service 3", unit_price=300.0),
+    ]
 
     response = api.service.get_all()
 
@@ -163,7 +163,7 @@ def test_cmd_update(mock_dfacto_model, mock_schema_from_orm):
 
     response = api.service.update(
         obj_id=1,
-        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=200.0, vat_rate_id=3)
+        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=200.0, vat_rate_id=3),
     )
 
     assert len(methods_called) == 2
@@ -183,7 +183,7 @@ def test_cmd_update_unknown(mock_dfacto_model, mock_schema_from_orm):
 
     response = api.service.update(
         obj_id=1,
-        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=200.0, vat_rate_id=3)
+        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=200.0, vat_rate_id=3),
     )
 
     assert len(methods_called) == 1
@@ -201,7 +201,7 @@ def test_cmd_update_error(mock_dfacto_model, mock_schema_from_orm):
 
     response = api.service.update(
         obj_id=1,
-        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=200.0, vat_rate_id=3)
+        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=200.0, vat_rate_id=3),
     )
 
     assert len(methods_called) == 2

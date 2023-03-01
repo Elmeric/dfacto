@@ -52,7 +52,7 @@ class Basket(_BasketInDBBase):
             raw_amount=orm_obj.raw_amount,
             vat=orm_obj.vat,
             net_amount=orm_obj.net_amount,
-            items=[Item.from_orm(item) for item in orm_obj.items]
+            items=[Item.from_orm(item) for item in orm_obj.items],
         )
 
 

@@ -4,31 +4,39 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Union, Any
+from typing import Any, Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
-from dfacto.models import models
-from dfacto.models import schemas
+from dfacto.models import models, schemas
 
-from .base import CRUDBase, CrudError, CrudIntegrityError
+from .base import CRUDBase, CrudError
 
 
 class CRUDVatRate(
     CRUDBase[models.VatRate, schemas.VatRateCreate, schemas.VatRateUpdate]
 ):
-    def get_default(self, dbsession: scoped_session) -> models.VatRate:
-        return dbsession.scalars(
-            select(self.model).where(self.model.is_default == True)
-        ).first()
+    def get_default(self, dbsession: scoped_session) -> Optional[models.VatRate]:
+        try:
+            db_obj = dbsession.scalars(
+                select(self.model).where(self.model.is_default == True)
+            ).first()
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        else:
+            return db_obj
 
-    def set_default(self, dbsession: scoped_session, obj_id: int) -> None:
-        old = self.get_default(dbsession)
-        new = self.get(dbsession, obj_id)
-        old.is_default = False
-        new.is_default = True
+    def set_default(
+        self,
+        dbsession: scoped_session,
+        *,
+        old_default: models.VatRate,
+        new_default: models.VatRate,
+    ) -> None:
+        old_default.is_default = False
+        new_default.is_default = True
         try:
             dbsession.commit()
         except SQLAlchemyError as exc:
@@ -44,8 +52,10 @@ class CRUDVatRate(
     ) -> models.VatRate:
         if isinstance(obj_in, dict):
             is_default = obj_in.get("is_default", None)
-            if (is_default and not db_obj.is_default) or (not is_default and db_obj.is_default):
-                raise CrudIntegrityError
+            assert (not is_default or db_obj.is_default) and (
+                is_default or not db_obj.is_default
+            ), "Use 'set_default' instead"
+
         return super().update(dbsession, db_obj=db_obj, obj_in=obj_in)
 
 

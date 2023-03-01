@@ -11,8 +11,9 @@ from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models import db
+
 from .basket import Basket
-from .invoice import InvoiceStatus, Invoice
+from .invoice import Invoice, InvoiceStatus
 
 
 class Client(db.BaseModel):
@@ -26,13 +27,14 @@ class Client(db.BaseModel):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     basket: Mapped["Basket"] = relationship(
-        init=False, cascade="all, delete-orphan"
+        init=False,
+        # cascade="all, delete-orphan"
         # init=False, back_populates="client", cascade="all, delete-orphan"
     )
     invoices: Mapped[list["Invoice"]] = relationship(
         init=False,
         back_populates="client",
-        cascade="all, delete-orphan",
+        # cascade="all, delete-orphan",
     )
 
     @hybrid_property

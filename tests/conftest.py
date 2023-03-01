@@ -6,12 +6,11 @@
 
 # Cf. https://gist.github.com/kissgyorgy/e2365f25a213de44b9a2
 
-from typing import Union, Any, cast, Optional
 import dataclasses
 import sys
-from datetime import date, datetime
-
+from datetime import datetime
 from sqlite3 import Connection as SQLite3Connection
+from typing import Any, Optional, Union, cast
 
 import pytest
 from sqlalchemy import create_engine, select
@@ -19,7 +18,7 @@ from sqlalchemy.event import listen
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 
-from dfacto.models import db, crud, schemas, models
+from dfacto.models import crud, db, models, schemas
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -141,13 +140,14 @@ FAKE_TIME = datetime(2023, 2, 22, 21, 54, 30)
 
 @pytest.fixture
 def mock_datetime_now(monkeypatch):
-
     class mydatetime:
         @classmethod
         def now(cls):
             return FAKE_TIME
 
-    monkeypatch.setattr(sys.modules["dfacto.models.crud.invoice"], "datetime", mydatetime)
+    monkeypatch.setattr(
+        sys.modules["dfacto.models.crud.invoice"], "datetime", mydatetime
+    )
 
 
 @pytest.fixture()
@@ -189,7 +189,7 @@ def mock_dfacto_model(monkeypatch):
         elif exc:
             raise crud.CrudError
         else:
-            return state["read_value"][skip: skip + limit]
+            return state["read_value"][skip : skip + limit]
 
     def _get_all(_, _db):
         methods_called.append("GET_ALL")
@@ -213,11 +213,7 @@ def mock_dfacto_model(monkeypatch):
             return obj_in
 
     def _update(
-        _,
-        _db,
-        *,
-        db_obj,
-        obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]
+        _, _db, *, db_obj, obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]
     ):
         methods_called.append("UPDATE")
         exc = state["raises"]["UPDATE"]
@@ -276,49 +272,40 @@ def init_data(dbsession: scoped_session) -> TestData:
     db.init_db_data(dbsession)
     for i in range(3):
         vat_rate = models.VatRate(
-            name=f"Rate {i + 1}",   # Rate_1 to _3
-            rate=12.5 + 2.5*i       # 12.5, 15, 17.5
+            name=f"Rate {i + 1}", rate=12.5 + 2.5 * i  # Rate_1 to _3  # 12.5, 15, 17.5
         )
         dbsession.add(vat_rate)
     dbsession.commit()
     vat_rates = cast(
-        list[models.VatRate],
-        dbsession.scalars(select(models.VatRate)).all()
+        list[models.VatRate], dbsession.scalars(select(models.VatRate)).all()
     )
     # Services
     for i in range(5):
         service = models.Service(
-            name=f"Service_{i + 1}",    # Service_1 to _5
-            unit_price=100 + 10*i,      # 100, 110, 120, 130, 140
-            vat_rate_id=i + 1           # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
+            name=f"Service_{i + 1}",  # Service_1 to _5
+            unit_price=100 + 10 * i,  # 100, 110, 120, 130, 140
+            vat_rate_id=i + 1,  # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
         )
         dbsession.add(service)
     dbsession.commit()
     services = cast(
-        list[models.Service],
-        dbsession.scalars(select(models.Service)).all()
+        list[models.Service], dbsession.scalars(select(models.Service)).all()
     )
     # Clients
     for i in range(5):
         client = models.Client(
-            name=f"Client_{i + 1}",         # Client_1 to _5
-            address=f"Address_{i + 1}",     # Address_1 to _5
-            zip_code=f"1234{i + 1}",        # 12341 to 12345
-            city=f"CITY_{i + 1}",           # CITY_1 to _5
+            name=f"Client_{i + 1}",  # Client_1 to _5
+            address=f"Address_{i + 1}",  # Address_1 to _5
+            zip_code=f"1234{i + 1}",  # 12341 to 12345
+            city=f"CITY_{i + 1}",  # CITY_1 to _5
         )
         dbsession.add(client)
     dbsession.commit()
-    clients = cast(
-        list[models.Client],
-        dbsession.scalars(select(models.Client)).all()
-    )
+    clients = cast(list[models.Client], dbsession.scalars(select(models.Client)).all())
     # Invoices (empty)
     for i in range(5):
         invoice = models.Invoice(
-            # date=date.today(),
-            # due_date=date.today() + timedelta(30),
-            client_id=clients[i % 5].id,
-            status=models.InvoiceStatus(i + 1)
+            client_id=clients[i % 5].id, status=models.InvoiceStatus(i + 1)
         )
         dbsession.add(invoice)
         dbsession.flush([invoice])
@@ -326,13 +313,12 @@ def init_data(dbsession: scoped_session) -> TestData:
             invoice_id=invoice.id,
             from_=datetime.now(),
             to=None,
-            status=models.InvoiceStatus.DRAFT
+            status=models.InvoiceStatus(i + 1),
         )
         dbsession.add(log)
     dbsession.commit()
     invoices = cast(
-        list[models.Invoice],
-        dbsession.scalars(select(models.Invoice)).all()
+        list[models.Invoice], dbsession.scalars(select(models.Invoice)).all()
     )
     # Items
     for i in range(20):
@@ -346,7 +332,7 @@ def init_data(dbsession: scoped_session) -> TestData:
             vat=vat,
             net_amount=net_amount,
             service_id=service.id,
-            quantity=quantity
+            quantity=quantity,
         )
         if i < 10:
             basket = clients[i % 5].basket
@@ -363,10 +349,7 @@ def init_data(dbsession: scoped_session) -> TestData:
             invoice.vat += vat
             # invoice.net_amount += net_amount
     dbsession.commit()
-    items = cast(
-        list[models.Item],
-        dbsession.scalars(select(models.Item)).all()
-    )
+    items = cast(list[models.Item], dbsession.scalars(select(models.Item)).all())
 
     return TestData(
         vat_rates=vat_rates,
@@ -396,7 +379,12 @@ class FakeORMClient(FakeORMModel):
     def __post_init__(self):
         if self.basket is None:
             self.basket = FakeORMBasket(
-                id=1, raw_amount=0.0, vat=0.0, net_amount=0.0, client_id=self.id, items=[]
+                id=1,
+                raw_amount=0.0,
+                vat=0.0,
+                net_amount=0.0,
+                client_id=self.id,
+                items=[],
             )
 
     @property
@@ -416,6 +404,9 @@ class FakeORMBasket(FakeORMModel):
 
 @dataclasses.dataclass
 class FakeORMInvoice(FakeORMModel):
+    client_id: int = 1
+    raw_amount: float = 0.0
+    vat: float = 0.0
     status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
 
 

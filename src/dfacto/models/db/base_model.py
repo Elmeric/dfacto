@@ -6,7 +6,7 @@
 
 from typing import Annotated
 
-from sqlalchemy.orm import (DeclarativeBase, MappedAsDataclass, mapped_column)
+from sqlalchemy.orm import DeclarativeBase, MappedAsDataclass, mapped_column
 
 
 class BaseModel(MappedAsDataclass, DeclarativeBase):

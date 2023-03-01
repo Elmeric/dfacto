@@ -8,11 +8,18 @@ from datetime import date
 
 import pytest
 
+from dfacto.models import api, crud, schemas
 from dfacto.models.api.command import CommandStatus
-from dfacto.models import crud, schemas, api
 from dfacto.models.models.invoice import InvoiceStatus
 from dfacto.models.util import Period, PeriodFilter
-from tests.conftest import FakeORMVatRate, FakeORMService, FakeORMClient, FakeORMItem, FakeORMBasket, FakeORMInvoice
+from tests.conftest import (
+    FakeORMBasket,
+    FakeORMClient,
+    FakeORMInvoice,
+    FakeORMItem,
+    FakeORMService,
+    FakeORMVatRate,
+)
 
 pytestmark = pytest.mark.api
 
@@ -71,7 +78,7 @@ def mock_client_model(mock_dfacto_model, monkeypatch):
         else:
             return state["return_value"]
 
-    def _update_item_quantity(_db, db_obj, quantity):
+    def _update_item_quantity(_db, item, quantity):
         methods_called.append("UPDATE_ITEM_QUANTITY")
         exc = state["raises"]["UPDATE_ITEM_QUANTITY"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
@@ -79,17 +86,25 @@ def mock_client_model(mock_dfacto_model, monkeypatch):
         elif exc:
             raise crud.CrudError
 
-    def _remove_from_basket(_db, db_obj):
-        methods_called.append("REMOVE_FROM_BASKET")
-        exc = state["raises"]["REMOVE_FROM_BASKET"]
+    def _remove_item(_db, item):
+        methods_called.append("REMOVE_ITEM")
+        exc = state["raises"]["REMOVE_ITEM"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
             raise crud.CrudError
 
-    def _clear_basket(_db, db_obj):
+    def _clear_basket(_db, basket):
         methods_called.append("CLEAR_BASKET")
         exc = state["raises"]["CLEAR_BASKET"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+
+    def _delete(_db, db_obj):
+        methods_called.append("DELETE")
+        exc = state["raises"]["DELETE"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
             raise exc
         elif exc:
@@ -101,8 +116,9 @@ def mock_client_model(mock_dfacto_model, monkeypatch):
     monkeypatch.setattr(crud.client, "get_invoices_by_status", _get_invoices_by_status)
     monkeypatch.setattr(crud.client, "add_to_basket", _add_to_basket)
     monkeypatch.setattr(crud.client, "update_item_quantity", _update_item_quantity)
-    monkeypatch.setattr(crud.client, "remove_from_basket", _remove_from_basket)
+    monkeypatch.setattr(crud.client, "remove_item", _remove_item)
     monkeypatch.setattr(crud.client, "clear_basket", _clear_basket)
+    monkeypatch.setattr(crud.client, "delete", _delete)
 
     return state, methods_called
 
@@ -121,7 +137,7 @@ def mock_invoice_model(mock_dfacto_model, monkeypatch):
         else:
             return FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
 
-    def _create_from_basket(_db, basket, clear_basket):
+    def _invoice_from_basket(_db, basket, clear_basket):
         methods_called.append("CREATE_FROM_BASKET")
         exc = state["raises"]["CREATE_FROM_BASKET"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
@@ -131,8 +147,52 @@ def mock_invoice_model(mock_dfacto_model, monkeypatch):
         else:
             return FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
 
+    def _add_item(_db, invoice, service, quantity):
+        methods_called.append("ADD_TO_INVOICE")
+        exc = state["raises"]["ADD_TO_INVOICE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["return_value"]
+
+    def _clear_invoice(_db, invoice_):
+        methods_called.append("CLEAR_INVOICE")
+        exc = state["raises"]["CLEAR_INVOICE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["return_value"]
+
+    def _delete_invoice(_db, invoice_):
+        methods_called.append("DELETE_INVOICE")
+        exc = state["raises"]["DELETE_INVOICE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["return_value"]
+
+    def _mark_as(_db, invoice_, status):
+        methods_called.append("MARK_AS")
+        exc = state["raises"]["MARK_AS"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["return_value"]
+
     monkeypatch.setattr(crud.invoice, "create", _create)
-    monkeypatch.setattr(crud.invoice, "invoice_from_basket", _create_from_basket)
+    monkeypatch.setattr(crud.invoice, "invoice_from_basket", _invoice_from_basket)
+    monkeypatch.setattr(crud.invoice, "add_item", _add_item)
+    monkeypatch.setattr(crud.invoice, "clear_invoice", _clear_invoice)
+    monkeypatch.setattr(crud.invoice, "delete_invoice", _delete_invoice)
+    monkeypatch.setattr(crud.invoice, "mark_as", _mark_as)
 
     return state, methods_called
 
@@ -141,9 +201,7 @@ def test_cmd_get(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
     state["read_value"] = FakeORMClient(
-        id=1,
-        name="Name 1",
-        address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
     )
 
     response = api.client.get(obj_id=1)
@@ -191,7 +249,9 @@ def test_cmd_get_active(mock_client_model, mock_schema_from_orm):
         FakeORMClient(
             id=1,
             name="Name 1",
-            address="Address", zip_code="12345", city="CITY",
+            address="Address",
+            zip_code="12345",
+            city="CITY",
             is_active=True,
         )
     ]
@@ -223,10 +283,8 @@ def test_cmd_get_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
     client = FakeORMClient(
-        id=1,
-        name="Name 1",
-        address="Address", zip_code="12345", city="CITY"
-        )
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+    )
     client.basket.items = ["item1", "item2"]
     expected_body = client.basket
     # expected_body = FakeORMBasket(
@@ -279,8 +337,11 @@ def test_cmd_get_basket_error(mock_client_model, mock_schema_from_orm):
         ({"status": InvoiceStatus.DRAFT}, "GET_INVOICES_BY_STATUS"),
         ({"filter_": PeriodFilter.CURRENT_MONTH}, "GET_INVOICES"),
         ({"period": Period(end=date(2022, 12, 31))}, "GET_INVOICES"),
-        ({"status": InvoiceStatus.DRAFT, "filter_": PeriodFilter.CURRENT_MONTH}, "GET_INVOICES_BY_STATUS",)
-    )
+        (
+            {"status": InvoiceStatus.DRAFT, "filter_": PeriodFilter.CURRENT_MONTH},
+            "GET_INVOICES_BY_STATUS",
+        ),
+    ),
 )
 def test_cmd_get_invoices(kwargs, called, mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
@@ -306,7 +367,7 @@ def test_cmd_get_invoices_rejected(mock_client_model, mock_schema_from_orm):
     response = api.client.get_invoices(
         obj_id=1,
         filter_=PeriodFilter.CURRENT_MONTH,
-        period=Period(end=date(2022, 12, 31))
+        period=Period(end=date(2022, 12, 31)),
     )
 
     assert response.status is CommandStatus.REJECTED
@@ -334,23 +395,31 @@ def test_cmd_get_multi(mock_client_model, mock_schema_from_orm):
         FakeORMClient(
             id=1,
             name="Name 1",
-            address="Address 1", zip_code="1", city="CITY 1",
+            address="Address 1",
+            zip_code="1",
+            city="CITY 1",
         ),
         FakeORMClient(
             id=2,
             name="Name 2",
-            address="Address 2", zip_code="2", city="CITY 2",
+            address="Address 2",
+            zip_code="2",
+            city="CITY 2",
         ),
         FakeORMClient(
             id=3,
             name="Name 3",
-            address="Address 3", zip_code="3", city="CITY 3",
+            address="Address 3",
+            zip_code="3",
+            city="CITY 3",
             is_active=False,
         ),
         FakeORMClient(
             id=4,
             name="Name 4",
-            address="Address 4", zip_code="4", city="CITY 4",
+            address="Address 4",
+            zip_code="4",
+            city="CITY 4",
         ),
     ]
 
@@ -392,12 +461,16 @@ def test_cmd_get_all(mock_client_model, mock_schema_from_orm):
         FakeORMClient(
             id=2,
             name="Name 2",
-            address="Address 2", zip_code="2", city="CITY 2",
+            address="Address 2",
+            zip_code="2",
+            city="CITY 2",
         ),
         FakeORMClient(
             id=3,
             name="Name 3",
-            address="Address 3", zip_code="3", city="CITY 3",
+            address="Address 3",
+            zip_code="3",
+            city="CITY 3",
             is_active=False,
         ),
     ]
@@ -484,7 +557,9 @@ def test_cmd_update(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
     )
 
@@ -495,7 +570,9 @@ def test_cmd_update(mock_client_model, mock_schema_from_orm):
     )
     response = api.client.update(
         obj_id=1,
-        obj_in=schemas.ClientUpdate(name="New client", address=address, is_active=False)
+        obj_in=schemas.ClientUpdate(
+            name="New client", address=address, is_active=False
+        ),
     )
 
     assert len(methods_called) == 2
@@ -522,7 +599,9 @@ def test_cmd_update_unknown(mock_client_model, mock_schema_from_orm):
     )
     response = api.client.update(
         obj_id=1,
-        obj_in=schemas.ClientUpdate(name="New client", address=address, is_active=False)
+        obj_in=schemas.ClientUpdate(
+            name="New client", address=address, is_active=False
+        ),
     )
 
     assert len(methods_called) == 1
@@ -537,7 +616,9 @@ def test_cmd_update_error(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
     )
 
@@ -548,7 +629,9 @@ def test_cmd_update_error(mock_client_model, mock_schema_from_orm):
     )
     response = api.client.update(
         obj_id=1,
-        obj_in=schemas.ClientUpdate(name="New client", address=address, is_active=False)
+        obj_in=schemas.ClientUpdate(
+            name="New client", address=address, is_active=False
+        ),
     )
 
     assert len(methods_called) == 2
@@ -564,7 +647,9 @@ def test_cmd_rename(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
     )
 
@@ -588,7 +673,9 @@ def test_cmd_change_address(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
     )
 
@@ -618,7 +705,9 @@ def test_cmd_set_active(activate, mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=not activate,
     )
     if activate:
@@ -644,7 +733,9 @@ def test_cmd_delete(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
     )
 
@@ -675,7 +766,9 @@ def test_cmd_delete_has_emitted_invoices(mock_client_model, mock_schema_from_orm
     client = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
         # basket=FakeORMBasket(
         #     id=1, raw_amount=100.0, vat=10.0, net_amount=110.0, client_id=1, items=["Item 1"]
@@ -691,33 +784,36 @@ def test_cmd_delete_has_emitted_invoices(mock_client_model, mock_schema_from_orm
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.REJECTED
-    assert response.reason == "DELETE - Client Client 1 has non-DRAFT invoices and cannot be deleted."
-    assert response.body is None
-
-
-def test_cmd_delete_non_empty_basket(mock_client_model, mock_schema_from_orm):
-    # item = FakeORMItem(id=1, name="Service 1", unit_price=100.0)
-    client = FakeORMClient(
-        id=1,
-        name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
-        is_active=True,
-        # basket=FakeORMBasket(
-        #     id=1, raw_amount=100.0, vat=10.0, net_amount=110.0, client_id=1, items=["Item 1"]
-        # )
+    assert (
+        response.reason
+        == "DELETE - Client Client 1 has non-DRAFT invoices and cannot be deleted."
     )
-    client.basket.items = ["items1", "items2"]
-    state, methods_called = mock_client_model
-    state["raises"] = {"READ": False, "DELETE": False}
-    state["read_value"] = client
-
-    response = api.client.delete(obj_id=1)
-
-    assert len(methods_called) == 1
-    assert "GET" in methods_called
-    assert response.status is CommandStatus.REJECTED
-    assert response.reason == "DELETE - Client Client 1 has a non-empty basket and cannot be deleted."
     assert response.body is None
+
+
+# def test_cmd_delete_non_empty_basket(mock_client_model, mock_schema_from_orm):
+#     # item = FakeORMItem(id=1, name="Service 1", unit_price=100.0)
+#     client = FakeORMClient(
+#         id=1,
+#         name="Client 1",
+#         address="Address 1", zip_code="1", city="CITY 1",
+#         is_active=True,
+#         # basket=FakeORMBasket(
+#         #     id=1, raw_amount=100.0, vat=10.0, net_amount=110.0, client_id=1, items=["Item 1"]
+#         # )
+#     )
+#     client.basket.items = ["items1", "items2"]
+#     state, methods_called = mock_client_model
+#     state["raises"] = {"READ": False, "DELETE": False}
+#     state["read_value"] = client
+#
+#     response = api.client.delete(obj_id=1)
+#
+#     assert len(methods_called) == 1
+#     assert "GET" in methods_called
+#     assert response.status is CommandStatus.REJECTED
+#     assert response.reason == "DELETE - Client Client 1 has a non-empty basket and cannot be deleted."
+#     assert response.body is None
 
 
 def test_cmd_delete_get_error(mock_client_model, mock_schema_from_orm):
@@ -726,7 +822,9 @@ def test_cmd_delete_get_error(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
     )
 
@@ -744,7 +842,9 @@ def test_cmd_delete_error(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMClient(
         id=1,
         name="Client 1",
-        address="Address 1", zip_code="1", city="CITY 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
         is_active=True,
     )
 
@@ -773,8 +873,8 @@ def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
             unit_price=50.0,
             name="Service 1",
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=10.0)
-        )
+            vat_rate=FakeORMVatRate(id=1, rate=10.0),
+        ),
     )
     state["return_value"] = return_value
 
@@ -833,7 +933,9 @@ def test_cmd_add_to_basket_add_error(mock_client_model, mock_schema_from_orm):
     assert "GET" in methods_called
     assert "ADD_TO_BASKET" in methods_called
     assert response.status is CommandStatus.FAILED
-    assert response.reason.startswith("ADD-TO-BASKET - Cannot add to basket of client 1")
+    assert response.reason.startswith(
+        "ADD-TO-BASKET - Cannot add to basket of client 1"
+    )
     assert response.body is None
 
 
@@ -847,11 +949,11 @@ def test_cmd_update_item_quantity(mock_client_model, mock_schema_from_orm):
         net_amount=3.0,
         service_id=1,
         quantity=1,
-        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+        invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
 
-    response = api.client.update_item_quantity(1, quantity=2)
+    response = api.client.update_item_quantity(1, item_id=1, quantity=2)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -871,11 +973,11 @@ def test_cmd_update_item_quantity_bad_quantity(mock_client_model, mock_schema_fr
         net_amount=3.0,
         service_id=1,
         quantity=1,
-        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+        invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
 
-    response = api.client.update_item_quantity(1, quantity=0)
+    response = api.client.update_item_quantity(1, item_id=1, quantity=0)
 
     assert len(methods_called) == 0
     assert response.status is CommandStatus.REJECTED
@@ -889,12 +991,12 @@ def test_cmd_update_item_quantity_get_error(mock_client_model, mock_schema_from_
     state["read_value"] = None
     state["return_value"] = None
 
-    response = api.client.update_item_quantity(1, quantity=2)
+    response = api.client.update_item_quantity(1, item_id=1, quantity=2)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.FAILED
-    assert response.reason.startswith("BASKET-UPDATE-ITEM - SQL or database error")
+    assert response.reason.startswith("UPDATE-ITEM - SQL or database error")
     assert response.body is None
 
 
@@ -904,18 +1006,16 @@ def test_cmd_update_item_quantity_unknown(mock_client_model, mock_schema_from_or
     state["read_value"] = None
     state["return_value"] = None
 
-    response = api.client.update_item_quantity(1, quantity=2)
+    response = api.client.update_item_quantity(1, item_id=1, quantity=2)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.FAILED
-    assert response.reason == "BASKET-UPDATE-ITEM - Item 1 not found."
+    assert response.reason == "UPDATE-ITEM - Item 1 not found."
     assert response.body is None
 
 
-def test_cmd_update_item_quantity_in_invoice(
-    mock_client_model, mock_schema_from_orm
-):
+def test_cmd_update_item_quantity_bad_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
     state["read_value"] = FakeORMItem(
@@ -925,22 +1025,80 @@ def test_cmd_update_item_quantity_in_invoice(
         net_amount=3.0,
         service_id=1,
         quantity=1,
-        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.EMITTED)
+        basket=FakeORMBasket(
+            id=1,
+            raw_amount=10.0,
+            vat=8.0,
+            net_amount=18.0,
+            client_id=2,
+            items=["items1"],
+        ),
     )
     state["return_value"] = None
 
-    response = api.client.update_item_quantity(1, quantity=2)
+    response = api.client.update_item_quantity(1, item_id=1, quantity=2)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.REJECTED
-    assert response.reason == "BASKET-UPDATE-ITEM - Cannot change items of a non-draft invoice."
+    assert (
+        response.reason == "UPDATE-ITEM - Item 1 is not part of the basket of client 1."
+    )
     assert response.body is None
 
 
-def test_cmd_update_item_quantity_update_error(
-    mock_client_model, mock_schema_from_orm
-):
+def test_cmd_update_item_quantity_bad_invoice(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
+    )
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, item_id=1, quantity=2)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason
+        == "UPDATE-ITEM - Item 1 is not part of any invoice of client 1."
+    )
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity_non_draft(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.EMITTED),
+    )
+    state["return_value"] = None
+
+    response = api.client.update_item_quantity(1, item_id=1, quantity=2)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason == "UPDATE-ITEM - Cannot change items of a non-draft invoice."
+    )
+    assert response.body is None
+
+
+def test_cmd_update_item_quantity_update_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": True}
     state["read_value"] = FakeORMItem(
@@ -950,79 +1108,178 @@ def test_cmd_update_item_quantity_update_error(
         net_amount=3.0,
         service_id=1,
         quantity=1,
-        invoice=FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+        invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
 
-    response = api.client.update_item_quantity(1, quantity=2)
+    response = api.client.update_item_quantity(1, item_id=1, quantity=2)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
     assert "UPDATE_ITEM_QUANTITY" in methods_called
     assert response.status is CommandStatus.FAILED
-    assert response.reason.startswith("BASKET-UPDATE-ITEM - Cannot remove item 1")
+    assert response.reason.startswith("UPDATE-ITEM - Cannot remove item 1")
     assert response.body is None
 
 
-def test_cmd_remove_from_basket(mock_client_model, mock_schema_from_orm):
+def test_cmd_remove_item(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
-    state["raises"] = {"READ": False, "REMOVE_FROM_BASKET": False}
-    state["read_value"] = "item"
+    state["raises"] = {"READ": False, "REMOVE_ITEM": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
+    )
     state["return_value"] = None
 
-    response = api.client.remove_from_basket(1)
+    response = api.client.remove_item(1, item_id=1)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
-    assert "REMOVE_FROM_BASKET" in methods_called
+    assert "REMOVE_ITEM" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.reason is None
     assert response.body is None
 
 
-def test_cmd_remove_from_basket_get_error(mock_client_model, mock_schema_from_orm):
+def test_cmd_remove_item_get_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
-    state["raises"] = {"READ": True, "REMOVE_FROM_BASKET": False}
+    state["raises"] = {"READ": True, "REMOVE_ITEM": False}
     state["read_value"] = None
     state["return_value"] = None
 
-    response = api.client.remove_from_basket(1)
+    response = api.client.remove_item(1, item_id=1)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.FAILED
-    assert response.reason.startswith("REMOVE-FROM-BASKET - SQL or database error")
+    assert response.reason.startswith("REMOVE-ITEM - SQL or database error")
     assert response.body is None
 
 
-def test_cmd_remove_from_basket_unknown(mock_client_model, mock_schema_from_orm):
+def test_cmd_remove_item_unknown(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
-    state["raises"] = {"READ": False, "REMOVE_FROM_BASKET": False}
+    state["raises"] = {"READ": False, "REMOVE_ITEM": False}
     state["read_value"] = None
     state["return_value"] = None
 
-    response = api.client.remove_from_basket(1)
+    response = api.client.remove_item(1, item_id=100)
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.FAILED
-    assert response.reason == "REMOVE-FROM-BASKET - Item 1 not found."
+    assert response.reason == "REMOVE-ITEM - Item 100 not found."
     assert response.body is None
 
 
-def test_cmd_remove_from_basket_remove_error(mock_client_model, mock_schema_from_orm):
+def test_cmd_remove_item_bad_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
-    state["raises"] = {"READ": False, "REMOVE_FROM_BASKET": True}
-    state["read_value"] = "item"
+    state["raises"] = {"READ": False, "REMOVE_ITEM": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        basket=FakeORMBasket(
+            id=1,
+            raw_amount=10.0,
+            vat=8.0,
+            net_amount=18.0,
+            client_id=2,
+            items=["items1"],
+        ),
+    )
     state["return_value"] = None
 
-    response = api.client.remove_from_basket(1)
+    response = api.client.remove_item(1, item_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason == "REMOVE-ITEM - Item 1 is not part of the basket of client 1."
+    )
+    assert response.body is None
+
+
+def test_cmd_remove_item_bad_invoice(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "REMOVE_ITEM": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
+    )
+    state["return_value"] = None
+
+    response = api.client.remove_item(1, item_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason
+        == "REMOVE-ITEM - Item 1 is not part of any invoice of client 1."
+    )
+    assert response.body is None
+
+
+def test_cmd_remove_item_non_draft(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "REMOVE_ITEM": False}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID),
+    )
+    state["return_value"] = None
+
+    response = api.client.remove_item(1, item_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason == "REMOVE-ITEM - Cannot remove items from a non-draft invoice."
+    )
+    assert response.body is None
+
+
+def test_cmd_remove_item_remove_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "REMOVE_ITEM": True}
+    state["read_value"] = FakeORMItem(
+        id=1,
+        raw_amount=1.0,
+        vat=2.0,
+        net_amount=3.0,
+        service_id=1,
+        quantity=1,
+        invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
+    )
+    state["return_value"] = None
+
+    response = api.client.remove_item(1, item_id=1)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
-    assert "REMOVE_FROM_BASKET" in methods_called
+    assert "REMOVE_ITEM" in methods_called
     assert response.status is CommandStatus.FAILED
-    assert response.reason.startswith("REMOVE-FROM-BASKET - Cannot remove item 1")
+    assert response.reason.startswith("REMOVE-ITEM - Cannot remove item 1")
     assert response.body is None
 
 
@@ -1030,10 +1287,8 @@ def test_cmd_clear_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": False}
     client = FakeORMClient(
-        id=1,
-        name="Name 1",
-        address="Address", zip_code="12345", city="CITY"
-        )
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+    )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
     # state["read_value"] = FakeORMBasket(
@@ -1087,10 +1342,8 @@ def test_cmd_clear_basket_clear_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": True}
     client = FakeORMClient(
-        id=1,
-        name="Name 1",
-        address="Address", zip_code="12345", city="CITY"
-        )
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+    )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
     # state["read_value"] = FakeORMBasket(
@@ -1146,10 +1399,8 @@ def test_cmd_invoice_from_basket(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE_FROM_BASKET": False}
     client = FakeORMClient(
-        id=1,
-        name="Name 1",
-        address="Address", zip_code="12345", city="CITY"
-        )
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+    )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
 
@@ -1168,10 +1419,8 @@ def test_cmd_invoice_from_empty_basket(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE": False}
     client = FakeORMClient(
-        id=1,
-        name="Name 1",
-        address="Address", zip_code="12345", city="CITY"
-        )
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+    )
     state["read_value"] = client.basket
     assert len(client.basket.items) == 0
 
@@ -1223,10 +1472,8 @@ def test_cmd_invoice_from_basket_create_error(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE_FROM_BASKET": True}
     client = FakeORMClient(
-        id=1,
-        name="Name 1",
-        address="Address", zip_code="12345", city="CITY"
-        )
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+    )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
 
@@ -1238,5 +1485,505 @@ def test_cmd_invoice_from_basket_create_error(
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith(
         "CREATE_FROM-BASKET - Cannot create invoice from basket of client 1"
+    )
+    assert response.body is None
+
+
+def test_cmd_add_to_invoice(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_INVOICE": False}
+    state["read_value"] = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
+    return_value = FakeORMItem(
+        id=1,
+        raw_amount=100.0,
+        vat=10.0,
+        net_amount=110.0,
+        service_id=1,
+        quantity=2,
+        service=FakeORMService(
+            id=1,
+            unit_price=50.0,
+            name="Service 1",
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=10.0),
+        ),
+    )
+    state["return_value"] = return_value
+
+    response = api.client.add_to_invoice(1, invoice_id=1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 3
+    assert "GET" in methods_called
+    assert "ADD_TO_INVOICE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is not None
+
+
+def test_cmd_add_to_invoice_get_error(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": True, "ADD_TO_INVOICE": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.add_to_invoice(1, invoice_id=1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("ADD-TO-INVOICE - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_add_to_invoice_unknown(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_INVOICE": False}
+    state["read_value"] = None
+    state["return_value"] = None
+
+    response = api.client.add_to_invoice(1, invoice_id=1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "ADD-TO-INVOICE - Invoice 1 or service 1 not found."
+    assert response.body is None
+
+
+def test_cmd_add_to_invoice_bad_client(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_INVOICE": False}
+    state["read_value"] = FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT)
+    state["return_value"] = None
+
+    response = api.client.add_to_invoice(1, invoice_id=1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "ADD-TO-INVOICE - Invoice 1 is not owned by client 1."
+    assert response.body is None
+
+
+def test_cmd_add_to_invoice_non_draft(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_INVOICE": False}
+    state["read_value"] = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID)
+    state["return_value"] = None
+
+    response = api.client.add_to_invoice(1, invoice_id=1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason == "ADD-TO-INVOICE - Cannot add items to a non-draft invoice."
+    )
+    assert response.body is None
+
+
+def test_cmd_add_to_invoice_add_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "ADD_TO_INVOICE": True}
+    state["read_value"] = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
+    state["return_value"] = None
+
+    response = api.client.add_to_invoice(1, invoice_id=1, service_id=1, quantity=2)
+
+    assert len(methods_called) == 3
+    assert "GET" in methods_called
+    assert "ADD_TO_INVOICE" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("ADD-TO-INVOICE - Cannot add to invoice 1")
+    assert response.body is None
+
+
+def test_cmd_clear_invoice(mock_client_model, mock_invoice_model, mock_schema_from_orm):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CLEAR_INVOICE": False}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
+    invoice.items = [
+        FakeORMItem(
+            id=1,
+            raw_amount=1.0,
+            vat=2.0,
+            net_amount=3.0,
+            basket_id=1,
+            service_id=1,
+            quantity=1,
+            basket=FakeORMBasket(
+                id=1,
+                raw_amount=10.0,
+                vat=8.0,
+                net_amount=18.0,
+                client_id=2,
+                items=["items1"],
+            ),
+            invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
+        )
+    ]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.clear_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "CLEAR_INVOICE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is None
+
+
+def test_cmd_clear_invoice_get_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": True, "CLEAR_INVOICE": False}
+    state["read_value"] = None
+
+    response = api.client.clear_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("CLEAR-INVOICE - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_clear_invoice_unknown(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CLEAR_INVOICE": False}
+    state["read_value"] = None
+
+    response = api.client.clear_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "CLEAR-INVOICE - Invoice 1 not found."
+    assert response.body is None
+
+
+def test_cmd_clear_invoice_bad_client(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CLEAR_INVOICE": False}
+    invoice = FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.clear_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "CLEAR-INVOICE - Invoice 1 is not an invoice of client 1."
+    assert response.body is None
+
+
+def test_cmd_clear_invoice_non_draft(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CLEAR_INVOICE": False}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.clear_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "CLEAR-INVOICE - Cannot clear a non-draft invoice."
+    assert response.body is None
+
+
+def test_cmd_clear_invoice_clear_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "CLEAR_INVOICE": True}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.clear_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "CLEAR_INVOICE" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith(
+        "CLEAR-INVOICE - Cannot clear invoice 1 of client 1"
+    )
+    assert response.body is None
+
+
+def test_cmd_delete_invoice(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "DELETE_INVOICE": False}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
+    invoice.items = [
+        FakeORMItem(
+            id=1,
+            raw_amount=1.0,
+            vat=2.0,
+            net_amount=3.0,
+            basket_id=1,
+            service_id=1,
+            quantity=1,
+            basket=FakeORMBasket(
+                id=1,
+                raw_amount=10.0,
+                vat=8.0,
+                net_amount=18.0,
+                client_id=2,
+                items=["items1"],
+            ),
+            invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
+        )
+    ]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.delete_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "DELETE_INVOICE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is None
+
+
+def test_cmd_delete_invoice_get_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": True, "DELETE_INVOICE": False}
+    state["read_value"] = None
+
+    response = api.client.delete_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("DELETE-INVOICE - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_delete_invoice_unknown(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "DELETE_INVOICE": False}
+    state["read_value"] = None
+
+    response = api.client.delete_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "DELETE-INVOICE - Invoice 1 not found."
+    assert response.body is None
+
+
+def test_cmd_delete_invoice_bad_client(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "DELETE_INVOICE": False}
+    invoice = FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.delete_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason == "DELETE-INVOICE - Invoice 1 is not an invoice of client 1."
+    )
+    assert response.body is None
+
+
+def test_cmd_delete_invoice_non_draft(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "DELETE_INVOICE": False}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.delete_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert response.reason == "DELETE-INVOICE - Cannot delete a non-draft invoice."
+    assert response.body is None
+
+
+def test_cmd_delete_invoice_clear_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "DELETE_INVOICE": True}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.delete_invoice(1, invoice_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "DELETE_INVOICE" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith(
+        "DELETE-INVOICE - Cannot delete invoice 1 of client 1"
+    )
+    assert response.body is None
+
+
+@pytest.mark.parametrize(
+    "cmd, prev_status",
+    (
+        ("mark_as_emitted", InvoiceStatus.DRAFT),
+        ("mark_as_reminded", InvoiceStatus.EMITTED),
+        ("mark_as_paid", InvoiceStatus.EMITTED),
+        ("mark_as_cancelled", InvoiceStatus.REMINDED),
+    ),
+)
+def test_cmd_mark_as(
+    cmd, prev_status, mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "MARK_AS": False}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=prev_status)
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = getattr(api.client, cmd)(1, invoice_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "MARK_AS" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is None
+
+
+def test_cmd_mark_as_get_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": True, "MARK_AS": False}
+    state["read_value"] = None
+
+    response = api.client.mark_as_emitted(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith("MARK_AS-INVOICE - SQL or database error")
+    assert response.body is None
+
+
+def test_cmd_mark_as_unknown(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "MARK_AS": False}
+    state["read_value"] = None
+
+    response = api.client.mark_as_paid(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason == "MARK_AS-INVOICE - Invoice 1 not found."
+    assert response.body is None
+
+
+def test_cmd_mark_as_bad_client(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "MARK_AS": False}
+    invoice = FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.EMITTED)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.mark_as_cancelled(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason == "MARK_AS-INVOICE - Invoice 1 is not an invoice of client 1."
+    )
+    assert response.body is None
+
+
+def test_cmd_mark_as_bad_status(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "MARK_AS": False}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.mark_as_reminded(1, invoice_id=1)
+
+    assert len(methods_called) == 1
+    assert "GET" in methods_called
+    assert response.status is CommandStatus.REJECTED
+    assert (
+        response.reason
+        == f"MARK_AS-INVOICE - Invoice status transition from {InvoiceStatus.PAID} to {InvoiceStatus.REMINDED} is not allowed."
+    )
+    assert response.body is None
+
+
+def test_cmd_mark_as_mark_error(
+    mock_client_model, mock_invoice_model, mock_schema_from_orm
+):
+    state, methods_called = mock_invoice_model
+    state["raises"] = {"READ": False, "MARK_AS": True}
+    invoice = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
+    invoice.items = ["item1", "item2"]
+    state["read_value"] = invoice
+    state["return_value"] = None
+
+    response = api.client.mark_as_emitted(1, invoice_id=1)
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "MARK_AS" in methods_called
+    assert response.status is CommandStatus.FAILED
+    assert response.reason.startswith(
+        f"MARK_AS-INVOICE - Cannot mark invoice 1 of client 1 as {InvoiceStatus.EMITTED}"
     )
     assert response.body is None

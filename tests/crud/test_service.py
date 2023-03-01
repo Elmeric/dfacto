@@ -11,7 +11,7 @@ import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
-from dfacto.models import db, crud, models, schemas
+from dfacto.models import crud, db, models, schemas
 
 pytestmark = pytest.mark.crud
 
@@ -22,16 +22,13 @@ def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
 
     for i in range(5):
         service = models.Service(
-            name=f"Service_{i + 1}",
-            unit_price=100 + 10*i,
-            vat_rate_id=(i % 3) + 1
+            name=f"Service_{i + 1}", unit_price=100 + 10 * i, vat_rate_id=(i % 3) + 1
         )
         dbsession.add(service)
         dbsession.commit()
 
     services = cast(
-        list[models.Service],
-        dbsession.scalars(sa.select(models.Service)).all()
+        list[models.Service], dbsession.scalars(sa.select(models.Service)).all()
     )
     return services
 
@@ -74,8 +71,8 @@ def test_crud_get_error(dbsession, init_services, mock_get):
         ({}, 0, 5),
         ({"limit": 2}, 0, 2),
         ({"skip": 2}, 2, 3),
-        ({"skip": 2, "limit": 2}, 2, 2)
-    )
+        ({"skip": 2, "limit": 2}, 2, 2),
+    ),
 )
 def test_crud_get_multi(kwargs, offset, length, dbsession, init_services):
     services = init_services
@@ -99,10 +96,8 @@ def test_crud_create(dbsession, init_services):
     service = crud.service.create(
         dbsession,
         obj_in=schemas.ServiceCreate(
-            name="Wonderful service",
-            unit_price=1000.0,
-            vat_rate_id=2
-        )
+            name="Wonderful service", unit_price=1000.0, vat_rate_id=2
+        ),
     )
 
     assert service.id is not None
@@ -127,16 +122,17 @@ def test_crud_create_duplicate(dbsession, init_services):
         _service = crud.service.create(
             dbsession,
             obj_in=schemas.ServiceCreate(
-                name="Service_1",
-                unit_price=10.0,
-                vat_rate_id=2
-            )
+                name="Service_1", unit_price=10.0, vat_rate_id=2
+            ),
         )
-    assert len(
-        dbsession.scalars(
-            sa.select(models.Service).where(models.Service.name == "Service_1")
-        ).all()
-    ) == 1
+    assert (
+        len(
+            dbsession.scalars(
+                sa.select(models.Service).where(models.Service.name == "Service_1")
+            ).all()
+        )
+        == 1
+    )
 
 
 def test_crud_create_error(dbsession, init_services, mock_commit):
@@ -147,10 +143,8 @@ def test_crud_create_error(dbsession, init_services, mock_commit):
         _service = crud.service.create(
             dbsession,
             obj_in=schemas.ServiceCreate(
-                name="Wonderful service",
-                unit_price=1000.0,
-                vat_rate_id=2
-            )
+                name="Wonderful service", unit_price=1000.0, vat_rate_id=2
+            ),
         )
     assert (
         dbsession.scalars(
@@ -168,10 +162,8 @@ def test_crud_update(obj_in_factory, dbsession, init_services):
         dbsession,
         db_obj=service,
         obj_in=obj_in_factory(
-            name="Wonderful service",
-            unit_price=1000.0,
-            vat_rate_id=2
-        )
+            name="Wonderful service", unit_price=1000.0, vat_rate_id=2
+        ),
     )
 
     assert updated.id == service.id
@@ -195,9 +187,7 @@ def test_crud_update_partial(dbsession, init_services):
     service = init_services[0]
 
     updated = crud.service.update(
-        dbsession,
-        db_obj=service,
-        obj_in=schemas.ServiceUpdate(unit_price=1000.0)
+        dbsession, db_obj=service, obj_in=schemas.ServiceUpdate(unit_price=1000.0)
     )
 
     assert updated.id == service.id
@@ -224,7 +214,7 @@ def test_crud_update_idem(dbsession, init_services, mock_commit):
     updated = crud.service.update(
         dbsession,
         db_obj=service,
-        obj_in=schemas.ServiceUpdate(unit_price=service.unit_price)
+        obj_in=schemas.ServiceUpdate(unit_price=service.unit_price),
     )
 
     assert updated is service
@@ -241,7 +231,7 @@ def test_crud_update_error(dbsession, init_services, mock_commit):
         _updated = crud.service.update(
             dbsession,
             db_obj=service,
-            obj_in=schemas.ServiceUpdate(name="Wonderful service")
+            obj_in=schemas.ServiceUpdate(name="Wonderful service"),
         )
 
     assert (

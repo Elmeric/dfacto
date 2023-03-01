@@ -7,7 +7,8 @@
 from dataclasses import dataclass
 from typing import Type
 
-from dfacto.models import db, crud, schemas
+from dfacto.models import crud, db, schemas
+
 from .base import DFactoModel
 
 

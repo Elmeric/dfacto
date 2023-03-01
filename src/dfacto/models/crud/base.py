@@ -7,7 +7,7 @@
 from typing import Any, Generic, Optional, Type, TypeVar, Union, cast
 
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
 from dfacto.models import db, schemas
@@ -44,7 +44,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         try:
             obj_list = cast(
                 list[ModelType],
-                dbsession.scalars(select(self.model).offset(skip).limit(limit)).all()
+                dbsession.scalars(select(self.model).offset(skip).limit(limit)).all(),
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
@@ -54,8 +54,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     def get_all(self, dbsession: scoped_session) -> list[ModelType]:
         try:
             obj_list = cast(
-                list[ModelType],
-                dbsession.scalars(select(self.model)).all()
+                list[ModelType], dbsession.scalars(select(self.model)).all()
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
@@ -117,9 +116,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         dbsession.delete(db_obj)
         try:
             dbsession.commit()
-        # except IntegrityError as exc:
-        #     dbsession.rollback()
-        #     raise CrudIntegrityError() from exc
+        except IntegrityError as exc:
+            dbsession.rollback()
+            raise CrudIntegrityError() from exc
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc

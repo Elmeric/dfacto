@@ -16,9 +16,6 @@ from .item import Item
 @dataclass
 class _InvoiceBase(BaseSchema):
     client_id: int
-    # raw_amount: float
-    # vat: float
-    # status: models.InvoiceStatus
 
 
 @dataclass
@@ -29,9 +26,6 @@ class _InvoiceDefaultsBase(BaseSchema):
 @dataclass
 class InvoiceCreate(_InvoiceBase):
     pass
-    # raw_amount: float = 0.0
-    # vat: float = 0.0
-    # status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
 
 
 @dataclass
@@ -54,7 +48,7 @@ class StatusLog(BaseSchema):
     status: models.InvoiceStatus
     from_: datetime
     to: datetime
-    invoice: "Invoice"
+    invoice_id: int
 
     @classmethod
     def from_orm(cls, orm_obj: models.StatusLog) -> "StatusLog":
@@ -63,14 +57,14 @@ class StatusLog(BaseSchema):
             status=orm_obj.status,
             from_=orm_obj.from_,
             to=orm_obj.to,
-            invoice=Invoice.from_orm(orm_obj.invoice),
+            invoice_id=orm_obj.invoice.id,
         )
 
 
 @dataclass
 class Invoice(_InvoiceInDBBase):
     items: list[Item]
-    actions: list[StatusLog]
+    status_log: list[StatusLog]
 
     @property
     def code(self) -> str:
@@ -85,7 +79,7 @@ class Invoice(_InvoiceInDBBase):
             status=orm_obj.status,
             client_id=orm_obj.client_id,
             items=[Item.from_orm(item) for item in orm_obj.items],
-            actions=[StatusLog.from_orm(action) for action in orm_obj.status_log],
+            status_log=[StatusLog.from_orm(action) for action in orm_obj.status_log],
         )
 
 

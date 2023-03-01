@@ -5,7 +5,7 @@ import sys
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from dfacto.models import db, crud, models, schemas, api
+from dfacto.models import api, crud, db, models, schemas
 from dfacto.models.basket import BasketModel
 from dfacto.models.client import ClientModel
 from dfacto.models.invoice import InvoiceModel
@@ -176,9 +176,7 @@ def init_services(dbsession):
     services = []
     for i in range(5):
         service = models.Service(
-            name=f"Service_{i + 1}",
-            unit_price=100 + 10 * i,
-            vat_rate_id=(i % 3) + 1
+            name=f"Service_{i + 1}", unit_price=100 + 10 * i, vat_rate_id=(i % 3) + 1
         )
         dbsession.add(service)
         dbsession.commit()
@@ -201,10 +199,8 @@ def update():
         db.Session,
         db_obj=service,
         obj_in=schemas.ServiceUpdate(
-            name="Wonderful service",
-            unit_price=1000.0,
-            vat_rate_id=2
-        )
+            name="Wonderful service", unit_price=1000.0, vat_rate_id=2
+        ),
     )
 
     try:
