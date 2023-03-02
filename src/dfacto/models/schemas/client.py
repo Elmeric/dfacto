@@ -23,6 +23,7 @@ class Address:
 class _ClientBase(BaseSchema):
     name: str
     address: Address
+    email: str
     is_active: bool
 
 
@@ -30,6 +31,7 @@ class _ClientBase(BaseSchema):
 class _ClientDefaultsBase(BaseSchema):
     name: Optional[str] = None
     address: Optional[Address] = None
+    email: Optional[str] = None
     is_active: Optional[int] = None
 
 
@@ -43,6 +45,7 @@ class ClientCreate(_ClientBase):
             address=self.address.address,
             zip_code=self.address.zip_code,
             city=self.address.city,
+            email=self.email,
             is_active=self.is_active,
         )
 
@@ -61,6 +64,7 @@ class ClientUpdate(_ClientDefaultsBase):
             address=address,
             zip_code=zip_code,
             city=city,
+            email=self.email,
             is_active=self.is_active,
         )
 
@@ -76,7 +80,6 @@ class Client(_ClientInDBBase):
     @property
     def code(self) -> str:
         return "CL" + str(self.id).zfill(5)
-        # print(f"Code of client {self.name} is {self.code}")
 
     @classmethod
     def from_orm(cls, orm_obj: models.Client) -> "Client":
@@ -87,6 +90,7 @@ class Client(_ClientInDBBase):
             id=orm_obj.id,
             name=orm_obj.name,
             address=address,
+            email=orm_obj.email,
             is_active=orm_obj.is_active,
         )
 

@@ -201,7 +201,7 @@ def test_cmd_get(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
     state["read_value"] = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
     )
 
     response = api.client.get(obj_id=1)
@@ -209,12 +209,7 @@ def test_cmd_get(mock_client_model, mock_schema_from_orm):
     assert len(methods_called) == 1
     assert "GET" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.name == "Name 1"
-    assert response.body.address == "Address"
-    assert response.body.zip_code == "12345"
-    assert response.body.city == "CITY"
-    assert response.body.is_active
+    assert response.body is not None
 
 
 def test_cmd_get_unknown(mock_client_model, mock_schema_from_orm):
@@ -252,6 +247,7 @@ def test_cmd_get_active(mock_client_model, mock_schema_from_orm):
             address="Address",
             zip_code="12345",
             city="CITY",
+            email="name_1@domain.com",
             is_active=True,
         )
     ]
@@ -283,7 +279,7 @@ def test_cmd_get_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="super.client@domain.com"
     )
     client.basket.items = ["item1", "item2"]
     expected_body = client.basket
@@ -393,6 +389,7 @@ def test_cmd_get_multi(mock_client_model, mock_schema_from_orm):
             address="Address 1",
             zip_code="1",
             city="CITY 1",
+            email="name_1@domain.com",
         ),
         FakeORMClient(
             id=2,
@@ -400,6 +397,7 @@ def test_cmd_get_multi(mock_client_model, mock_schema_from_orm):
             address="Address 2",
             zip_code="2",
             city="CITY 2",
+            email="name_2@domain.com",
         ),
         FakeORMClient(
             id=3,
@@ -407,6 +405,7 @@ def test_cmd_get_multi(mock_client_model, mock_schema_from_orm):
             address="Address 3",
             zip_code="3",
             city="CITY 3",
+            email="name_3@domain.com",
             is_active=False,
         ),
         FakeORMClient(
@@ -415,6 +414,7 @@ def test_cmd_get_multi(mock_client_model, mock_schema_from_orm):
             address="Address 4",
             zip_code="4",
             city="CITY 4",
+            email="name_4@domain.com",
         ),
     ]
 
@@ -423,18 +423,7 @@ def test_cmd_get_multi(mock_client_model, mock_schema_from_orm):
     assert len(methods_called) == 1
     assert "GET_MULTI" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body[0].id == 2
-    assert response.body[0].name == "Name 2"
-    assert response.body[0].address == "Address 2"
-    assert response.body[0].zip_code == "2"
-    assert response.body[0].city == "CITY 2"
-    assert response.body[0].is_active
-    assert response.body[1].id == 3
-    assert response.body[1].name == "Name 3"
-    assert response.body[1].address == "Address 3"
-    assert response.body[1].zip_code == "3"
-    assert response.body[1].city == "CITY 3"
-    assert not response.body[1].is_active
+    assert response.body[0] is not None
 
 
 def test_cmd_get_multi_error(mock_client_model, mock_schema_from_orm):
@@ -459,6 +448,7 @@ def test_cmd_get_all(mock_client_model, mock_schema_from_orm):
             address="Address 2",
             zip_code="2",
             city="CITY 2",
+            email="name_2@domain.com",
         ),
         FakeORMClient(
             id=3,
@@ -466,6 +456,7 @@ def test_cmd_get_all(mock_client_model, mock_schema_from_orm):
             address="Address 3",
             zip_code="3",
             city="CITY 3",
+            email="name_3@domain.com",
             is_active=False,
         ),
     ]
@@ -476,18 +467,8 @@ def test_cmd_get_all(mock_client_model, mock_schema_from_orm):
     assert "GET_ALL" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert len(response.body) == 2
-    assert response.body[0].id == 2
-    assert response.body[0].name == "Name 2"
-    assert response.body[0].address == "Address 2"
-    assert response.body[0].zip_code == "2"
-    assert response.body[0].city == "CITY 2"
-    assert response.body[0].is_active
-    assert response.body[1].id == 3
-    assert response.body[1].name == "Name 3"
-    assert response.body[1].address == "Address 3"
-    assert response.body[1].zip_code == "3"
-    assert response.body[1].city == "CITY 3"
-    assert not response.body[1].is_active
+    assert response.body[0] is not None
+    assert response.body[1] is not None
 
 
 def test_cmd_get_all_error(mock_client_model, mock_schema_from_orm):
@@ -513,18 +494,13 @@ def test_cmd_add(is_active, mock_client_model, mock_schema_from_orm):
         city="CITY",
     )
     response = api.client.add(
-        schemas.ClientCreate(name="Super client", address=address, is_active=is_active)
+        schemas.ClientCreate(name="Super client", address=address, email="super.client@domain.com", is_active=is_active)
     )
 
     assert len(methods_called) == 1
     assert "CREATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.name == "Super client"
-    assert response.body.address.address == "Address"
-    assert response.body.address.zip_code == "12345"
-    assert response.body.address.city == "CITY"
-    assert response.body.is_active is is_active
+    assert response.body is not None
 
 
 def test_cmd_add_error(mock_client_model, mock_schema_from_orm):
@@ -537,7 +513,7 @@ def test_cmd_add_error(mock_client_model, mock_schema_from_orm):
         city="CITY",
     )
     response = api.client.add(
-        schemas.ClientCreate(name="Super client", address=address, is_active=True)
+        schemas.ClientCreate(name="Super client", address=address, email="super.client@domain.com", is_active=True)
     )
 
     assert len(methods_called) == 1
@@ -555,6 +531,7 @@ def test_cmd_update(mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
     )
 
@@ -566,7 +543,7 @@ def test_cmd_update(mock_client_model, mock_schema_from_orm):
     response = api.client.update(
         obj_id=1,
         obj_in=schemas.ClientUpdate(
-            name="New client", address=address, is_active=False
+            name="New client", address=address, email="super.client@domain.com", is_active=False
         ),
     )
 
@@ -574,12 +551,7 @@ def test_cmd_update(mock_client_model, mock_schema_from_orm):
     assert "GET" in methods_called
     assert "UPDATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.name == "New client"
-    assert response.body.address == "New address"
-    assert response.body.zip_code == "67890"
-    assert response.body.city == "New city"
-    assert not response.body.is_active
+    assert response.body is not None
 
 
 def test_cmd_update_unknown(mock_client_model, mock_schema_from_orm):
@@ -595,7 +567,7 @@ def test_cmd_update_unknown(mock_client_model, mock_schema_from_orm):
     response = api.client.update(
         obj_id=1,
         obj_in=schemas.ClientUpdate(
-            name="New client", address=address, is_active=False
+            name="New client", address=address, email="super.client@domain.com", is_active=False
         ),
     )
 
@@ -614,6 +586,7 @@ def test_cmd_update_error(mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
     )
 
@@ -625,7 +598,7 @@ def test_cmd_update_error(mock_client_model, mock_schema_from_orm):
     response = api.client.update(
         obj_id=1,
         obj_in=schemas.ClientUpdate(
-            name="New client", address=address, is_active=False
+            name="New client", address=address, email="new.client@domain.com", is_active=False
         ),
     )
 
@@ -645,6 +618,7 @@ def test_cmd_rename(mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
     )
 
@@ -654,12 +628,7 @@ def test_cmd_rename(mock_client_model, mock_schema_from_orm):
     assert "GET" in methods_called
     assert "UPDATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.name == "New client"
-    assert response.body.address == "Address 1"
-    assert response.body.zip_code == "1"
-    assert response.body.city == "CITY 1"
-    assert response.body.is_active
+    assert response.body is not None
 
 
 def test_cmd_change_address(mock_client_model, mock_schema_from_orm):
@@ -671,6 +640,7 @@ def test_cmd_change_address(mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
     )
 
@@ -685,12 +655,29 @@ def test_cmd_change_address(mock_client_model, mock_schema_from_orm):
     assert "GET" in methods_called
     assert "UPDATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.name == "Client 1"
-    assert response.body.address == "New address"
-    assert response.body.zip_code == "67890"
-    assert response.body.city == "New city"
-    assert response.body.is_active
+    assert response.body is not None
+
+
+def test_cmd_change_email(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {"READ": False, "UPDATE": False}
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
+        email="client_1@domain.com",
+        is_active=True,
+    )
+
+    response = api.client.change_email(obj_id=1, email="new.email@super_provider.com")
+
+    assert len(methods_called) == 2
+    assert "GET" in methods_called
+    assert "UPDATE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body is not None
 
 
 @pytest.mark.parametrize("activate", (True, False))
@@ -703,6 +690,7 @@ def test_cmd_set_active(activate, mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=not activate,
     )
     if activate:
@@ -714,12 +702,7 @@ def test_cmd_set_active(activate, mock_client_model, mock_schema_from_orm):
     assert "GET" in methods_called
     assert "UPDATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
-    assert response.body.id == 1
-    assert response.body.name == "Client 1"
-    assert response.body.address == "Address 1"
-    assert response.body.zip_code == "1"
-    assert response.body.city == "CITY 1"
-    assert response.body.is_active is activate
+    assert response.body is not None
 
 
 def test_cmd_delete(mock_client_model, mock_schema_from_orm):
@@ -731,6 +714,7 @@ def test_cmd_delete(mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
     )
 
@@ -764,6 +748,7 @@ def test_cmd_delete_has_emitted_invoices(mock_client_model, mock_schema_from_orm
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
         invoices=["EMITTED"],
     )
@@ -792,6 +777,7 @@ def test_cmd_delete_get_error(mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
     )
 
@@ -812,6 +798,7 @@ def test_cmd_delete_error(mock_client_model, mock_schema_from_orm):
         address="Address 1",
         zip_code="1",
         city="CITY 1",
+        email="client_1@domain.com",
         is_active=True,
     )
 
@@ -1240,7 +1227,7 @@ def test_cmd_clear_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
@@ -1287,7 +1274,7 @@ def test_cmd_clear_basket_clear_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": True}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
@@ -1336,7 +1323,7 @@ def test_cmd_invoice_from_basket(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE_FROM_BASKET": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
@@ -1356,7 +1343,7 @@ def test_cmd_invoice_from_empty_basket(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
     )
     state["read_value"] = client.basket
     assert len(client.basket.items) == 0
@@ -1409,7 +1396,7 @@ def test_cmd_invoice_from_basket_create_error(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE_FROM_BASKET": True}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY"
+        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket

@@ -110,6 +110,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def change_address(self, obj_id: int, address: schemas.Address) -> CommandResponse:
         return self.update(obj_id, obj_in=schemas.ClientUpdate(address=address))
 
+    def change_email(self, obj_id: int, email: str) -> CommandResponse:
+        return self.update(obj_id, obj_in=schemas.ClientUpdate(email=email))
+
     def set_active(self, obj_id: int) -> CommandResponse:
         return self.update(obj_id, obj_in=schemas.ClientUpdate(is_active=True))
 

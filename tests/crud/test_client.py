@@ -28,6 +28,7 @@ def init_clients(dbsession: sa.orm.scoped_session) -> list[models.Client]:
             address=f"{i * 1} rue Nationale {i + 1}",
             zip_code=f"1234{i + 1}",
             city=f"CITY_{i + 1}",
+            email=f"client_{i + 1}@domain.com",
             is_active=False if i < 3 else True,
         )
         dbsession.add(client)
@@ -302,7 +303,7 @@ def test_crud_create(is_active, expected, dbsession, init_clients):
     client = crud.client.create(
         dbsession,
         obj_in=schemas.ClientCreate(
-            name="Super client", address=address, is_active=is_active
+            name="Super client", address=address, email="super.client@domain.com", is_active=is_active
         ),
     )
 
@@ -311,6 +312,7 @@ def test_crud_create(is_active, expected, dbsession, init_clients):
     assert client.address == address.address
     assert client.zip_code == address.zip_code
     assert client.city == address.city
+    assert client.email == "super.client@domain.com"
     assert client.is_active is expected
     try:
         c = dbsession.get(models.Client, client.id)
@@ -320,6 +322,7 @@ def test_crud_create(is_active, expected, dbsession, init_clients):
     assert c.address == address.address
     assert c.zip_code == address.zip_code
     assert c.city == address.city
+    assert c.email == "super.client@domain.com"
     assert c.is_active is expected
 
 
@@ -333,7 +336,7 @@ def test_crud_create_duplicate(dbsession, init_clients):
         _client = crud.client.create(
             dbsession,
             obj_in=schemas.ClientCreate(
-                name="Client_1", address=address, is_active=True
+                name="Client_1", address=address, email="super.client@domain.com", is_active=True
             ),
         )
     assert (
@@ -359,7 +362,7 @@ def test_crud_create_error(dbsession, init_clients, mock_commit):
         _client = crud.client.create(
             dbsession,
             obj_in=schemas.ClientCreate(
-                name="Super client", address=address, is_active=True
+                name="Super client", address=address, email="super.client@domain.com", is_active=True
             ),
         )
     assert (
@@ -382,7 +385,7 @@ def test_crud_update(dbsession, init_clients):
         dbsession,
         db_obj=client,
         obj_in=schemas.ClientUpdate(
-            name="Super client", address=address, is_active=False
+            name="Super client", address=address, email="super.client@domain.com", is_active=False
         ),
     )
 
@@ -391,6 +394,7 @@ def test_crud_update(dbsession, init_clients):
     assert updated.address == address.address
     assert updated.zip_code == address.zip_code
     assert updated.city == address.city
+    assert updated.email == "super.client@domain.com"
     assert not updated.is_active
     try:
         c = dbsession.get(models.Client, updated.id)
@@ -400,6 +404,7 @@ def test_crud_update(dbsession, init_clients):
     assert c.address == address.address
     assert c.zip_code == address.zip_code
     assert c.city == address.city
+    assert c.email == "super.client@domain.com"
     assert not c.is_active
 
 
@@ -420,6 +425,7 @@ def test_crud_update_partial(dbsession, init_clients):
     assert updated.address == client.address
     assert updated.zip_code == address.zip_code
     assert updated.city == client.city
+    assert updated.email == client.email
     assert not updated.is_active
     try:
         c = dbsession.get(models.Client, updated.id)
@@ -429,6 +435,7 @@ def test_crud_update_partial(dbsession, init_clients):
     assert c.address == client.address
     assert c.zip_code == address.zip_code
     assert c.city == client.city
+    assert c.email == client.email
     assert not c.is_active
 
 
@@ -474,9 +481,7 @@ def test_crud_update_error(dbsession, init_clients, mock_commit):
 
 def test_crud_delete(dbsession, init_data):
     client = init_data.clients[0]
-    # crud.client.clear_basket(dbsession, basket=client.basket)
     assert dbsession.get(models.Client, client.id) is not None
-    # assert len(client.basket.items) == 0
     assert not client.has_emitted_invoices
     basket_items_ids = [item.id for item in client.basket.items]
     invoices_ids = [invoice.id for invoice in client.invoices]

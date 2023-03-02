@@ -298,6 +298,7 @@ def init_data(dbsession: scoped_session) -> TestData:
             address=f"Address_{i + 1}",  # Address_1 to _5
             zip_code=f"1234{i + 1}",  # 12341 to 12345
             city=f"CITY_{i + 1}",  # CITY_1 to _5
+            email=f"client_{i + 1}@domain.com",
         )
         dbsession.add(client)
     dbsession.commit()
@@ -367,6 +368,7 @@ class FakeORMClient(FakeORMModel):
     address: str
     zip_code: str
     city: str
+    email: str
     is_active: bool = True
     basket: "FakeORMBasket" = None
     # invoices: list["FakeORMInvoice"] = dataclasses.field(default_factory=list)

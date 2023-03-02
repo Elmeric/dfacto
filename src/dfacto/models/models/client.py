@@ -24,6 +24,7 @@ class Client(db.BaseModel):
     address: Mapped[str]
     zip_code: Mapped[str] = mapped_column(String(5))
     city: Mapped[str]
+    email: Mapped[str] = mapped_column(String(254))
     is_active: Mapped[bool] = mapped_column(default=True)
 
     basket: Mapped["Basket"] = relationship(
