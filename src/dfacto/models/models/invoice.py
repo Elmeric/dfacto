@@ -47,14 +47,6 @@ class Invoice(db.BaseModel):
         back_populates="invoice", init=False, cascade="all, delete-orphan"
     )
 
-    @hybrid_property
-    def net_amount(self) -> float:
-        return self.raw_amount + self.vat
-
-    # @hybrid_property
-    # def code(self) -> str:
-    #     return "FC" + str(self.id).zfill(10)
-
 
 class StatusLog(db.BaseModel):
     __tablename__ = "status_log"

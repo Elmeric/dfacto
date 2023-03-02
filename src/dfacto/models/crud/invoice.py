@@ -64,7 +64,6 @@ class CRUDInvoice(
             if clear_basket:
                 basket.raw_amount -= item.raw_amount
                 basket.vat -= item.vat
-                basket.net_amount -= item.net_amount
                 item.basket_id = None
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
@@ -98,11 +97,9 @@ class CRUDInvoice(
 
         raw_amount = service.unit_price * quantity
         vat = raw_amount * service.vat_rate.rate / 100
-        net_amount = raw_amount + vat
         item_ = models.Item(
             raw_amount=raw_amount,
             vat=vat,
-            net_amount=net_amount,
             service_id=service.id,
             quantity=quantity,
         )

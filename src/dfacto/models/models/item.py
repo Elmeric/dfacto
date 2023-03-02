@@ -31,7 +31,6 @@ class Item(db.BaseModel):
     id: Mapped[db.intpk] = mapped_column(init=False)
     raw_amount: Mapped[float]
     vat: Mapped[float]
-    net_amount: Mapped[float]
     service_id: Mapped[int] = mapped_column(ForeignKey("service.id"))
     quantity: Mapped[int] = mapped_column(default=1)
     invoice_id: Mapped[Optional[int]] = mapped_column(

@@ -70,6 +70,10 @@ class Invoice(_InvoiceInDBBase):
     def code(self) -> str:
         return "FC" + str(self.id).zfill(10)
 
+    @property
+    def net_amount(self):
+        return self.raw_amount + self.vat
+
     @classmethod
     def from_orm(cls, orm_obj: models.Invoice) -> "Invoice":
         return cls(

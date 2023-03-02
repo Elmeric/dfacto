@@ -16,7 +16,6 @@ from .item import Item
 class _BasketBase(BaseSchema):
     raw_amount: float
     vat: float
-    net_amount: float
 
 
 @dataclass
@@ -45,13 +44,16 @@ class _BasketInDBBase(_BasketBase):
 class Basket(_BasketInDBBase):
     items: list[Item]
 
+    @property
+    def net_amount(self):
+        return self.raw_amount + self.vat
+
     @classmethod
     def from_orm(cls, orm_obj: models.Basket) -> "Basket":
         return cls(
             id=orm_obj.id,
             raw_amount=orm_obj.raw_amount,
             vat=orm_obj.vat,
-            net_amount=orm_obj.net_amount,
             items=[Item.from_orm(item) for item in orm_obj.items],
         )
 

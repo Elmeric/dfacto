@@ -15,7 +15,6 @@ from .service import Service
 class _ItemBase(BaseSchema):
     raw_amount: float
     vat: float
-    net_amount: float
     service_id: int
     quantity: int
 
@@ -45,13 +44,16 @@ class _ItemInDBBase(_ItemBase):
 class Item(_ItemInDBBase):
     service: Service
 
+    @property
+    def net_amount(self):
+        return self.raw_amount + self.vat
+
     @classmethod
     def from_orm(cls, orm_obj: models.Item) -> "Item":
         return cls(
             id=orm_obj.id,
             raw_amount=orm_obj.raw_amount,
             vat=orm_obj.vat,
-            net_amount=orm_obj.net_amount,
             service_id=orm_obj.service.id,
             quantity=orm_obj.quantity,
             service=Service.from_orm(orm_obj.service),

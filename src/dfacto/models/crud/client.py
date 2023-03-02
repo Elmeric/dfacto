@@ -97,11 +97,9 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
     ) -> models.Item:
         raw_amount = service.unit_price * quantity
         vat = raw_amount * service.vat_rate.rate / 100
-        net_amount = raw_amount + vat
         item_ = models.Item(
             raw_amount=raw_amount,
             vat=vat,
-            net_amount=net_amount,
             service_id=service.id,
             quantity=quantity,
         )
@@ -109,7 +107,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         dbsession.add(item_)
         basket.raw_amount += raw_amount
         basket.vat += vat
-        basket.net_amount += net_amount
 
         try:
             dbsession.commit()
@@ -130,15 +127,12 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         item.quantity = quantity
         prev_raw_amount = item.raw_amount
         prev_vat = item.vat
-        prev_net_amount = item.net_amount
         item.raw_amount = new_raw_amount = item.service.unit_price * quantity
         item.vat = new_vat = item.service.vat_rate.rate * new_raw_amount / 100
-        item.net_amount = new_net_amount = new_raw_amount + new_vat
 
         if item.basket_id is not None:
             item.basket.raw_amount += new_raw_amount - prev_raw_amount
             item.basket.vat += new_vat - prev_vat
-            item.basket.net_amount += new_net_amount - prev_net_amount
 
         if item.invoice_id is not None:
             item.invoice.raw_amount += new_raw_amount - prev_raw_amount
@@ -168,7 +162,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         assert item.invoice_id is None
         item.basket.raw_amount -= item.raw_amount
         item.basket.vat -= item.vat
-        item.basket.net_amount -= item.net_amount
         dbsession.delete(item)
 
         try:
@@ -194,7 +187,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
     def clear_basket(self, dbsession: scoped_session, *, basket: models.Basket) -> None:
         basket.raw_amount = 0.0
         basket.vat = 0.0
-        basket.net_amount = 0.0
         for item in basket.items:
             if item.invoice_id is None:
                 # Not used by an invoice: delete it.

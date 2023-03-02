@@ -101,7 +101,6 @@ def test_crud_create(dbsession, init_data, mock_datetime_now):
     assert invoice.client_id == client.id
     assert invoice.raw_amount == 0.0
     assert invoice.vat == 0.0
-    assert invoice.net_amount == 0.0
     assert invoice.status is models.InvoiceStatus.DRAFT
     assert invoice.client is client
     assert len(invoice.items) == 0
@@ -117,7 +116,6 @@ def test_crud_create(dbsession, init_data, mock_datetime_now):
     assert inv.client_id == client.id
     assert inv.raw_amount == 0.0
     assert inv.vat == 0.0
-    assert inv.net_amount == 0.0
     assert inv.status is models.InvoiceStatus.DRAFT
     assert inv.client is client
     assert len(inv.items) == 0
@@ -173,7 +171,6 @@ def test_crud_invoice_from_basket(clear, dbsession, init_data, mock_datetime_now
     assert invoice.client_id == client.id
     assert invoice.raw_amount == raw_amount
     assert invoice.vat == vat
-    assert invoice.net_amount == raw_amount + vat
     assert invoice.status is models.InvoiceStatus.DRAFT
     assert invoice.client is client
     assert len(invoice.items) == items_count
@@ -187,7 +184,6 @@ def test_crud_invoice_from_basket(clear, dbsession, init_data, mock_datetime_now
     assert inv.client_id == client.id
     assert inv.raw_amount == raw_amount
     assert inv.vat == vat
-    assert inv.net_amount == raw_amount + vat
     assert inv.status is models.InvoiceStatus.DRAFT
     assert inv.client is client
     assert len(inv.items) == items_count
@@ -246,13 +242,11 @@ def test_crud_add_item(dbsession, init_data):
     assert item.quantity == 2
     assert item.raw_amount == service.unit_price * 2
     assert item.vat == service.vat_rate.rate * service.unit_price * 2 / 100
-    assert item.net_amount == item.raw_amount + item.vat
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1
     assert invoice.items[items_count] == item
     assert invoice.raw_amount == raw_amount + item.raw_amount
     assert invoice.vat == vat + item.vat
-    assert invoice.net_amount == raw_amount + vat + item.net_amount
 
 
 def test_crud_add_item_default_qty(dbsession, init_data):
@@ -270,13 +264,11 @@ def test_crud_add_item_default_qty(dbsession, init_data):
     assert item.quantity == 1
     assert item.raw_amount == service.unit_price
     assert item.vat == service.vat_rate.rate * service.unit_price / 100
-    assert item.net_amount == item.raw_amount + item.vat
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1
     assert invoice.items[items_count] == item
     assert invoice.raw_amount == raw_amount + item.raw_amount
     assert invoice.vat == vat + item.vat
-    assert invoice.net_amount == raw_amount + vat + item.net_amount
 
 
 def test_crud_add_item_non_draft(dbsession, init_data):
@@ -296,7 +288,6 @@ def test_crud_add_item_non_draft(dbsession, init_data):
     assert len(invoice.items) == items_count
     assert invoice.raw_amount == raw_amount
     assert invoice.vat == vat
-    assert invoice.net_amount == raw_amount + vat
 
 
 def test_crud_add_item_commit_error(dbsession, init_data, mock_commit):
@@ -319,7 +310,6 @@ def test_crud_add_item_commit_error(dbsession, init_data, mock_commit):
     assert len(invoice.items) == items_count
     assert invoice.raw_amount == raw_amount
     assert invoice.vat == vat
-    assert invoice.net_amount == raw_amount + vat
 
 
 def test_crud_clear_invoice_no_basket(dbsession, init_data):
@@ -725,6 +715,7 @@ def test_invoice_from_orm(dbsession, init_data):
     assert from_db.id == invoice.id
     assert from_db.raw_amount == invoice.raw_amount
     assert from_db.vat == invoice.vat
+    assert from_db.net_amount == from_db.raw_amount + from_db.vat
     assert from_db.status == invoice.status
     assert from_db.client_id == invoice.client_id
     for i, item in enumerate(from_db.items):
