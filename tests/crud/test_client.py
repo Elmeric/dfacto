@@ -303,7 +303,10 @@ def test_crud_create(is_active, expected, dbsession, init_clients):
     client = crud.client.create(
         dbsession,
         obj_in=schemas.ClientCreate(
-            name="Super client", address=address, email="super.client@domain.com", is_active=is_active
+            name="Super client",
+            address=address,
+            email="super.client@domain.com",
+            is_active=is_active,
         ),
     )
 
@@ -336,7 +339,10 @@ def test_crud_create_duplicate(dbsession, init_clients):
         _client = crud.client.create(
             dbsession,
             obj_in=schemas.ClientCreate(
-                name="Client_1", address=address, email="super.client@domain.com", is_active=True
+                name="Client_1",
+                address=address,
+                email="super.client@domain.com",
+                is_active=True,
             ),
         )
     assert (
@@ -362,7 +368,10 @@ def test_crud_create_error(dbsession, init_clients, mock_commit):
         _client = crud.client.create(
             dbsession,
             obj_in=schemas.ClientCreate(
-                name="Super client", address=address, email="super.client@domain.com", is_active=True
+                name="Super client",
+                address=address,
+                email="super.client@domain.com",
+                is_active=True,
             ),
         )
     assert (
@@ -385,7 +394,10 @@ def test_crud_update(dbsession, init_clients):
         dbsession,
         db_obj=client,
         obj_in=schemas.ClientUpdate(
-            name="Super client", address=address, email="super.client@domain.com", is_active=False
+            name="Super client",
+            address=address,
+            email="super.client@domain.com",
+            is_active=False,
         ),
     )
 

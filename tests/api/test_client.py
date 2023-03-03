@@ -201,7 +201,12 @@ def test_cmd_get(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
     state["read_value"] = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
+        id=1,
+        name="Name 1",
+        address="Address",
+        zip_code="12345",
+        city="CITY",
+        email="name_1@domain.com",
     )
 
     response = api.client.get(obj_id=1)
@@ -279,7 +284,12 @@ def test_cmd_get_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="super.client@domain.com"
+        id=1,
+        name="Name 1",
+        address="Address",
+        zip_code="12345",
+        city="CITY",
+        email="super.client@domain.com",
     )
     client.basket.items = ["item1", "item2"]
     expected_body = client.basket
@@ -494,7 +504,12 @@ def test_cmd_add(is_active, mock_client_model, mock_schema_from_orm):
         city="CITY",
     )
     response = api.client.add(
-        schemas.ClientCreate(name="Super client", address=address, email="super.client@domain.com", is_active=is_active)
+        schemas.ClientCreate(
+            name="Super client",
+            address=address,
+            email="super.client@domain.com",
+            is_active=is_active,
+        )
     )
 
     assert len(methods_called) == 1
@@ -513,7 +528,12 @@ def test_cmd_add_error(mock_client_model, mock_schema_from_orm):
         city="CITY",
     )
     response = api.client.add(
-        schemas.ClientCreate(name="Super client", address=address, email="super.client@domain.com", is_active=True)
+        schemas.ClientCreate(
+            name="Super client",
+            address=address,
+            email="super.client@domain.com",
+            is_active=True,
+        )
     )
 
     assert len(methods_called) == 1
@@ -543,7 +563,10 @@ def test_cmd_update(mock_client_model, mock_schema_from_orm):
     response = api.client.update(
         obj_id=1,
         obj_in=schemas.ClientUpdate(
-            name="New client", address=address, email="super.client@domain.com", is_active=False
+            name="New client",
+            address=address,
+            email="super.client@domain.com",
+            is_active=False,
         ),
     )
 
@@ -567,7 +590,10 @@ def test_cmd_update_unknown(mock_client_model, mock_schema_from_orm):
     response = api.client.update(
         obj_id=1,
         obj_in=schemas.ClientUpdate(
-            name="New client", address=address, email="super.client@domain.com", is_active=False
+            name="New client",
+            address=address,
+            email="super.client@domain.com",
+            is_active=False,
         ),
     )
 
@@ -598,7 +624,10 @@ def test_cmd_update_error(mock_client_model, mock_schema_from_orm):
     response = api.client.update(
         obj_id=1,
         obj_in=schemas.ClientUpdate(
-            name="New client", address=address, email="new.client@domain.com", is_active=False
+            name="New client",
+            address=address,
+            email="new.client@domain.com",
+            is_active=False,
         ),
     )
 
@@ -1227,7 +1256,12 @@ def test_cmd_clear_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
+        id=1,
+        name="Name 1",
+        address="Address",
+        zip_code="12345",
+        city="CITY",
+        email="name_1@domain.com",
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
@@ -1274,7 +1308,12 @@ def test_cmd_clear_basket_clear_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "CLEAR_BASKET": True}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
+        id=1,
+        name="Name 1",
+        address="Address",
+        zip_code="12345",
+        city="CITY",
+        email="name_1@domain.com",
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
@@ -1323,7 +1362,12 @@ def test_cmd_invoice_from_basket(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE_FROM_BASKET": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
+        id=1,
+        name="Name 1",
+        address="Address",
+        zip_code="12345",
+        city="CITY",
+        email="name_1@domain.com",
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
@@ -1343,7 +1387,12 @@ def test_cmd_invoice_from_empty_basket(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE": False}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
+        id=1,
+        name="Name 1",
+        address="Address",
+        zip_code="12345",
+        city="CITY",
+        email="name_1@domain.com",
     )
     state["read_value"] = client.basket
     assert len(client.basket.items) == 0
@@ -1396,7 +1445,12 @@ def test_cmd_invoice_from_basket_create_error(
     state, methods_called = mock_invoice_model
     state["raises"] = {"READ": False, "CREATE_FROM_BASKET": True}
     client = FakeORMClient(
-        id=1, name="Name 1", address="Address", zip_code="12345", city="CITY", email="name_1@domain.com"
+        id=1,
+        name="Name 1",
+        address="Address",
+        zip_code="12345",
+        city="CITY",
+        email="name_1@domain.com",
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
