@@ -204,12 +204,13 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             if invoice.client_id != obj_id:
                 return CommandResponse(
                     CommandStatus.REJECTED,
-                    f"ADD-TO-INVOICE - Invoice {invoice_id} is not owned by client {obj_id}.",
+                    f"ADD-TO-INVOICE - Invoice {invoice_id} is not owned "
+                    f"by client {obj_id}.",
                 )
             if invoice.status is not InvoiceStatus.DRAFT:
                 return CommandResponse(
                     CommandStatus.REJECTED,
-                    f"ADD-TO-INVOICE - Cannot add items to a non-draft invoice.",
+                    "ADD-TO-INVOICE - Cannot add items to a non-draft invoice.",
                 )
 
             try:
@@ -317,7 +318,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             if basket is not None and invoice is not None:
                 return CommandResponse(
                     CommandStatus.REJECTED,
-                    "REMOVE-ITEM - Cannot remove items used both by the basket and an invoice.",
+                    "REMOVE-ITEM - Cannot remove items used both by the basket "
+                    "and an invoice.",
                 )
 
             try:
@@ -357,7 +359,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     # TODO:
     # preview: render as html using a Jinja template
-    # emit: send in pdf in an email (optional, check yagmail or sendgrid or sendinblue. Examples on Real Python)
+    # emit: send in pdf in an email (optional, check yagmail or sendgrid or sendinblue.
+    # Examples on Real Python)
     # remind: send a reminder in an email (optional)
     def create_invoice(self, obj_id: int) -> CommandResponse:
         try:
@@ -433,8 +436,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             if invoice.client_id != obj_id:
                 return CommandResponse(
                     CommandStatus.REJECTED,
-                    f"{action.upper()}-INVOICE - Invoice {invoice_id} is not an invoice of "
-                    f"client {obj_id}.",
+                    f"{action.upper()}-INVOICE - Invoice {invoice_id} is not an "
+                    f"invoice of client {obj_id}.",
                 )
             if invoice.status != InvoiceStatus.DRAFT:
                 return CommandResponse(
@@ -450,8 +453,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
-                    f"{action.upper()}-INVOICE - Cannot {action} invoice {invoice_id} of "
-                    f"client {obj_id}: {exc}",
+                    f"{action.upper()}-INVOICE - Cannot {action} invoice {invoice_id} "
+                    f"of client {obj_id}: {exc}",
                 )
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
@@ -523,8 +526,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             if invoice.status not in valid_status[status]:
                 return CommandResponse(
                     CommandStatus.REJECTED,
-                    f"MARK_AS-INVOICE - Invoice status transition from {invoice.status} "
-                    f"to {status} is not allowed.",
+                    f"MARK_AS-INVOICE - Invoice status transition from "
+                    f"{invoice.status} to {status} is not allowed.",
                 )
 
             try:
