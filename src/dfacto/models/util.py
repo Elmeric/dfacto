@@ -6,7 +6,7 @@
 
 import enum
 from datetime import date, datetime, timedelta
-from typing import NamedTuple, Optional, cast
+from typing import NamedTuple, cast
 
 # def quarter_from_month(month: int) -> int:
 #     return (month - 1) // 3 + 1

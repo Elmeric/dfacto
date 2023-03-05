@@ -10,9 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, scoped_session
 
-from dfacto.models import db, schemas
+from dfacto.models import schemas
+from dfacto.models.db import ModelType
 
-ModelType = TypeVar("ModelType", bound=db.BaseModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=schemas.BaseSchema)
 UpdateSchemaType = TypeVar("UpdateSchemaType", bound=schemas.BaseSchema)
 

@@ -6,21 +6,21 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional, cast
+from typing import Optional
 
-from dfacto.models import db, models
+from dfacto.models import models
 
 from .base import BaseSchema
 from .item import Item
 
 
 @dataclass
-class _InvoiceBase(BaseSchema):
+class _InvoiceBase(BaseSchema[models.Invoice]):
     client_id: int
 
 
 @dataclass
-class _InvoiceDefaultsBase(BaseSchema):
+class _InvoiceDefaultsBase(BaseSchema[models.Invoice]):
     pass
 
 
@@ -44,7 +44,7 @@ class _InvoiceInDBBase(_InvoiceBase):
 
 # Additional properties to return from DB
 @dataclass
-class StatusLog(BaseSchema):
+class StatusLog(BaseSchema[models.StatusLog]):
     id: int
     status: models.InvoiceStatus
     from_: datetime
@@ -52,14 +52,13 @@ class StatusLog(BaseSchema):
     invoice_id: int
 
     @classmethod
-    def from_orm(cls, orm_obj: db.BaseModel) -> "StatusLog":
-        obj = cast(models.StatusLog, orm_obj)
+    def from_orm(cls, orm_obj: models.StatusLog) -> "StatusLog":
         return cls(
-            id=obj.id,
-            status=obj.status,
-            from_=obj.from_,
-            to=obj.to,
-            invoice_id=obj.invoice.id,
+            id=orm_obj.id,
+            status=orm_obj.status,
+            from_=orm_obj.from_,
+            to=orm_obj.to,
+            invoice_id=orm_obj.invoice.id,
         )
 
 
@@ -77,16 +76,15 @@ class Invoice(_InvoiceInDBBase):
         return self.raw_amount + self.vat
 
     @classmethod
-    def from_orm(cls, orm_obj: db.BaseModel) -> "Invoice":
-        obj = cast(models.Invoice, orm_obj)
+    def from_orm(cls, orm_obj: models.Invoice) -> "Invoice":
         return cls(
-            id=obj.id,
-            raw_amount=obj.raw_amount,
-            vat=obj.vat,
-            status=obj.status,
-            client_id=obj.client_id,
-            items=[Item.from_orm(item) for item in obj.items],
-            status_log=[StatusLog.from_orm(action) for action in obj.status_log],
+            id=orm_obj.id,
+            raw_amount=orm_obj.raw_amount,
+            vat=orm_obj.vat,
+            status=orm_obj.status,
+            client_id=orm_obj.client_id,
+            items=[Item.from_orm(item) for item in orm_obj.items],
+            status_log=[StatusLog.from_orm(action) for action in orm_obj.status_log],
         )
 
 

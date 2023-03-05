@@ -5,22 +5,21 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import cast
 
-from dfacto.models import db, models
+from dfacto.models import models
 
 from .base import BaseSchema
 from .item import Item
 
 
 @dataclass
-class _BasketBase(BaseSchema):
+class _BasketBase(BaseSchema[models.Basket]):
     raw_amount: float
     vat: float
 
 
 @dataclass
-class _BasketDefaultsBase(BaseSchema):
+class _BasketDefaultsBase(BaseSchema[models.Basket]):
     pass
 
 
@@ -50,13 +49,12 @@ class Basket(_BasketInDBBase):
         return self.raw_amount + self.vat
 
     @classmethod
-    def from_orm(cls, orm_obj: db.BaseModel) -> "Basket":
-        obj = cast(models.Basket, orm_obj)
+    def from_orm(cls, orm_obj: models.Basket) -> "Basket":
         return cls(
-            id=obj.id,
-            raw_amount=obj.raw_amount,
-            vat=obj.vat,
-            items=[Item.from_orm(item) for item in obj.items],
+            id=orm_obj.id,
+            raw_amount=orm_obj.raw_amount,
+            vat=orm_obj.vat,
+            items=[Item.from_orm(item) for item in orm_obj.items],
         )
 
 

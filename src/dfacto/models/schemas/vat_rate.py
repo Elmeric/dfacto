@@ -5,15 +5,15 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Optional, cast
+from typing import Optional
 
-from dfacto.models import db, models
+from dfacto.models import models
 
 from .base import BaseSchema
 
 
 @dataclass
-class _VatRateBase(BaseSchema):
+class _VatRateBase(BaseSchema[models.VatRate]):
     name: str
     rate: float
     is_default: bool
@@ -21,7 +21,7 @@ class _VatRateBase(BaseSchema):
 
 
 @dataclass
-class _VatRateDefaultsBase(BaseSchema):
+class _VatRateDefaultsBase(BaseSchema[models.VatRate]):
     name: Optional[str] = None
     rate: Optional[float] = None
 
@@ -46,14 +46,13 @@ class _VatRateInDBBase(_VatRateBase):
 @dataclass
 class VatRate(_VatRateInDBBase):
     @classmethod
-    def from_orm(cls, orm_obj: db.BaseModel) -> "VatRate":
-        obj = cast(models.VatRate, orm_obj)
+    def from_orm(cls, orm_obj: models.VatRate) -> "VatRate":
         return cls(
-            id=obj.id,
-            name=obj.name,
-            rate=obj.rate,
-            is_default=obj.is_default,
-            is_preset=obj.is_preset,
+            id=orm_obj.id,
+            name=orm_obj.name,
+            rate=orm_obj.rate,
+            is_default=orm_obj.is_default,
+            is_preset=orm_obj.is_preset,
         )
 
 

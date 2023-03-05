@@ -9,7 +9,6 @@ from .base import (
     CRUDBase,
     CrudError,
     CrudIntegrityError,
-    ModelType,
     UpdateSchemaType,
 )
 from .client import CRUDClient, client
@@ -22,7 +21,6 @@ __all__ = [
     "CRUDBase",
     "CrudError",
     "CrudIntegrityError",
-    "ModelType",
     "CreateSchemaType",
     "UpdateSchemaType",
     "CRUDVatRate",

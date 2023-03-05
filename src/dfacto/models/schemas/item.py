@@ -3,17 +3,17 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-from dataclasses import dataclass
-from typing import cast
 
-from dfacto.models import db, models
+from dataclasses import dataclass
+
+from dfacto.models import models
 
 from .base import BaseSchema
 from .service import Service
 
 
 @dataclass
-class _ItemBase(BaseSchema):
+class _ItemBase(BaseSchema[models.Item]):
     raw_amount: float
     vat: float
     service_id: int
@@ -21,7 +21,7 @@ class _ItemBase(BaseSchema):
 
 
 @dataclass
-class _ItemDefaultsBase(BaseSchema):
+class _ItemDefaultsBase(BaseSchema[models.Item]):
     pass
 
 
@@ -50,15 +50,14 @@ class Item(_ItemInDBBase):
         return self.raw_amount + self.vat
 
     @classmethod
-    def from_orm(cls, orm_obj: db.BaseModel) -> "Item":
-        obj = cast(models.Item, orm_obj)
+    def from_orm(cls, orm_obj: models.Item) -> "Item":
         return cls(
-            id=obj.id,
-            raw_amount=obj.raw_amount,
-            vat=obj.vat,
-            service_id=obj.service.id,
-            quantity=obj.quantity,
-            service=Service.from_orm(obj.service),
+            id=orm_obj.id,
+            raw_amount=orm_obj.raw_amount,
+            vat=orm_obj.vat,
+            service_id=orm_obj.service.id,
+            quantity=orm_obj.quantity,
+            service=Service.from_orm(orm_obj.service),
         )
 
 

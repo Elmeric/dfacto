@@ -5,16 +5,16 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import asdict, dataclass
-from typing import Any
+from typing import Any, Generic
 
-from dfacto.models import db
+from dfacto.models.db import ModelType
 
 
 @dataclass
-class BaseSchema:
+class BaseSchema(Generic[ModelType]):
     def flatten(self) -> dict[str, Any]:
         return asdict(self)
 
     @classmethod
-    def from_orm(cls, orm_obj: db.BaseModel) -> "BaseSchema":
+    def from_orm(cls, orm_obj: ModelType) -> "BaseSchema[ModelType]":
         return BaseSchema()

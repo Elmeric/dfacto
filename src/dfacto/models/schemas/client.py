@@ -5,9 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Any, Optional, cast
+from typing import Any, Optional
 
-from dfacto.models import db, models
+from dfacto.models import models
 
 from .base import BaseSchema
 
@@ -20,7 +20,7 @@ class Address:
 
 
 @dataclass
-class _ClientBase(BaseSchema):
+class _ClientBase(BaseSchema[models.Client]):
     name: str
     address: Address
     email: str
@@ -28,7 +28,7 @@ class _ClientBase(BaseSchema):
 
 
 @dataclass
-class _ClientDefaultsBase(BaseSchema):
+class _ClientDefaultsBase(BaseSchema[models.Client]):
     name: Optional[str] = None
     address: Optional[Address] = None
     email: Optional[str] = None
@@ -82,15 +82,16 @@ class Client(_ClientInDBBase):
         return "CL" + str(self.id).zfill(5)
 
     @classmethod
-    def from_orm(cls, orm_obj: db.BaseModel) -> "Client":
-        obj = cast(models.Client, orm_obj)
-        address = Address(address=obj.address, zip_code=obj.zip_code, city=obj.city)
+    def from_orm(cls, orm_obj: models.Client) -> "Client":
+        address = Address(
+            address=orm_obj.address, zip_code=orm_obj.zip_code, city=orm_obj.city
+        )
         return cls(
-            id=obj.id,
-            name=obj.name,
+            id=orm_obj.id,
+            name=orm_obj.name,
             address=address,
-            email=obj.email,
-            is_active=obj.is_active,
+            email=orm_obj.email,
+            is_active=orm_obj.is_active,
         )
 
 
