@@ -5,9 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Generic, Optional, Type, TypeVar
+from typing import Generic, Type, TypeVar
 
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session, scoped_session
 
 from dfacto.models import crud, schemas
 from dfacto.models.api.command import CommandResponse, CommandStatus
@@ -18,9 +18,9 @@ SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)
 
 @dataclass()
 class DFactoModel(Generic[CRUDObjectType, SchemaType]):
-    Session: scoped_session
-    crud_object: Optional[CRUDObjectType] = None
-    schema: Optional[Type[SchemaType]] = None
+    Session: scoped_session[Session]
+    crud_object: CRUDObjectType
+    schema: Type[SchemaType]
 
     def get(self, obj_id: int) -> CommandResponse:
         try:

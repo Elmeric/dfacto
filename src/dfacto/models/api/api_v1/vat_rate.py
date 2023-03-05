@@ -53,6 +53,11 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
         else:
             if new is old:
                 return CommandResponse(CommandStatus.COMPLETED)
+            if old is None or new is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    "Previous or new default VAT rate not found.",
+                )
 
             try:
                 self.crud_object.set_default(

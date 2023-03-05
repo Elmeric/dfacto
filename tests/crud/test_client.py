@@ -42,7 +42,6 @@ def init_clients(dbsession: sa.orm.scoped_session) -> list[models.Client]:
 
 @pytest.fixture
 def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
-
     for i in range(5):
         service = models.Service(
             name=f"Service_{i + 1}", unit_price=100 + 10 * i, vat_rate_id=(i % 3) + 1

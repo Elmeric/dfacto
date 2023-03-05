@@ -8,7 +8,7 @@ from typing import Any, Generic, Optional, Type, TypeVar, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session, scoped_session
 
 from dfacto.models import db, schemas
 
@@ -30,7 +30,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """CRUD object with default methods to Create, Read, Update, Delete (CRUD)."""
         self.model = model
 
-    def get(self, dbsession: scoped_session, obj_id: Any) -> Optional[ModelType]:
+    def get(
+        self, dbsession: scoped_session[Session], obj_id: Any
+    ) -> Optional[ModelType]:
         try:
             obj = dbsession.get(self.model, obj_id)
         except SQLAlchemyError as exc:
@@ -39,7 +41,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             return obj
 
     def get_multi(
-        self, dbsession: scoped_session, *, skip: int = 0, limit: int = 100
+        self, dbsession: scoped_session[Session], *, skip: int = 0, limit: int = 100
     ) -> list[ModelType]:
         try:
             obj_list = cast(
@@ -51,7 +53,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         else:
             return obj_list
 
-    def get_all(self, dbsession: scoped_session) -> list[ModelType]:
+    def get_all(self, dbsession: scoped_session[Session]) -> list[ModelType]:
         try:
             obj_list = cast(
                 list[ModelType], dbsession.scalars(select(self.model)).all()
@@ -62,7 +64,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             return obj_list
 
     def create(
-        self, dbsession: scoped_session, *, obj_in: CreateSchemaType
+        self, dbsession: scoped_session[Session], *, obj_in: CreateSchemaType
     ) -> ModelType:
         obj_in_data = obj_in.flatten()
         db_obj = self.model(**obj_in_data)
@@ -78,7 +80,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
     def update(
         self,
-        dbsession: scoped_session,
+        dbsession: scoped_session[Session],
         *,
         db_obj: ModelType,
         obj_in: Union[UpdateSchemaType, dict[str, Any]],
@@ -112,7 +114,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 return db_obj
         return db_obj
 
-    def delete(self, dbsession: scoped_session, *, db_obj: ModelType) -> None:
+    def delete(self, dbsession: scoped_session[Session], *, db_obj: ModelType) -> None:
         dbsession.delete(db_obj)
         try:
             dbsession.commit()

@@ -4,16 +4,21 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import String, and_, case, exists, select
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from dfacto.models import db
 
 from .basket import Basket
 from .invoice import Invoice, InvoiceStatus
+
+# Refer to: https://github.com/dropbox/sqlalchemy-stubs/issues/98#issuecomment-762884766
+if TYPE_CHECKING:
+    hybrid_property = property
+else:
+    from sqlalchemy.ext.hybrid import hybrid_property
 
 
 class Client(db.BaseModel):
@@ -43,7 +48,7 @@ class Client(db.BaseModel):
         return any(invoice.status != InvoiceStatus.DRAFT for invoice in self.invoices)
 
     @has_emitted_invoices.expression
-    def has_emitted_invoices(cls):  # pylint: disable=no-self-argument
+    def has_emitted_invoices(cls):  # type: ignore
         return select(
             case(
                 (
@@ -54,7 +59,7 @@ class Client(db.BaseModel):
                             Invoice.status != "DRAFT",
                         )
                     )
-                    .correlate(cls),
+                    .correlate(cls),  # type: ignore
                     True,
                 ),
                 else_=False,

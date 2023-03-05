@@ -76,7 +76,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def _get_invoices_by_status(
         self, obj_id: int, *, status: InvoiceStatus, period: Period
-    ):
+    ) -> CommandResponse:
         try:
             invoices = self.crud_object.get_invoices_by_status(
                 self.Session, obj_id, status=status, period=period
@@ -90,7 +90,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
-    def _get_invoices(self, obj_id: int, *, period: Period):
+    def _get_invoices(self, obj_id: int, *, period: Period) -> CommandResponse:
         try:
             invoices = self.crud_object.get_invoices(
                 self.Session, obj_id, period=period
@@ -214,7 +214,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
             try:
                 it = crud.invoice.add_item(
-                    self.Session, invoice=invoice, service=service, quantity=quantity
+                    self.Session, invoice_=invoice, service=service, quantity=quantity
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -370,7 +370,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 f"CREATE-INVOICE - Cannot create an invoice for client {obj_id}: {exc}",
             )
         else:
-            body = self.schema.from_orm(invoice)
+            body = schemas.Invoice.from_orm(invoice)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def invoice_from_basket(

@@ -33,7 +33,7 @@ def create_tables(engine: sa.Engine) -> None:
     base.BaseModel.metadata.create_all(bind=engine)
 
 
-def init_db_data(session: Union[Session, scoped_session]) -> None:
+def init_db_data(session: Union[Session, scoped_session[Session]]) -> None:
     # vr = crud.vat_rate.get(db, DEFAULT_RATE_ID)
     # if vr is None:
     #     # No VAT rates in the database: create them.
@@ -51,6 +51,8 @@ def init_db_data(session: Union[Session, scoped_session]) -> None:
         session.commit()
 
 
-def init_db(engine: sa.Engine, session: Union[Session, scoped_session]) -> None:
+def init_db(
+    engine: sa.Engine, session: Union[Session, scoped_session[Session]]
+) -> None:
     create_tables(engine)
     init_db_data(session)

@@ -4,8 +4,9 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 from dataclasses import dataclass
+from typing import cast
 
-from dfacto.models import models
+from dfacto.models import db, models
 
 from .base import BaseSchema
 from .service import Service
@@ -45,18 +46,19 @@ class Item(_ItemInDBBase):
     service: Service
 
     @property
-    def net_amount(self):
+    def net_amount(self) -> float:
         return self.raw_amount + self.vat
 
     @classmethod
-    def from_orm(cls, orm_obj: models.Item) -> "Item":
+    def from_orm(cls, orm_obj: db.BaseModel) -> "Item":
+        obj = cast(models.Item, orm_obj)
         return cls(
-            id=orm_obj.id,
-            raw_amount=orm_obj.raw_amount,
-            vat=orm_obj.vat,
-            service_id=orm_obj.service.id,
-            quantity=orm_obj.quantity,
-            service=Service.from_orm(orm_obj.service),
+            id=obj.id,
+            raw_amount=obj.raw_amount,
+            vat=obj.vat,
+            service_id=obj.service.id,
+            quantity=obj.quantity,
+            service=Service.from_orm(obj.service),
         )
 
 

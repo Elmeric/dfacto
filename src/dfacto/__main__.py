@@ -1,3 +1,4 @@
+# type: ignore
 import datetime
 import random
 import sys

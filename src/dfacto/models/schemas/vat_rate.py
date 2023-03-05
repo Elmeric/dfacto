@@ -5,9 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, cast
 
-from dfacto.models import models
+from dfacto.models import db, models
 
 from .base import BaseSchema
 
@@ -45,16 +45,15 @@ class _VatRateInDBBase(_VatRateBase):
 # Additional properties to return from DB
 @dataclass
 class VatRate(_VatRateInDBBase):
-    pass
-
     @classmethod
-    def from_orm(cls, orm_obj: models.VatRate) -> "VatRate":
+    def from_orm(cls, orm_obj: db.BaseModel) -> "VatRate":
+        obj = cast(models.VatRate, orm_obj)
         return cls(
-            id=orm_obj.id,
-            name=orm_obj.name,
-            rate=orm_obj.rate,
-            is_default=orm_obj.is_default,
-            is_preset=orm_obj.is_preset,
+            id=obj.id,
+            name=obj.name,
+            rate=obj.rate,
+            is_default=obj.is_default,
+            is_preset=obj.is_preset,
         )
 
 

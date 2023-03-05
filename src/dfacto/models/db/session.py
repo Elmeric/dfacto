@@ -11,7 +11,7 @@ import sqlalchemy.event
 import sqlalchemy.orm
 
 
-def _set_sqlite_pragma(dbapi_connection, _connection_record):
+def _set_sqlite_pragma(dbapi_connection, _connection_record):  # type: ignore
     if isinstance(dbapi_connection, sqlite.Connection):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA foreign_keys=ON")

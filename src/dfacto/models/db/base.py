@@ -13,3 +13,5 @@ from dfacto.models.db.base_model import BaseModel  # noqa
 # from dfacto.models.models.basket import Basket
 # from dfacto.models.models.invoice import Invoice
 # from dfacto.models.models.item import Item
+
+__all__ = ["BaseModel"]

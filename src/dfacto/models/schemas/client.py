@@ -5,9 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
-from dfacto.models import models
+from dfacto.models import db, models
 
 from .base import BaseSchema
 
@@ -82,16 +82,15 @@ class Client(_ClientInDBBase):
         return "CL" + str(self.id).zfill(5)
 
     @classmethod
-    def from_orm(cls, orm_obj: models.Client) -> "Client":
-        address = Address(
-            address=orm_obj.address, zip_code=orm_obj.zip_code, city=orm_obj.city
-        )
+    def from_orm(cls, orm_obj: db.BaseModel) -> "Client":
+        obj = cast(models.Client, orm_obj)
+        address = Address(address=obj.address, zip_code=obj.zip_code, city=obj.city)
         return cls(
-            id=orm_obj.id,
-            name=orm_obj.name,
+            id=obj.id,
+            name=obj.name,
             address=address,
-            email=orm_obj.email,
-            is_active=orm_obj.is_active,
+            email=obj.email,
+            is_active=obj.is_active,
         )
 
 

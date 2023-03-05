@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from typing import Any, NamedTuple
+from typing import Any, NamedTuple, Optional
 
 
 class CommandException(Exception):
@@ -45,7 +45,7 @@ class CommandResponse(NamedTuple):
     """
 
     status: CommandStatus
-    reason: str = None
+    reason: Optional[str] = None
     body: Any = None
 
     def __repr__(self) -> str:

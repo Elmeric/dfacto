@@ -6,7 +6,7 @@
 
 import enum
 from datetime import date, datetime, timedelta
-from typing import NamedTuple, Optional
+from typing import NamedTuple, Optional, cast
 
 # def quarter_from_month(month: int) -> int:
 #     return (month - 1) // 3 + 1
@@ -33,17 +33,17 @@ class Period(NamedTuple):
         return datetime.combine(self.end, datetime.max.time())
 
     @classmethod
-    def from_quarter(cls, year: int, quarter: int):
-        return Period(date(year, 1 + (quarter - 1) * 3, 1), date(year, quarter * 3, 31))
+    def from_quarter(cls, year: int, quarter: int) -> "Period":
+        return cls(date(year, 1 + (quarter - 1) * 3, 1), date(year, quarter * 3, 31))
 
     @classmethod
-    def from_current_month(cls):
+    def from_current_month(cls) -> "Period":
         end = date.today()
         start = end.replace(day=1)
         return cls(start, end)
 
     @classmethod
-    def from_last_month(cls):
+    def from_last_month(cls) -> "Period":
         end = date.today().replace(day=1) - timedelta(
             days=1
         )  # veille du 1er jour du mois en cours
@@ -51,28 +51,28 @@ class Period(NamedTuple):
         return cls(start, end)
 
     @classmethod
-    def from_current_quarter(cls):
+    def from_current_quarter(cls) -> "Period":
         end = date.today()
         quarter = (end.month - 1) // 3 + 1
         start = date(end.year, 1 + (quarter - 1) * 3, 1)
         return cls(start, end)
 
     @classmethod
-    def from_last_quarter(cls):
+    def from_last_quarter(cls) -> "Period":
         today = date.today()
         quarter = (today.month - 1) // 3 + 1
         if quarter == 1:
-            return Period.from_quarter(today.year - 1, 4)
-        return Period.from_quarter(today.year, quarter - 1)
+            return cls.from_quarter(today.year - 1, 4)
+        return cls.from_quarter(today.year, quarter - 1)
 
     @classmethod
-    def from_current_year(cls):
+    def from_current_year(cls) -> "Period":
         end = date.today()
         start = end.replace(day=1, month=1)
         return cls(start, end)
 
     @classmethod
-    def from_last_year(cls):
+    def from_last_year(cls) -> "Period":
         end = date.today().replace(day=1, month=1) - timedelta(
             days=1
         )  # veille du 1er jour de l'année en cours
@@ -90,7 +90,7 @@ class PeriodFilter(enum.Enum):
 
     def as_period(self) -> Period:
         method = f"from_{self.name.lower()}"
-        return getattr(Period, method)()
+        return cast(Period, getattr(Period, method)())
 
 
 if __name__ == "__main__":

@@ -4,9 +4,9 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, cast
 
-from dfacto.models import models
+from dfacto.models import db, models
 
 from .base import BaseSchema
 from .vat_rate import VatRate
@@ -46,12 +46,13 @@ class Service(_ServiceInDBBase):
     vat_rate: VatRate
 
     @classmethod
-    def from_orm(cls, orm_obj: models.Service) -> "Service":
+    def from_orm(cls, orm_obj: db.BaseModel) -> "Service":
+        obj = cast(models.Service, orm_obj)
         return cls(
-            id=orm_obj.id,
-            name=orm_obj.name,
-            unit_price=orm_obj.unit_price,
-            vat_rate=VatRate.from_orm(orm_obj.vat_rate),
+            id=obj.id,
+            name=obj.name,
+            unit_price=obj.unit_price,
+            vat_rate=VatRate.from_orm(obj.vat_rate),
         )
 
 

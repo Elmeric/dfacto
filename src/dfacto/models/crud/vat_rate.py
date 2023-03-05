@@ -8,7 +8,7 @@ from typing import Any, Optional, Union
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session, scoped_session
 
 from dfacto.models import models, schemas
 
@@ -18,7 +18,9 @@ from .base import CRUDBase, CrudError
 class CRUDVatRate(
     CRUDBase[models.VatRate, schemas.VatRateCreate, schemas.VatRateUpdate]
 ):
-    def get_default(self, dbsession: scoped_session) -> Optional[models.VatRate]:
+    def get_default(
+        self, dbsession: scoped_session[Session]
+    ) -> Optional[models.VatRate]:
         try:
             db_obj = dbsession.scalars(
                 select(self.model).where(self.model.is_default == True)
@@ -30,7 +32,7 @@ class CRUDVatRate(
 
     def set_default(
         self,
-        dbsession: scoped_session,
+        dbsession: scoped_session[Session],
         *,
         old_default: models.VatRate,
         new_default: models.VatRate,
@@ -45,7 +47,7 @@ class CRUDVatRate(
 
     def update(
         self,
-        dbsession: scoped_session,
+        dbsession: scoped_session[Session],
         *,
         db_obj: models.VatRate,
         obj_in: Union[schemas.VatRateUpdate, dict[str, Any]],

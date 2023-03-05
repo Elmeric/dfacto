@@ -6,8 +6,9 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional, cast
 
-from dfacto.models import models
+from dfacto.models import db, models
 
 from .base import BaseSchema
 from .item import Item
@@ -47,17 +48,18 @@ class StatusLog(BaseSchema):
     id: int
     status: models.InvoiceStatus
     from_: datetime
-    to: datetime
+    to: Optional[datetime]
     invoice_id: int
 
     @classmethod
-    def from_orm(cls, orm_obj: models.StatusLog) -> "StatusLog":
+    def from_orm(cls, orm_obj: db.BaseModel) -> "StatusLog":
+        obj = cast(models.StatusLog, orm_obj)
         return cls(
-            id=orm_obj.id,
-            status=orm_obj.status,
-            from_=orm_obj.from_,
-            to=orm_obj.to,
-            invoice_id=orm_obj.invoice.id,
+            id=obj.id,
+            status=obj.status,
+            from_=obj.from_,
+            to=obj.to,
+            invoice_id=obj.invoice.id,
         )
 
 
@@ -71,19 +73,20 @@ class Invoice(_InvoiceInDBBase):
         return "FC" + str(self.id).zfill(10)
 
     @property
-    def net_amount(self):
+    def net_amount(self) -> float:
         return self.raw_amount + self.vat
 
     @classmethod
-    def from_orm(cls, orm_obj: models.Invoice) -> "Invoice":
+    def from_orm(cls, orm_obj: db.BaseModel) -> "Invoice":
+        obj = cast(models.Invoice, orm_obj)
         return cls(
-            id=orm_obj.id,
-            raw_amount=orm_obj.raw_amount,
-            vat=orm_obj.vat,
-            status=orm_obj.status,
-            client_id=orm_obj.client_id,
-            items=[Item.from_orm(item) for item in orm_obj.items],
-            status_log=[StatusLog.from_orm(action) for action in orm_obj.status_log],
+            id=obj.id,
+            raw_amount=obj.raw_amount,
+            vat=obj.vat,
+            status=obj.status,
+            client_id=obj.client_id,
+            items=[Item.from_orm(item) for item in obj.items],
+            status_log=[StatusLog.from_orm(action) for action in obj.status_log],
         )
 
 

@@ -13,3 +13,24 @@ from .invoice import Invoice, InvoiceCreate, InvoiceInDB, InvoiceUpdate, StatusL
 from .item import Item, ItemCreate, ItemInDB, ItemUpdate
 from .service import Service, ServiceCreate, ServiceInDB, ServiceUpdate
 from .vat_rate import VatRate, VatRateCreate, VatRateInDB, VatRateUpdate
+
+__all__ = [
+    "BaseSchema",
+    "VatRate",
+    "VatRateCreate",
+    "VatRateUpdate",
+    "Service",
+    "ServiceCreate",
+    "ServiceUpdate",
+    "Client",
+    "ClientCreate",
+    "ClientUpdate",
+    "Address",
+    "Basket",
+    "Item",
+    "ItemCreate",
+    "ItemUpdate",
+    "Invoice",
+    "InvoiceCreate",
+    "InvoiceUpdate",
+]

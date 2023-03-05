@@ -147,7 +147,7 @@ def mock_invoice_model(mock_dfacto_model, monkeypatch):
         else:
             return FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
 
-    def _add_item(_db, invoice, service, quantity):
+    def _add_item(_db, invoice_, service, quantity):
         methods_called.append("ADD_TO_INVOICE")
         exc = state["raises"]["ADD_TO_INVOICE"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
