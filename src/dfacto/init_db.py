@@ -6,7 +6,7 @@
 
 import logging
 
-from dfacto.models import db
+from dfacto.backend import db
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

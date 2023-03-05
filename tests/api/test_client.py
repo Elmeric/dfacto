@@ -8,10 +8,10 @@ from datetime import date
 
 import pytest
 
-from dfacto.models import api, crud, schemas
-from dfacto.models.api.command import CommandStatus
-from dfacto.models.models.invoice import InvoiceStatus
-from dfacto.models.util import Period, PeriodFilter
+from dfacto.backend import api, crud, schemas
+from dfacto.backend.api.command import CommandStatus
+from dfacto.backend.models.invoice import InvoiceStatus
+from dfacto.backend.util import Period, PeriodFilter
 from tests.conftest import (
     FakeORMBasket,
     FakeORMClient,

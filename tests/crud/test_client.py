@@ -12,8 +12,8 @@ import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session
 
-from dfacto.models import crud, db, models, schemas
-from dfacto.models.util import Period
+from dfacto.backend import crud, db, models, schemas
+from dfacto.backend.util import Period
 
 pytestmark = pytest.mark.crud
 

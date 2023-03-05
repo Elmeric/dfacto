@@ -6,11 +6,11 @@ import sys
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 
-from dfacto.models import api, crud, db, models, schemas
-from dfacto.models.basket import BasketModel
-from dfacto.models.client import ClientModel
-from dfacto.models.invoice import InvoiceModel
-from dfacto.models.item import ItemModel
+from dfacto.backend import api, crud, db, models, schemas
+from dfacto.backend.basket import BasketModel
+from dfacto.backend.client import ClientModel
+from dfacto.backend.invoice import InvoiceModel
+from dfacto.backend.item import ItemModel
 
 
 def main():

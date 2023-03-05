@@ -18,7 +18,7 @@ from sqlalchemy.event import listen
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
 
-from dfacto.models import crud, db, models, schemas
+from dfacto.backend import crud, db, models, schemas
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -99,7 +99,7 @@ def mock_commit(monkeypatch):
         if state["failed"]:
             raise SQLAlchemyError("Commit failed")
 
-    monkeypatch.setattr("dfacto.models.crud.base.scoped_session.commit", _commit)
+    monkeypatch.setattr("dfacto.backend.crud.base.scoped_session.commit", _commit)
 
     return state, called
 
@@ -114,7 +114,7 @@ def mock_get(monkeypatch):
         if state["failed"]:
             raise SQLAlchemyError("Get failed")
 
-    monkeypatch.setattr("dfacto.models.crud.base.scoped_session.get", _get)
+    monkeypatch.setattr("dfacto.backend.crud.base.scoped_session.get", _get)
 
     return state, called
 
@@ -129,8 +129,8 @@ def mock_select(monkeypatch):
         if state["failed"]:
             raise SQLAlchemyError("Select failed")
 
-    monkeypatch.setattr("dfacto.models.crud.base.select", _select)
-    monkeypatch.setattr(sys.modules["dfacto.models.crud.client"], "select", _select)
+    monkeypatch.setattr("dfacto.backend.crud.base.select", _select)
+    monkeypatch.setattr(sys.modules["dfacto.backend.crud.client"], "select", _select)
 
     return state, called
 
@@ -146,7 +146,7 @@ def mock_datetime_now(monkeypatch):
             return FAKE_TIME
 
     monkeypatch.setattr(
-        sys.modules["dfacto.models.crud.invoice"], "datetime", mydatetime
+        sys.modules["dfacto.backend.crud.invoice"], "datetime", mydatetime
     )
 
 

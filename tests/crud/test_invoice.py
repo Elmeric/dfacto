@@ -8,7 +8,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
 
-from dfacto.models import crud, models, schemas
+from dfacto.backend import crud, models, schemas
 from tests.conftest import FAKE_TIME
 
 pytestmark = pytest.mark.crud

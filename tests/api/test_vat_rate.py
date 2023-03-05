@@ -6,8 +6,8 @@
 
 import pytest
 
-from dfacto.models import api, crud, schemas
-from dfacto.models.api.command import CommandStatus
+from dfacto.backend import api, crud, schemas
+from dfacto.backend.api.command import CommandStatus
 from tests.api.test_service import FakeORMService
 from tests.conftest import FakeORMVatRate
 
