@@ -6,7 +6,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Optional
+from typing import Optional, cast
 
 from dfacto.backend import models
 
@@ -65,15 +65,52 @@ class StatusLog(BaseSchema[models.StatusLog]):
 @dataclass
 class Invoice(_InvoiceInDBBase):
     items: list[Item]
-    status_log: list[StatusLog]
+    status_log: dict[models.InvoiceStatus, StatusLog]
 
     @property
     def code(self) -> str:
-        return "FC" + str(self.id).zfill(10)
+        return "FC" + str(self.id).zfill(5)
 
     @property
     def net_amount(self) -> float:
         return self.raw_amount + self.vat
+
+    @property
+    def created_on(self) -> datetime:
+        creation_log = self.status_log[models.InvoiceStatus.DRAFT]
+        return creation_log.from_
+
+    @property
+    def issued_on(self) -> Optional[datetime]:
+        try:
+            creation_log = self.status_log[models.InvoiceStatus.EMITTED]
+        except KeyError:
+            return None
+        return creation_log.from_
+
+    @property
+    def reminded_on(self) -> Optional[datetime]:
+        try:
+            creation_log = self.status_log[models.InvoiceStatus.REMINDED]
+        except KeyError:
+            return None
+        return creation_log.from_
+
+    @property
+    def paid_on(self) -> Optional[datetime]:
+        try:
+            creation_log = self.status_log[models.InvoiceStatus.PAID]
+        except KeyError:
+            return None
+        return creation_log.from_
+
+    @property
+    def cancelled_on(self) -> Optional[datetime]:
+        try:
+            creation_log = self.status_log[models.InvoiceStatus.CANCELLED]
+        except KeyError:
+            return None
+        return creation_log.from_
 
     @classmethod
     def from_orm(cls, orm_obj: models.Invoice) -> "Invoice":
@@ -84,7 +121,9 @@ class Invoice(_InvoiceInDBBase):
             status=orm_obj.status,
             client_id=orm_obj.client_id,
             items=[Item.from_orm(item) for item in orm_obj.items],
-            status_log=[StatusLog.from_orm(action) for action in orm_obj.status_log],
+            status_log={
+                log.status: StatusLog.from_orm(log) for log in orm_obj.status_log
+            },
         )
 
 

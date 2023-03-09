@@ -553,7 +553,8 @@ def test_crud_cancel_invoice(dbsession, init_data, mock_datetime_now):
     invoice = client.invoices[0]
     invoice_id = invoice.id
     assert invoice.status is models.InvoiceStatus.EMITTED
-    last_log = invoice.status_log[0]
+    assert len(invoice.status_log) == 2
+    last_log = invoice.status_log[1]
     assert last_log.to is None
 
     crud.invoice.cancel_invoice(dbsession, invoice_=invoice)
@@ -562,11 +563,11 @@ def test_crud_cancel_invoice(dbsession, init_data, mock_datetime_now):
     status_log = dbsession.scalars(
         sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
     ).all()
-    assert status_log[0] is last_log
-    assert status_log[0].to == FAKE_TIME
-    assert status_log[1].status is models.InvoiceStatus.CANCELLED
-    assert status_log[1].from_ == FAKE_TIME
-    assert status_log[1].to is None
+    assert status_log[1] is last_log
+    assert status_log[1].to == FAKE_TIME
+    assert status_log[2].status is models.InvoiceStatus.CANCELLED
+    assert status_log[2].from_ == FAKE_TIME
+    assert status_log[2].to is None
 
 
 def test_crud_cancel_invoice_bad_status(dbsession, init_data):
@@ -574,9 +575,9 @@ def test_crud_cancel_invoice_bad_status(dbsession, init_data):
     invoice = client.invoices[0]
     invoice_id = invoice.id
     assert invoice.status is models.InvoiceStatus.PAID
-    last_log = invoice.status_log[0]
-    assert last_log.to is None
     logs_count = len(invoice.status_log)
+    last_log = invoice.status_log[logs_count - 1]
+    assert last_log.to is None
 
     with pytest.raises(AssertionError):
         crud.invoice.cancel_invoice(dbsession, invoice_=invoice)
@@ -586,9 +587,9 @@ def test_crud_cancel_invoice_bad_status(dbsession, init_data):
         sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
     ).all()
     assert len(status_log) == logs_count
-    assert status_log[0] is last_log
-    assert status_log[0].to is None
-    assert status_log[0].status is models.InvoiceStatus.PAID
+    assert status_log[logs_count - 1] is last_log
+    assert status_log[logs_count - 1].to is None
+    assert status_log[logs_count - 1].status is models.InvoiceStatus.PAID
 
 
 def test_crud_cancel_invoice_commit_error(dbsession, init_data, mock_commit):
@@ -599,9 +600,9 @@ def test_crud_cancel_invoice_commit_error(dbsession, init_data, mock_commit):
     invoice = client.invoices[0]
     invoice_id = invoice.id
     assert invoice.status is models.InvoiceStatus.EMITTED
-    last_log = invoice.status_log[0]
-    assert last_log.to is None
     logs_count = len(invoice.status_log)
+    last_log = invoice.status_log[logs_count - 1]
+    assert last_log.to is None
 
     with pytest.raises(crud.CrudError):
         crud.invoice.cancel_invoice(dbsession, invoice_=invoice)
@@ -611,9 +612,9 @@ def test_crud_cancel_invoice_commit_error(dbsession, init_data, mock_commit):
         sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
     ).all()
     assert len(status_log) == logs_count
-    assert status_log[0] is last_log
-    assert status_log[0].to is None
-    assert status_log[0].status is models.InvoiceStatus.EMITTED
+    assert status_log[logs_count - 1] is last_log
+    assert status_log[logs_count - 1].to is None
+    assert status_log[logs_count - 1].status is models.InvoiceStatus.EMITTED
 
 
 @pytest.mark.parametrize(
@@ -640,7 +641,8 @@ def test_crud_mark_as(
     invoice = client.invoices[0]
     invoice_id = invoice.id
     assert invoice.status is prev_status
-    last_log = invoice.status_log[0]
+    logs_count = len(invoice.status_log)
+    last_log = invoice.status_log[logs_count - 1]
     assert last_log.to is None
 
     crud.invoice.mark_as(dbsession, invoice_=invoice, status=status)
@@ -649,11 +651,11 @@ def test_crud_mark_as(
     status_log = dbsession.scalars(
         sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
     ).all()
-    assert status_log[0] is last_log
-    assert status_log[0].to == FAKE_TIME
-    assert status_log[1].status is status
-    assert status_log[1].from_ == FAKE_TIME
-    assert status_log[1].to is None
+    assert status_log[logs_count - 1] is last_log
+    assert status_log[logs_count - 1].to == FAKE_TIME
+    assert status_log[logs_count].status is status
+    assert status_log[logs_count].from_ == FAKE_TIME
+    assert status_log[logs_count].to is None
 
 
 def test_crud_mark_as_bad_status(dbsession, init_data):
@@ -661,9 +663,9 @@ def test_crud_mark_as_bad_status(dbsession, init_data):
     invoice = client.invoices[0]
     invoice_id = invoice.id
     assert invoice.status is models.InvoiceStatus.PAID
-    last_log = invoice.status_log[0]
-    assert last_log.to is None
     logs_count = len(invoice.status_log)
+    last_log = invoice.status_log[logs_count - 1]
+    assert last_log.to is None
 
     with pytest.raises(AssertionError):
         crud.invoice.mark_as(
@@ -675,9 +677,9 @@ def test_crud_mark_as_bad_status(dbsession, init_data):
         sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
     ).all()
     assert len(status_log) == logs_count
-    assert status_log[0] is last_log
-    assert status_log[0].to is None
-    assert status_log[0].status is models.InvoiceStatus.PAID
+    assert status_log[logs_count - 1] is last_log
+    assert status_log[logs_count - 1].to is None
+    assert status_log[logs_count - 1].status is models.InvoiceStatus.PAID
 
 
 def test_crud_mark_as_commit_error(dbsession, init_data, mock_commit):
@@ -688,9 +690,9 @@ def test_crud_mark_as_commit_error(dbsession, init_data, mock_commit):
     invoice = client.invoices[0]
     invoice_id = invoice.id
     assert invoice.status is models.InvoiceStatus.EMITTED
-    last_log = invoice.status_log[0]
-    assert last_log.to is None
     logs_count = len(invoice.status_log)
+    last_log = invoice.status_log[logs_count - 1]
+    assert last_log.to is None
 
     with pytest.raises(crud.CrudError):
         crud.invoice.mark_as(
@@ -702,9 +704,9 @@ def test_crud_mark_as_commit_error(dbsession, init_data, mock_commit):
         sa.select(models.StatusLog).where(models.StatusLog.invoice_id == invoice_id)
     ).all()
     assert len(status_log) == logs_count
-    assert status_log[0] is last_log
-    assert status_log[0].to is None
-    assert status_log[0].status is models.InvoiceStatus.EMITTED
+    assert status_log[logs_count - 1] is last_log
+    assert status_log[logs_count - 1].to is None
+    assert status_log[logs_count - 1].status is models.InvoiceStatus.EMITTED
 
 
 def test_invoice_from_orm(dbsession, init_data):
@@ -720,5 +722,7 @@ def test_invoice_from_orm(dbsession, init_data):
     assert from_db.client_id == invoice.client_id
     for i, item in enumerate(from_db.items):
         assert item == schemas.Item.from_orm(invoice.items[i])
-    for i, log in enumerate(from_db.status_log):
+    i = 0
+    for status, log in from_db.status_log.items():
         assert log == schemas.StatusLog.from_orm(invoice.status_log[i])
+        i += 1

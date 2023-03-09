@@ -5,7 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
+from datetime import timedelta
+from enum import Enum
 from typing import Optional, Type
+
+import jinja2 as jinja
+from babel.dates import format_date
 
 from dfacto.backend import crud, db, schemas
 from dfacto.backend.api.command import CommandResponse, CommandStatus
@@ -15,10 +20,27 @@ from dfacto.backend.util import Period, PeriodFilter
 from .base import DFactoModel
 
 
-@dataclass()
+@dataclass
+class Company:
+    name: str
+    address: str
+    zip_code: str
+    city: str
+    phone_number: str
+    email: str
+    siret: str
+    rcs: str
+
+
+@dataclass
 class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     crud_object: crud.CRUDClient = crud.client
     schema: Type[schemas.Client] = schemas.Client
+
+    class HtmlMode(Enum):
+        VIEW = 1
+        ISSUE = 2
+        REMIND = 3
 
     def get_active(self) -> CommandResponse:
         try:
@@ -358,7 +380,6 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return CommandResponse(CommandStatus.COMPLETED)
 
     # TODO:
-    # preview: render as html using a Jinja template
     # emit: send in pdf in an email (optional, check yagmail or sendgrid or sendinblue.
     # Examples on Real Python)
     # remind: send a reminder in an email (optional)
@@ -540,6 +561,195 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
+
+    def preview_invoice(
+        self, obj_id: int, *, invoice_id: int, mode: HtmlMode
+    ) -> CommandResponse:
+        """
+                    VIEW	                        ISSUE	                REMIND
+        DRAFT
+                stamp = DRAFT	                stamp = None
+                date = created_on	            date = created_on
+                due_date = None	                due_date = None
+        EMITTED
+                stamp = ISSUED on xxx		                            stamp = REMINDER
+                date = issued_on		                                date = issued_on
+                due_date = date + delta		                            due_date = date + delta
+        REMINDED
+                stamp = REMINDED on xxx		                            stamp = nth REMINDER
+                date = issued_on		                                date = issued_on
+                due_date = issued_on + delta		                    due_date = date + delta
+        PAID
+                stamp = PAID on xxx
+                date = issued_on
+                due_date = issued_on + delta
+        CANCELLED
+                stamp = CANCELLED on xxx
+                date = issued_on
+                due_date = issued_on + delta
+        """
+        try:
+            orm_client = self.crud_object.get(self.Session, obj_id)
+            orm_invoice = crud.invoice.get(self.Session, invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"PREVIEW-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            if orm_client is None or orm_invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"PREVIEW-INVOICE - Clien {obj_id} or invoice {invoice_id} "
+                    f"not found.",
+                )
+            if orm_invoice.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"PREVIEW-INVOICE - Invoice {invoice_id} is not an invoice of "
+                    f"client {obj_id}.",
+                )
+
+            try:
+                env = jinja.Environment(loader=jinja.PackageLoader("dfacto.backend"))
+            except ValueError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"PREVIEW-INVOICE - HTML templates location not available: {exc}",
+                )
+            try:
+                template = env.get_template("invoice.html")
+            except jinja.TemplateNotFound as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"PREVIEW-INVOICE - HTML template not found: {exc}",
+                )
+            except jinja.TemplateSyntaxError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"PREVIEW-INVOICE - HTML template syntax error: {exc}",
+                )
+
+            context = self._build_context(
+                client_=schemas.Client.from_orm(orm_client),
+                invoice=schemas.Invoice.from_orm(orm_invoice),
+                mode=mode,
+            )
+            try:
+                preview = template.render(context)
+            except (jinja.TemplateSyntaxError, jinja.TemplateRuntimeError) as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"PREVIEW-INVOICE - HTML template rendering error: {exc}",
+                )
+            return CommandResponse(CommandStatus.COMPLETED, body=preview)
+
+    def _get_stamp(self, invoice: schemas.Invoice, mode: HtmlMode) -> tuple[str, str]:
+        status = invoice.status
+
+        if mode is self.HtmlMode.ISSUE:
+            if status is InvoiceStatus.DRAFT:
+                return "", "is-empty"
+            return "", "is-empty"
+
+        if mode is self.HtmlMode.REMIND:
+            if status is InvoiceStatus.EMITTED:
+                return "Rappel", "is-bad"
+            if status is InvoiceStatus.REMINDED:
+                return "Second Rappel", "is-bad"
+            return "", "is-empty"
+
+        if mode is self.HtmlMode.VIEW:
+            if status is InvoiceStatus.DRAFT:
+                return "DRAFT", "is-draft"
+            if status is InvoiceStatus.EMITTED:
+                date_ = format_date(
+                    invoice.issued_on.date(), format="long", locale="fr_FR"
+                )
+                return f"Emise le {date_}", "is-ok"
+            if status is InvoiceStatus.REMINDED:
+                date_ = format_date(
+                    invoice.reminded_on.date(), format="long", locale="fr_FR"
+                )
+                return f"Rappel le {date_}", "is-bad"
+            if status is InvoiceStatus.PAID:
+                date_ = format_date(
+                    invoice.paid_on.date(), format="long", locale="fr_FR"
+                )
+                return f"Payée le {date_}", "is-ok"
+            if status is InvoiceStatus.CANCELLED:
+                date_ = format_date(
+                    invoice.cancelled_on.date(), format="long", locale="fr_FR"
+                )
+                return f"Annulée le {date_}", "is-bad"
+
+    def _build_context(
+        self, client_: schemas.Client, invoice: schemas.Invoice, mode: HtmlMode
+    ) -> dict:
+        company = Company(
+            name="Phone Service",
+            address="1, Main Street",
+            zip_code="12345",
+            city="London",
+            phone_number="+33 123 456 789",
+            email="phone.service@gmail.com",
+            siret="123 456 789 87654",
+            rcs="LONDON",
+        )
+        company_address = f"{company.address}\n{company.zip_code} {company.city}"
+        client_address = f"{client_.address.address}\n{client_.address.zip_code} {client_.address.city}"
+        date_ = (
+            invoice.created_on
+            if invoice.status is InvoiceStatus.DRAFT
+            else invoice.issued_on
+        )
+        due_date = (
+            None
+            if invoice.status is InvoiceStatus.DRAFT
+            else date_ + timedelta(days=30)
+        )
+        stamp, tag = self._get_stamp(invoice, mode)
+
+        return {
+            "company": {
+                "name": company.name,
+                "address": company_address,
+                "phone_number": company.phone_number,
+                "email": company.email,
+                "siret": company.siret,
+                "rcs": company.rcs,
+            },
+            "client": {
+                "name": client_.name,
+                "address": client_address,
+                "email": client_.email,
+            },
+            "invoice": {
+                "code": invoice.code,
+                "date": format_date(date_.date(), format="long", locale="fr_FR"),
+                "due_date": None
+                if due_date is None
+                else format_date(due_date.date(), format="long", locale="fr_FR"),
+                "raw_amount": invoice.raw_amount,
+                "vat": invoice.vat,
+                "net_amount": invoice.net_amount,
+                "stamp_text": stamp,
+                "stamp_tag": tag,
+                "item_list": [
+                    {
+                        "service": {
+                            "name": item.service.name,
+                            "unit_price": item.service.unit_price,
+                        },
+                        "quantity": item.quantity,
+                        "raw_amount": item.raw_amount,
+                        "vat": item.vat,
+                        "net_amount": item.net_amount,
+                    }
+                    for item in invoice.items
+                ],
+            },
+        }
 
 
 client = ClientModel(db.Session)

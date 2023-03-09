@@ -1960,3 +1960,16 @@ def test_cmd_mark_as_mark_error(
         f"MARK_AS-INVOICE - Cannot mark invoice 1 of client 1 as {InvoiceStatus.EMITTED}"
     )
     assert response.body is None
+
+
+def test_cmd_preview_invoice(dbsession, init_data):
+    client_ = init_data.clients[0]
+    api.client.Session = dbsession
+
+    response = api.client.preview_invoice(
+        4, invoice_id=4, mode=api.client.HtmlMode.VIEW
+    )
+
+    assert response.status is CommandStatus.COMPLETED
+    assert response.reason is None
+    assert response.body is not None

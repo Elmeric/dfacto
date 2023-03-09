@@ -8,7 +8,7 @@
 
 import dataclasses
 import sys
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlite3 import Connection as SQLite3Connection
 from typing import Any, Optional, Union, cast
 
@@ -310,6 +310,14 @@ def init_data(dbsession: scoped_session) -> TestData:
         )
         dbsession.add(invoice)
         dbsession.flush([invoice])
+        for j in range(i):
+            prev_log = models.StatusLog(
+                invoice_id=invoice.id,
+                from_=datetime.now() - timedelta(days=10 * (i - j - 2)),
+                to=datetime.now() - timedelta(days=10 * (i - j - 1)),
+                status=models.InvoiceStatus(j + 1),
+            )
+            dbsession.add(prev_log)
         log = models.StatusLog(
             invoice_id=invoice.id,
             from_=datetime.now(),
@@ -324,9 +332,9 @@ def init_data(dbsession: scoped_session) -> TestData:
     # Items
     for i in range(20):
         service = services[i % 5]
-        raw_amount = service.unit_price
-        vat = raw_amount * service.vat_rate.rate / 100
         quantity = i + 1
+        raw_amount = service.unit_price * quantity
+        vat = raw_amount * service.vat_rate.rate / 100
         item = models.Item(
             raw_amount=raw_amount,
             vat=vat,
