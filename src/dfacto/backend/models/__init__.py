@@ -9,6 +9,7 @@ from .client import Client
 from .invoice import Invoice, InvoiceStatus, StatusLog
 from .item import Item
 from .service import Service
+from .company import Company
 from .vat_rate import VatRate
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "Invoice",
     "StatusLog",
     "InvoiceStatus",
+    "Company",
 ]

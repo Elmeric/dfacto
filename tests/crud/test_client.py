@@ -299,15 +299,7 @@ def test_crud_create(is_active, expected, dbsession, init_clients):
         zip_code="67890",
         city="La Bas",
     )
-    client = crud.client.create(
-        dbsession,
-        obj_in=schemas.ClientCreate(
-            name="Super client",
-            address=address,
-            email="super.client@domain.com",
-            is_active=is_active,
-        ),
-    )
+    client = crud.client.create(obj_in=)
 
     assert client.id is not None
     assert client.name == "Super client"
@@ -335,15 +327,7 @@ def test_crud_create_duplicate(dbsession, init_clients):
         city="La Bas",
     )
     with pytest.raises(crud.CrudError):
-        _client = crud.client.create(
-            dbsession,
-            obj_in=schemas.ClientCreate(
-                name="Client_1",
-                address=address,
-                email="super.client@domain.com",
-                is_active=True,
-            ),
-        )
+        _client = crud.client.create(obj_in=)
     assert (
         len(
             dbsession.scalars(
@@ -364,15 +348,7 @@ def test_crud_create_error(dbsession, init_clients, mock_commit):
         city="La Bas",
     )
     with pytest.raises(crud.CrudError):
-        _client = crud.client.create(
-            dbsession,
-            obj_in=schemas.ClientCreate(
-                name="Super client",
-                address=address,
-                email="super.client@domain.com",
-                is_active=True,
-            ),
-        )
+        _client = crud.client.create(obj_in=)
     assert (
         dbsession.scalars(
             sa.select(models.Client).where(models.Client.name == "Super client")

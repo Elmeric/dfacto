@@ -15,6 +15,7 @@ from .client import CRUDClient, client
 from .invoice import CRUDInvoice, invoice
 from .item import item
 from .service import CRUDService, service
+from .company import CRUDCompany, company
 from .vat_rate import CRUDVatRate, vat_rate
 
 __all__ = [
@@ -32,4 +33,6 @@ __all__ = [
     "CRUDInvoice",
     "invoice",
     "item",
+    "CRUDCompany",
+    "company",
 ]

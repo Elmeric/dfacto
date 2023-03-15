@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from .base import BaseSchema
 from .basket import Basket, BasketCreate, BasketInDB, BasketUpdate
 from .client import Address, Client, ClientCreate, ClientInDB, ClientUpdate
+from .company import Company, CompanyCreate, CompanyInDB, CompanyUpdate
 from .invoice import Invoice, InvoiceCreate, InvoiceInDB, InvoiceUpdate, StatusLog
 from .item import Item, ItemCreate, ItemInDB, ItemUpdate
 from .service import Service, ServiceCreate, ServiceInDB, ServiceUpdate
@@ -33,4 +34,7 @@ __all__ = [
     "Invoice",
     "InvoiceCreate",
     "InvoiceUpdate",
+    "Company",
+    "CompanyCreate",
+    "CompanyUpdate",
 ]

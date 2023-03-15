@@ -34,17 +34,6 @@ def create_tables(engine: sa.Engine) -> None:
 
 
 def init_db_data(session: Union[Session, scoped_session[Session]]) -> None:
-    # vr = crud.vat_rate.get(db, DEFAULT_RATE_ID)
-    # if vr is None:
-    #     # No VAT rates in the database: create them.
-    #     for vat_rate in PRESET_RATES:
-    #         crud.vat_rate.create(
-    #             db,
-    #             obj_in=schemas.VatRate(
-    #                 id=vat_rate["id"],
-    #                 rate=vat_rate["rate"]
-    #             )
-    #         )
     if session.scalars(sa.select(models.VatRate)).first() is None:
         # No VAT rates in the database: add the presets and mark "taux zéro" as default.
         session.execute(sa.insert(models.VatRate), PRESET_RATES)

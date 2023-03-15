@@ -6,7 +6,7 @@
 
 from .base_model import BaseModel, ModelType, intpk
 from .init_db import create_tables, init_db, init_db_data
-from .session import Session, engine
+from .session import Session, configure_session
 
 __all__ = [
     "BaseModel",
@@ -16,5 +16,5 @@ __all__ = [
     "init_db",
     "init_db_data",
     "Session",
-    "engine",
+    "configure_session",
 ]

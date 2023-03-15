@@ -144,9 +144,7 @@ def test_crud_get_all_error(dbsession, init_vat_rates, mock_select):
 
 
 def test_crud_create(dbsession, init_vat_rates):
-    vat_rate = crud.vat_rate.create(
-        dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
-    )
+    vat_rate = crud.vat_rate.create(obj_in=)
 
     assert vat_rate.id is not None
     assert vat_rate.name == "A new rate"
@@ -168,9 +166,7 @@ def test_crud_create_error(dbsession, init_vat_rates, mock_commit):
     state["failed"] = True
 
     with pytest.raises(crud.CrudError):
-        _vat_rate = crud.vat_rate.create(
-            dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
-        )
+        _vat_rate = crud.vat_rate.create(obj_in=)
     assert (
         dbsession.scalars(
             sa.select(models.VatRate).where(models.VatRate.rate == 30.0)

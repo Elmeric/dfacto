@@ -93,12 +93,7 @@ def test_crud_get_multi_error(dbsession, init_services, mock_select):
 
 
 def test_crud_create(dbsession, init_services):
-    service = crud.service.create(
-        dbsession,
-        obj_in=schemas.ServiceCreate(
-            name="Wonderful service", unit_price=1000.0, vat_rate_id=2
-        ),
-    )
+    service = crud.service.create(obj_in=)
 
     assert service.id is not None
     assert service.name == "Wonderful service"
@@ -119,12 +114,7 @@ def test_crud_create(dbsession, init_services):
 
 def test_crud_create_duplicate(dbsession, init_services):
     with pytest.raises(crud.CrudError):
-        _service = crud.service.create(
-            dbsession,
-            obj_in=schemas.ServiceCreate(
-                name="Service_1", unit_price=10.0, vat_rate_id=2
-            ),
-        )
+        _service = crud.service.create(obj_in=)
     assert (
         len(
             dbsession.scalars(
@@ -140,12 +130,7 @@ def test_crud_create_error(dbsession, init_services, mock_commit):
     state["failed"] = True
 
     with pytest.raises(crud.CrudError):
-        _service = crud.service.create(
-            dbsession,
-            obj_in=schemas.ServiceCreate(
-                name="Wonderful service", unit_price=1000.0, vat_rate_id=2
-            ),
-        )
+        _service = crud.service.create(obj_in=)
     assert (
         dbsession.scalars(
             sa.select(models.Service).where(models.Service.name == "Wonderful service")
