@@ -25,7 +25,7 @@ import PyQt6.QtCore as QtCore
 import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
 
-# from .statusbar import StatusBar
+from .statusbar import StatusBar
 # from .backgroundprogressbar import BackgroundProgressBar
 # from .signaladpater import QtSignalAdapter
 # from .splash import SplashScreen
@@ -61,50 +61,50 @@ from .pathselector import PathSelector, DirectorySelector, FileSelector
 #     layout.addWidget(widget)
 #     layout.addStretch()
 #     return layout
-#
-#
-# def createAction(
-#         parent: QtCore.QObject,
-#         text: str,
-#         name: Optional[str] = None,
-#         slot: Optional[Callable] = None,
-#         shortcut: Optional[Union[str, QtGui.QKeySequence.StandardKey]] = None,
-#         icon: Optional[Union[str, QtGui.QIcon]] = None,
-#         tip: Optional[str] = None,
-#         checkable: Optional[bool] = False,
-#         signal: Optional[str] = "triggered") -> QtWidgets.QAction:
-#     """A convenient function to create a QAction.
-#
-#     Args:
-#         parent: parent object of the QAction to be created (mandatory).
-#         text: text of the QaAction (mandatory).
-#         name: optional objectName of the QAction.
-#         slot: optional slot to connect on the QAction signal.
-#         shortcut:optional shortcut of the QAction.
-#         icon: optional icon of the QAction (maybe a file name or a QIcon).
-#         tip: optional tool tip and status tip of the QAction.
-#         checkable: make the QAction checkable if True (False by default).
-#         signal: the QAction signal to be cnnected with 'slot' ('triggered' by
-#             default).
-#
-#     Returns:
-#         The created QAction
-#     """
-#     action = QtWidgets.QAction(text, parent)
-#     if name is not None:
-#         action.setObjectName(name)
-#     if icon is not None:
-#         action.setIcon(QtGui.QIcon(icon))
-#     if shortcut is not None:
-#         action.setShortcut(shortcut)
-#     if tip is not None:
-#         action.setToolTip(tip)
-#         action.setStatusTip(tip)
-#     if slot is not None:
-#         getattr(action, signal).connect(slot)
-#     if checkable:
-#         action.setCheckable(True)
-#     return action
+
+
+def createAction(
+        parent: QtCore.QObject,
+        text: str,
+        name: Optional[str] = None,
+        slot: Optional[Callable] = None,
+        shortcut: Optional[Union[str, QtGui.QKeySequence.StandardKey]] = None,
+        icon: Optional[Union[str, QtGui.QIcon]] = None,
+        tip: Optional[str] = None,
+        checkable: Optional[bool] = False,
+        signal: Optional[str] = "triggered") -> QtGui.QAction:
+    """A convenient function to create a QAction.
+
+    Args:
+        parent: parent object of the QAction to be created (mandatory).
+        text: text of the QaAction (mandatory).
+        name: optional objectName of the QAction.
+        slot: optional slot to connect on the QAction signal.
+        shortcut:optional shortcut of the QAction.
+        icon: optional icon of the QAction (maybe a file name or a QIcon).
+        tip: optional tool tip and status tip of the QAction.
+        checkable: make the QAction checkable if True (False by default).
+        signal: the QAction signal to be cnnected with 'slot' ('triggered' by
+            default).
+
+    Returns:
+        The created QAction
+    """
+    action = QtGui.QAction(text, parent)
+    if name is not None:
+        action.setObjectName(name)
+    if icon is not None:
+        action.setIcon(QtGui.QIcon(icon))
+    if shortcut is not None:
+        action.setShortcut(shortcut)
+    if tip is not None:
+        action.setToolTip(tip)
+        action.setStatusTip(tip)
+    if slot is not None:
+        getattr(action, signal).connect(slot)
+    if checkable:
+        action.setCheckable(True)
+    return action
 #
 #
 # def getMainWindow() -> QtWidgets.QMainWindow:

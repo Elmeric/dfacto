@@ -35,9 +35,9 @@ class DfactoSettings(settings.Settings):
             naming template.
         lastNamingExtension: the last selected images' extension format.
         log_level: The global Fotocop application log level.
-        windowPosition: the last Fotocop application windows top left corner.
-        windowSize: the last Fotocop application windows size.
-        qtScaleFactor: A magnifying factor to increase the Fotocop application
+        window_position: the last Fotocop application windows top left corner.
+        window_size: the last Fotocop application windows size.
+        qt_scale_factor: A magnifying factor to increase the Fotocop application
             lisibility
 
     Attributes:
@@ -57,9 +57,9 @@ class DfactoSettings(settings.Settings):
     # default_company_folder = settings.Setting(default_value="C:/Users/T0018179/MyApp/Git/home/portable/DFacto")
     default_company_folder = settings.Setting(default_value="F:/Users/Documents/Dfacto")
     log_level: Setting = settings.Setting(default_value=_DEFAULT_LOGLEVEL)
-    windowPosition: Setting = settings.Setting(default_value=(0, 0))
-    windowSize: Setting = settings.Setting(default_value=(1600, 800))
-    qtScaleFactor: Setting = settings.Setting(default_value="1.0")
+    window_position: Setting = settings.Setting(default_value=(0, 0))
+    window_size: Setting = settings.Setting(default_value=(1600, 800))
+    qt_scale_factor: Setting = settings.Setting(default_value="1.0")
 
     def __init__(self, app_name: str) -> None:
         # Retrieve or create the user directories for the application.
@@ -80,8 +80,8 @@ class DfactoSettings(settings.Settings):
             A string with the project path and all its spec items.
         """
         return (
-            f"DfactoSettings({self.log_level}, {self.windowPosition}, "
-            f"{self.windowSize}, {self.qtScaleFactor})"
+            f"DfactoSettings({self.log_level}, {self.window_position}, "
+            f"{self.window_size}, {self.qt_scale_factor})"
         )
 
     def reset_to_defaults(self) -> None:

@@ -28,7 +28,7 @@ def run_main():
     Handles exceptions not trapped earlier.
     """
     try:
-        sys.exit(gui.QtMain())
+        sys.exit(gui.qt_main())
     except Exception as e:
         logger = logging.getLogger(__name__)
         logger.fatal('Fatal error!', exc_info=True)

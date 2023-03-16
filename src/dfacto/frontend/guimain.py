@@ -11,7 +11,7 @@ import PyQt6.QtCore as QtCore
 import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
 
-# import fotocop.__about__ as __about__
+import dfacto.__about__ as __about__
 from dfacto.util.logutil import LogConfig
 from dfacto.util import qtutil as QtUtil
 from dfacto.backend import db
@@ -38,12 +38,12 @@ from dfacto.frontend.companydialogs import AddCompanyDialog, SelectCompanyDialog
 # if TYPE_CHECKING:
 #     from fotocop.models.sources import ImageKey
 
-__all__ = ["QtMain"]
+__all__ = ["qt_main"]
 
 logger = logging.getLogger(__name__)
 
 
-# class QtMainView(QtWidgets.QMainWindow):
+class QtMainView(QtWidgets.QMainWindow):
 #     """The fotocop main view.
 #
 #     The Main view is composed of:
@@ -66,17 +66,24 @@ logger = logging.getLogger(__name__)
 #             progress.
 #         _status: reference to the Main window status bar.
 #     """
-#
-#     def __init__(self, sourceManager: SourceManager, splash, *args, **kwargs) -> None:
-#         super().__init__(*args, **kwargs)
+
+    def __init__(self, *args, **kwargs) -> None:
+    # def __init__(self, sourceManager: SourceManager, splash, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
 #
 #         splash.setProgress(10, "Create Gui objects...")
 #
 #         self._splash = splash
-#
-#         resources = Config.fotocopSettings.resources
-#
-#         # Initialize the app's views. Init order fixed to comply with the editors' dependencies.
+
+        resources = Config.dfacto_settings.resources
+
+        # Initialize the app's views. Init order fixed to comply with the editors' dependencies.
+        client_selector = QtWidgets.QWidget()
+        client_editor = QtWidgets.QWidget()
+        invoice_selector = QtWidgets.QWidget()
+        invoice_editor = QtWidgets.QWidget()
+        service_selector = QtWidgets.QWidget()
+        service_editor = QtWidgets.QWidget()
 #         fsModel = FileSystemModel()
 #         fsDelegate = FileSystemDelegate()
 #         fsFilter = FileSystemFilter()
@@ -149,45 +156,49 @@ logger = logging.getLogger(__name__)
 #         timelineViewer.timeRangeChanged.connect(thumbnailViewer.updateTimeRange)
 #
 #         splash.setProgress(30)
-#
-#         # Build the main view layout.
-#         centerVertSplitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
-#         centerVertSplitter.setChildrenCollapsible(False)
-#         centerVertSplitter.setHandleWidth(3)
-#         centerVertSplitter.addWidget(thumbnailViewer)
-#         centerVertSplitter.addWidget(timelineViewer)
-#         centerVertSplitter.setStretchFactor(0, 5)
-#         centerVertSplitter.setStretchFactor(1, 1)
-#         centerVertSplitter.setOpaqueResize(False)
-#
-#         rightWidget = QtWidgets.QWidget()
-#         rightLayout = QtWidgets.QVBoxLayout()
-#         rightLayout.setContentsMargins(5, 0, 0, 5)
-#         rightLayout.setSpacing(0)
-#         rightLayout.addWidget(renamePanel)
-#         rightLayout.addWidget(destinationPanel)
-#         rightWidget.setLayout(rightLayout)
-#
-#         leftWidget = QtWidgets.QWidget()
-#         leftLayout = QtWidgets.QVBoxLayout()
-#         leftLayout.setContentsMargins(0, 0, 5, 5)
-#         leftLayout.addWidget(sourceSelector)
-#         leftWidget.setLayout(leftLayout)
-#
-#         horzSplitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
-#         horzSplitter.setChildrenCollapsible(False)
-#         horzSplitter.setHandleWidth(3)
-#         horzSplitter.addWidget(leftWidget)
-#         horzSplitter.addWidget(centerVertSplitter)
-#         horzSplitter.addWidget(rightWidget)
-#         horzSplitter.setStretchFactor(0, 1)
-#         horzSplitter.setStretchFactor(1, 3)
-#         horzSplitter.setStretchFactor(2, 1)
-#         horzSplitter.setOpaqueResize(False)
-#
-#         self.setCentralWidget(horzSplitter)
-#
-#         # Build actions used in toolbars.
+
+        # Build the main view layout.
+        left_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        left_vert_splitter.setChildrenCollapsible(False)
+        left_vert_splitter.setHandleWidth(3)
+        left_vert_splitter.addWidget(client_selector)
+        left_vert_splitter.addWidget(client_editor)
+        left_vert_splitter.setStretchFactor(0, 3)
+        left_vert_splitter.setStretchFactor(1, 1)
+        left_vert_splitter.setOpaqueResize(False)
+
+        center_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        center_vert_splitter.setChildrenCollapsible(False)
+        center_vert_splitter.setHandleWidth(3)
+        center_vert_splitter.addWidget(invoice_selector)
+        center_vert_splitter.addWidget(invoice_editor)
+        center_vert_splitter.setStretchFactor(0, 1)
+        center_vert_splitter.setStretchFactor(1, 3)
+        center_vert_splitter.setOpaqueResize(False)
+
+        right_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        right_vert_splitter.setChildrenCollapsible(False)
+        right_vert_splitter.setHandleWidth(3)
+        right_vert_splitter.addWidget(service_selector)
+        right_vert_splitter.addWidget(service_editor)
+        right_vert_splitter.setStretchFactor(0, 3)
+        right_vert_splitter.setStretchFactor(1, 1)
+        right_vert_splitter.setOpaqueResize(False)
+
+        horz_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        horz_splitter.setChildrenCollapsible(False)
+        horz_splitter.setHandleWidth(3)
+        horz_splitter.addWidget(left_vert_splitter)
+        horz_splitter.addWidget(center_vert_splitter)
+        horz_splitter.addWidget(right_vert_splitter)
+        horz_splitter.setStretchFactor(0, 1)
+        horz_splitter.setStretchFactor(1, 3)
+        horz_splitter.setStretchFactor(2, 1)
+        horz_splitter.setOpaqueResize(False)
+
+        self.setCentralWidget(horz_splitter)
+
+        # Build actions used in toolbars.
 #         self.downloadAction = QtUtil.createAction(
 #             self,
 #             "&Download",
@@ -196,30 +207,30 @@ logger = logging.getLogger(__name__)
 #             shortcut="Ctrl+Return",
 #             icon=f"{resources}/download.png",
 #         )
-#         preferencesAction = QtUtil.createAction(
-#             self,
-#             "Se&ttings",
-#             slot=self.doPreferencesAction,
-#             shortcut="Ctrl+P",
-#             icon=f"{resources}/settings.png",
-#             tip="Adjust application settings",
-#         )
-#         aboutAction = QtUtil.createAction(
-#             self,
-#             "&About",
-#             slot=self.doAboutAction,
-#             tip="About the application",
-#             shortcut="Ctrl+?",
-#             icon=f"{resources}/about.png",
-#         )
-#         quitAction = QtUtil.createAction(
-#             self,
-#             "&Quit",
-#             slot=self.close,
-#             tip="Close the application",
-#             shortcut="Ctrl+Q",
-#             icon=f"{resources}/close-window.png",
-#         )
+        preferences_action = QtUtil.createAction(
+            self,
+            "Se&ttings",
+            slot=self.do_preferences_action,
+            shortcut="Ctrl+P",
+            icon=f"{resources}/settings.png",
+            tip="Adjust application settings",
+        )
+        about_action = QtUtil.createAction(
+            self,
+            "&About",
+            slot=self.do_about_action,
+            tip="About the application",
+            shortcut="Ctrl+?",
+            icon=f"{resources}/about.png",
+        )
+        quit_action = QtUtil.createAction(
+            self,
+            "&Quit",
+            slot=self.close,
+            tip="Close the application",
+            shortcut="Ctrl+Q",
+            icon=f"{resources}/close-window.png",
+        )
 #
 #         self.downloadButton = DownloadButton(self.downloadAction.text())
 #         self.downloadButton.setToolTip(self.downloadAction.toolTip())
@@ -241,39 +252,40 @@ logger = logging.getLogger(__name__)
 #         srcLayout.addWidget(self.sourceLbl, 0, QtCore.Qt.AlignCenter)
 #         srcLayout.addStretch()
 #         sourceWidget.setLayout(srcLayout)
-#
-#         # To right-align the main toolbar.
-#         spacer = QtWidgets.QWidget(self)
-#         spacer.setSizePolicy(
-#             QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Preferred
-#         )
-#
-#         # Build the main toolbar.
-#         self.menu = QtWidgets.QMenu()
-#         self.menu.addAction(self.downloadAction)
-#         self.menu.addAction(preferencesAction)
-#         self.menu.addSeparator()
-#         self.menu.addAction(aboutAction)
-#         self.menu.addAction(quitAction)
-#
-#         self.menuButton = QtWidgets.QToolButton()
-#         self.menuButton.setPopupMode(QtWidgets.QToolButton.InstantPopup)
-#         iconSize = QtCore.QSize(24, 24)
-#         menuIcon = QtGui.QIcon(f"{resources}/hamburger-menu.png")
-#         self.menuButton.setIconSize(iconSize)
-#         self.menuButton.setIcon(menuIcon)
-#         self.menuButton.setMenu(self.menu)
-#
-#         self.topBar = self.addToolBar("Fotocop")
-#         self.topBar.setIconSize(QtCore.QSize(36, 36))
-#         self.topBar.installEventFilter(self)
-#         self.topBar.setFloatable(False)
-#         self.topBar.setMovable(False)
-#         self.topBar.setStyleSheet("QPushButton{margin-right: 20 px;}")
-#         self.topBar.addWidget(sourceWidget)
-#         self.topBar.addWidget(spacer)
-#         self.topBar.addWidget(self.downloadButton)
-#         self.topBar.addWidget(self.menuButton)
+
+        # To right-align the main toolbar.
+        spacer = QtWidgets.QWidget(self)
+        spacer.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Expanding,
+            QtWidgets.QSizePolicy.Policy.Preferred
+        )
+
+        # Build the main toolbar.
+        self.menu = QtWidgets.QMenu()
+        # self.menu.addAction(self.downloadAction)
+        self.menu.addAction(preferences_action)
+        self.menu.addSeparator()
+        self.menu.addAction(about_action)
+        self.menu.addAction(quit_action)
+
+        self.menu_btn = QtWidgets.QToolButton()
+        self.menu_btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        icon_size = QtCore.QSize(24, 24)
+        menu_icon = QtGui.QIcon(f"{resources}/hamburger-menu.png")
+        self.menu_btn.setIconSize(icon_size)
+        self.menu_btn.setIcon(menu_icon)
+        self.menu_btn.setMenu(self.menu)
+
+        self.top_bar = self.addToolBar("Dfacto")
+        self.top_bar.setIconSize(QtCore.QSize(36, 36))
+        self.top_bar.installEventFilter(self)
+        self.top_bar.setFloatable(False)
+        self.top_bar.setMovable(False)
+        self.top_bar.setStyleSheet("QPushButton{margin-right: 20 px;}")
+        # self.top_bar.addWidget(sourceWidget)
+        self.top_bar.addWidget(spacer)
+        # self.top_bar.addWidget(self.downloadButton)
+        self.top_bar.addWidget(self.menu_btn)
 #
 #         self.downloadProgress = DownloadProgress(self._downloader, self)
 #         self._downloader.backgroundActionStarted.connect(self.downloadProgress.reinit)
@@ -286,8 +298,8 @@ logger = logging.getLogger(__name__)
 #         self._downloader.backgroundActionCancelled.connect(
 #             self.downloadProgress.onCancel
 #         )
-#
-#         # Build the status bar.
+
+        # Build the status bar.
 #         actionProgressBar = QtUtil.BackgroundProgressBar()
 #         actionProgressBar.hide()
 #         self._sourceManager.backgroundActionStarted.connect(
@@ -311,54 +323,54 @@ logger = logging.getLogger(__name__)
 #         self._downloader.backgroundActionCancelled.connect(
 #             actionProgressBar.hideActionProgress
 #         )
-#
-#         self._status = QtUtil.StatusBar()
-#         self.setStatusBar(self._status)
+
+        self._status = QtUtil.StatusBar()
+        self.setStatusBar(self._status)
 #         self._status.addPermanentWidget(actionProgressBar)
 #
 #         # Enumerate images sources
 #         splash.setProgress(50, "Enumerating images sources...")
 #         self._sourceManager.enumerateSources()
-#
-#         # Finalize the main window initialization once it is built.
-#         QtCore.QTimer.singleShot(0, self.initUI)
-#
-#     def initUI(self):
-#         """Intialize the main window to its last position.
-#
-#         Called on an immediate timer once the main windows is built.
-#         """
-#         self._splash.setProgress(70, "Load company settings")
-#
-#         settings = Config.fotocopSettings
-#
-#         self.move(settings.windowPosition[0], settings.windowPosition[1])
-#         self.resize(settings.windowSize[0], settings.windowSize[1])
-#
-#         self._downloader.selectDestination(Path(settings.lastDestination))
-#         self._downloader.setNamingTemplate(
-#             TemplateType.IMAGE, settings.lastImageNamingTemplate
-#         )
-#         self._downloader.setNamingTemplate(
-#             TemplateType.DESTINATION, settings.lastDestinationNamingTemplate
-#         )
-#         self._downloader.setExtension(Case[settings.lastNamingExtension])
-#
-#         self._splash.setProgress(100)
-#
-#     def showStatusMessage(self, msg: str, isWarning: bool = False, delay: int = None):
-#         """Convenient function to display a status message.
-#
-#         Encapsulate the displayMessage method of the customized statusBar.
-#
-#         Args:
-#             msg: the message string to display.
-#             isWarning: True when the message is a warning
-#                 (displayed in WARNING_MSG_STYLE for a longer default time).
-#             delay: the time to keep the message displayed
-#                 (default is 5s for an information and 2s for a warning).
-#         """
-#         self._status.displayMessage(msg, isWarning, delay)
+
+        # Finalize the main window initialization once it is built.
+        QtCore.QTimer.singleShot(0, self.initUI)
+
+    def initUI(self):
+        """Intialize the main window to its last position.
+
+        Called on an immediate timer once the main windows is built.
+        """
+        # self._splash.setProgress(70, "Load company settings")
+
+        settings = Config.dfacto_settings
+
+        self.move(settings.window_position[0], settings.window_position[1])
+        self.resize(settings.window_size[0], settings.window_size[1])
+        #
+        # self._downloader.selectDestination(Path(settings.lastDestination))
+        # self._downloader.setNamingTemplate(
+        #     TemplateType.IMAGE, settings.lastImageNamingTemplate
+        # )
+        # self._downloader.setNamingTemplate(
+        #     TemplateType.DESTINATION, settings.lastDestinationNamingTemplate
+        # )
+        # self._downloader.setExtension(Case[settings.lastNamingExtension])
+        #
+        # self._splash.setProgress(100)
+
+    def show_status_message(self, msg: str, is_warning: bool = False, delay: int = None):
+        """Convenient function to display a status message.
+
+        Encapsulate the displayMessage method of the customized statusBar.
+
+        Args:
+            msg: the message string to display.
+            is_warning: True when the message is a warning
+                (displayed in WARNING_MSG_STYLE for a longer default time).
+            delay: the time to keep the message displayed
+                (default is 5s for an information and 2s for a warning).
+        """
+        self._status.displayMessage(msg, is_warning, delay)
 #
 #     def okToContinue(self) -> bool:
 #         """Authorize app exit, project creation or loading.
@@ -446,54 +458,54 @@ logger = logging.getLogger(__name__)
 #     @QtCore.pyqtSlot()
 #     def doDownloadAction(self):
 #         self.downloadButton.animateClick()
-#
-#     @QtCore.pyqtSlot()
-#     def doPreferencesAction(self):
-#         # TODO: Create a settings dialog.
-#         """Show the Fotocop settings dialog.
-#
-#         If dialog is accepted, the settings changes are saved.
-#         """
-#         print("Preferences...")
-#         # form = SettingsView(parent=self)
-#         # if form.exec_():
-#         #     Config.fotocopSettings.save()
-#
-#     @QtCore.pyqtSlot()
-#     def doAboutAction(self):
-#         """Show the Fotocop 'About' dialog."""
-#         pass
-#         resources = Config.fotocopSettings.resources
-#         appName = __about__.__title__
-#         QtWidgets.QMessageBox.about(
-#             self,  # noqa
-#             f"{appName} - About",
-#             f"""
-#             <p><b>{appName}</b> {__about__.__version__}</p>
-#             <p>{__about__.__summary__}.</p>
-#             <br>
-#             <p>
-#             Designed and develop by {__about__.__author__}
-#             ({__about__.__email__})
-#             </p>
-#             <p>
-#             Under {__about__.__license__} license - {__about__.__copyright__}
-#             </p>
-#             <br>
-#             <p>
-#             Powered by
-#             <a href="https://www.python.org/">
-#             <img style="vertical-align:middle" src="{resources}/pythonlogo.svg" alt="Powered by Python" height="32"></a>
-#              and
-#             <a href="https://www.qt.io/">
-#             <img style="vertical-align:middle" src="{resources}/qtlogo.svg" alt="Powered by Qt" height="32"></a>
-#             </p>
-#             <p>
-#             Icons selection from icons8.com <a href="https://icons8.com">
-#             <img style="vertical-align:middle" src="{resources}/icons8.png" alt="icons8.com" height="32"></a>
-#             </p>
-#             """,
-#         )
+
+    @QtCore.pyqtSlot()
+    def do_preferences_action(self):
+        # TODO: Create a settings dialog.
+        """Show the Dfacto settings dialog.
+
+        If dialog is accepted, the settings changes are saved.
+        """
+        self.show_status_message("Preferences...")
+        # form = SettingsView(parent=self)
+        # if form.exec_():
+        #     Config.dfacto_settings.save()
+
+    @QtCore.pyqtSlot()
+    def do_about_action(self):
+        """Show the Fotocop 'About' dialog."""
+        pass
+        resources = Config.dfacto_settings.resources
+        app_name = __about__.__title__
+        QtWidgets.QMessageBox.about(
+            self,  # noqa
+            f"{app_name} - About",
+            f"""
+            <p><b>{app_name}</b> {__about__.__version__}</p>
+            <p>{__about__.__summary__}.</p>
+            <br>
+            <p>
+            Designed and develop by {__about__.__author__}
+            ({__about__.__email__})
+            </p>
+            <p>
+            Under {__about__.__license__} license - {__about__.__copyright__}
+            </p>
+            <br>
+            <p>
+            Powered by
+            <a href="https://www.python.org/">
+            <img style="vertical-align:middle" src="{resources}/pythonlogo.svg" alt="Powered by Python" height="32"></a>
+             and
+            <a href="https://www.qt.io/">
+            <img style="vertical-align:middle" src="{resources}/qtlogo.svg" alt="Powered by Qt" height="32"></a>
+            </p>
+            <p>
+            Icons selection from icons8.com <a href="https://icons8.com">
+            <img style="vertical-align:middle" src="{resources}/icons8.png" alt="icons8.com" height="32"></a>
+            </p>
+            """,
+        )
 #
 #     @QtCore.pyqtSlot()
 #     def downloadButtonClicked(self) -> None:
@@ -531,66 +543,66 @@ logger = logging.getLogger(__name__)
 #                 or timelineBuilt
 #             )
 #             self.downloadButton.setEnabled(selOk and dateOk)
-#
-#     def keyPressEvent(self, e: QtGui.QKeyEvent):
-#         """Trap the Escape key to close the application.
-#
-#         Reimplement the parent QMainWindow event handler to trap the Escape key
-#         pressed event. Other key pressed event are passed to the parent.
-#
-#         Args:
-#             e: keyboard's key pressed event
-#         """
-#         if e.key() == QtCore.Qt.Key_Escape:
-#             self.close()
-#         else:
-#             super().keyPressEvent(e)
-#
-#     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
-#         """Trap the main window close request to allow saving pending changes.
-#
-#         Save the downloader sequences and the application settings.
-#
-#         Args:
-#             event: the window close request
-#         """
-#         self._downloader.saveSequences()
-#
-#         Config.fotocopSettings.windowPosition = (
-#             self.frameGeometry().x(),
-#             self.frameGeometry().y(),
-#         )
-#         Config.fotocopSettings.windowSize = (
-#             self.geometry().width(),
-#             self.geometry().height(),
-#         )
-#         try:
-#             Config.fotocopSettings.save()
-#         except Config.settings.SettingsError as e:
-#             reply = QtWidgets.QMessageBox.question(
-#                 self,  # noqa
-#                 f"{QtWidgets.qApp.applicationName()} - Exit confirmation",
-#                 f"Cannot save the settings file ({e}): quit anyway?",
-#                 QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No,
-#             )
-#             if reply == QtWidgets.QMessageBox.No:
-#                 # reject dialog close event
-#                 event.ignore()
-#                 return
-#
-#         # Saving fotocopSettings OK or reply == QMessageBox.Yes
-#         self._sourceManager.close()
-#         self._downloader.close()
-#
-#     def eventFilter(self, obj, event) -> bool:
-#         # https://www.qtcentre.org/threads/7718-How-to-disable-context-menu-of-a-toolbar-in-QMainApplication
-#         if event.type() == QtCore.QEvent.ContextMenu and obj == self.topBar:
-#             return True
-#
-#         return super().eventFilter(obj, event)
+
+    def keyPressEvent(self, e: QtGui.QKeyEvent):
+        """Trap the Escape key to close the application.
+
+        Reimplement the parent QMainWindow event handler to trap the Escape key
+        pressed event. Other key pressed event are passed to the parent.
+
+        Args:
+            e: keyboard's key pressed event
+        """
+        if e.key() == QtCore.Qt.Key.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(e)
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """Trap the main window close request to allow saving pending changes.
+
+        Save the downloader sequences and the application settings.
+
+        Args:
+            event: the window close request
+        """
+        # self._downloader.saveSequences()
+
+        Config.dfacto_settings.window_position = (
+            self.frameGeometry().x(),
+            self.frameGeometry().y(),
+        )
+        Config.dfacto_settings.window_size = (
+            self.geometry().width(),
+            self.geometry().height(),
+        )
+        try:
+            Config.dfacto_settings.save()
+        except Config.settings.SettingsError as e:
+            reply = QtWidgets.QMessageBox.question(
+                self,  # noqa
+                f"{QtWidgets.QApplication.applicationName()} - Exit confirmation",
+                f"Cannot save the settings file ({e}): quit anyway?",
+                QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
+                # reject dialog close event
+                event.ignore()
+                return
+
+        # Saving dfacto_settings OK or reply == QMessageBox.Yes
+        # self._sourceManager.close()
+        # self._downloader.close()
+
+    def eventFilter(self, obj, event) -> bool:
+        # https://www.qtcentre.org/threads/7718-How-to-disable-context-menu-of-a-toolbar-in-QMainApplication
+        if event.type() == QtCore.QEvent.Type.ContextMenu and obj == self.top_bar:
+            return True
+
+        return super().eventFilter(obj, event)
 
 
-def QtMain() -> None:
+def qt_main() -> None:
     """Main Graphical Interface entry point.
 
     Retrieves settings, initiatizes the whole application logging. Then initializes
@@ -622,13 +634,13 @@ def QtMain() -> None:
     # QT_SCALE_FACTOR environment variable allow to zoom the HMI for better.
     # readability
     if "QT_SCALE_FACTOR" not in os.environ:
-        os.environ["QT_SCALE_FACTOR"] = settings.qtScaleFactor
+        os.environ["QT_SCALE_FACTOR"] = settings.qt_scale_factor
 
     # Initialize the Application, apply a custom style, set the app's icon and
     # increase the default font size.
     app = QtWidgets.QApplication(sys.argv)
     # app.setStyle(QtUtil.MyAppStyle())
-    # app.setStyleSheet("QSplitter::handle { background-color: gray }")
+    app.setStyleSheet("QSplitter::handle { background-color: gray }")
     app.setApplicationName("Dfacto")
     # app.setAttribute(QtCore.Qt.AA_DisableWindowContextHelpButton)
     app.setWindowIcon(QtGui.QIcon(f"{resources}/fotocop.svg"))
@@ -667,14 +679,14 @@ def QtMain() -> None:
     # splash.show()
 
     # Build and show the main view after the splash screen delay.
-    # mainView = QtMainView(sourceManager, splash)
+    mainView = QtMainView()
     # splash.finish(mainView)
-    # mainView.show()
+    mainView.show()
 
     # Start the Qt main loop.
-    # app.exec()
+    app.exec()
 
-    Config.dfacto_settings.save()
+    # Config.dfacto_settings.save()
     logger.info("Dfacto is closing...")
     # Stop the log server.
     log_config.stop_logging()
@@ -733,4 +745,4 @@ def _select_company_profile() -> Optional[schemas.Company]:
 
 
 if __name__ == "__main__":
-    QtMain()
+    qt_main()
