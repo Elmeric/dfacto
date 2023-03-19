@@ -173,28 +173,28 @@ def createAction(
 #     width = label.width() - 2
 #     elidedText = fm.elidedText(text, QtCore.Qt.ElideMiddle, width)
 #     label.setText(elidedText)
-#
-#
-# class MyAppStyle(QtWidgets.QProxyStyle):
-#     """A QProxyStyle specialization to adjust some default style settings.
-#
-#     Increase the default small icon size with 4 pixels.
-#     Adjust the size of the view item decoration (apply to QTreeView and
-#     QTableView).
-#     """
-#     def pixelMetric(self, metric, option=None, widget=None) -> int:
-#         size = super().pixelMetric(metric, option, widget)
-#         if metric == QtWidgets.QStyle.PM_SmallIconSize:
-#             size = size + 4
-#         return size
-#
-#     def subElementRect(self, element, option, widget) -> QtCore.QRect:
-#         rect = super().subElementRect(element, option, widget)
-#         if element == QtWidgets.QStyle.SE_ItemViewItemDecoration:
-#             dh = (rect.height() - 16) / 2
-#             if dh >= 0:
-#                 rect.setRect(rect.x(), rect.y() + dh, rect.width(), 16)
-#         return rect
+
+
+class MyAppStyle(QtWidgets.QProxyStyle):
+    """A QProxyStyle specialization to adjust some default style settings.
+
+    Increase the default small icon size from 16 to 24 pixels.
+    Adjust the size of the view item decoration (apply to QTreeView and
+    QTableView).
+    """
+    def pixelMetric(self, metric, option=None, widget=None) -> int:
+        size = super().pixelMetric(metric, option, widget)
+        if metric == QtWidgets.QStyle.PixelMetric.PM_SmallIconSize:
+            size += 8
+        return size
+
+    def subElementRect(self, element, option, widget) -> QtCore.QRect:
+        rect = super().subElementRect(element, option, widget)
+        if element == QtWidgets.QStyle.SubElement.SE_ItemViewItemDecoration:
+            dh = (rect.height() - 16) / 2
+            if dh >= 0:
+                rect.setRect(rect.x(), rect.y() + dh, rect.width(), 16)
+        return rect
 #
 #
 # class NoFocusDelegate(QtWidgets.QStyledItemDelegate):

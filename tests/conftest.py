@@ -10,13 +10,13 @@ import dataclasses
 import sys
 from datetime import datetime, timedelta
 from sqlite3 import Connection as SQLite3Connection
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union, cast, TypedDict
 
 import pytest
-from sqlalchemy import create_engine, select
+from sqlalchemy import create_engine, select, insert
 from sqlalchemy.event import listen
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session, sessionmaker  # , Session
+from sqlalchemy.orm import Session, scoped_session, sessionmaker  # , Session
 
 from dfacto.backend import crud, db, models, schemas
 
@@ -266,10 +266,33 @@ class TestData:
     invoices: list[models.Invoice]
 
 
+class PresetRate(TypedDict):
+    name: str
+    rate: float
+    is_default: bool
+    is_preset: bool
+
+
+PRESET_RATES: list[PresetRate] = [
+    {"name": "taux zéro", "rate": 0.0, "is_default": True, "is_preset": True},
+    {"name": "taux particulier", "rate": 2.1, "is_default": False, "is_preset": True},
+    {"name": "taux réduit", "rate": 5.5, "is_default": False, "is_preset": True},
+    {"name": "taux intermédiaire", "rate": 10, "is_default": False, "is_preset": True},
+    {"name": "taux normal", "rate": 20, "is_default": False, "is_preset": True},
+]
+
+
+def init_db_data(session: Session) -> None:
+    if session.scalars(select(models.VatRate)).first() is None:
+        # No VAT rates in the database: add the presets and mark "taux zéro" as default.
+        session.execute(insert(models.VatRate), PRESET_RATES)
+        session.commit()
+
+
 @pytest.fixture
-def init_data(dbsession: scoped_session) -> TestData:
+def init_data(dbsession: Session) -> TestData:
     # VAT rates (5 preset rates, 3 custom rates)
-    db.init_db_data(dbsession)
+    init_db_data(dbsession)
     for i in range(3):
         vat_rate = models.VatRate(
             name=f"Rate {i + 1}", rate=12.5 + 2.5 * i  # Rate_1 to _3  # 12.5, 15, 17.5

@@ -26,13 +26,13 @@ class AddCompanyDialog(QtWidgets.QDialog):
 
     def __init__(
         self,
-        forbidden_names: Iterable[str],
+        forbidden_names: Iterable[str] = None,
         mode: Mode = Mode.ADD,
         fixed_size: bool = True,
         parent=None
     ) -> None:
         self.mode = mode
-        self.forbidden_names = forbidden_names
+        self.forbidden_names = forbidden_names or []
         super().__init__(parent=parent)
 
         # Prevent resizing the view when required.
@@ -47,7 +47,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         intro_widget = QtWidgets.QWidget()
         self.intro_pix = QtWidgets.QLabel()
         self.intro_pix.setPixmap(
-            QtGui.QPixmap(f"{resources}/cd.png").scaledToHeight(
+            QtGui.QPixmap(f"{resources}/invoice-128.png").scaledToHeight(
                 96, QtCore.Qt.TransformationMode.SmoothTransformation
             )
         )
@@ -75,7 +75,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         name_layout.addWidget(name_lbl)
         name_layout.addWidget(self.name_text)
 
-        select_icon = QtGui.QIcon(f"{Config.dfacto_settings.resources}/select.png")
+        select_icon = QtGui.QIcon(f"{Config.dfacto_settings.resources}/browse-folder.png")
         self.home_dir_selector = QtUtil.DirectorySelector(
             label="Dfacto data location:",
             placeHolder="Absolute path to your Dfacto data",
@@ -177,9 +177,9 @@ class AddCompanyDialog(QtWidgets.QDialog):
     @property
     def is_valid(self) -> bool:
         name_ok = self.name_text.text() not in self.forbidden_names
-        if self.mode is AddCompanyDialog.Mode.NEW:
+        if self.mode in (AddCompanyDialog.Mode.NEW, AddCompanyDialog.Mode.ADD):
             return self.name_text.text() != "" and name_ok and self.home_dir_selector.text() != ""
-        if self.mode in (AddCompanyDialog.Mode.ADD, AddCompanyDialog.Mode.EDIT):
+        if self.mode is AddCompanyDialog.Mode.EDIT:
             return self.name_text.text() != "" and name_ok
 
     @QtCore.pyqtSlot(str)
@@ -294,7 +294,7 @@ class SelectCompanyDialog(QtWidgets.QDialog):
         intro_widget = QtWidgets.QWidget()
         self.intro_pix = QtWidgets.QLabel()
         self.intro_pix.setPixmap(
-            QtGui.QPixmap(f"{resources}/cd.png").scaledToHeight(
+            QtGui.QPixmap(f"{resources}/invoice-128.png").scaledToHeight(
                 96, QtCore.Qt.TransformationMode.SmoothTransformation
             )
         )

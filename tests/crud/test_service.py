@@ -9,16 +9,17 @@ from typing import cast
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
-from dfacto.backend import crud, db, models, schemas
+from dfacto.backend import crud, models, schemas
+from tests.conftest import init_db_data
 
 pytestmark = pytest.mark.crud
 
 
 @pytest.fixture
-def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
-    db.init_db_data(dbsession)
+def init_services(dbsession: Session) -> list[models.Service]:
+    init_db_data(dbsession)
 
     for i in range(5):
         service = models.Service(
@@ -93,7 +94,12 @@ def test_crud_get_multi_error(dbsession, init_services, mock_select):
 
 
 def test_crud_create(dbsession, init_services):
-    service = crud.service.create(obj_in=)
+    service = crud.service.create(
+        dbsession,
+        obj_in=schemas.ServiceCreate(
+            name="Wonderful service", unit_price=1000.0, vat_rate_id=2
+        ),
+    )
 
     assert service.id is not None
     assert service.name == "Wonderful service"
@@ -114,7 +120,12 @@ def test_crud_create(dbsession, init_services):
 
 def test_crud_create_duplicate(dbsession, init_services):
     with pytest.raises(crud.CrudError):
-        _service = crud.service.create(obj_in=)
+        _service = crud.service.create(
+            dbsession,
+            obj_in=schemas.ServiceCreate(
+                name="Service_1", unit_price=10.0, vat_rate_id=2
+            ),
+        )
     assert (
         len(
             dbsession.scalars(
@@ -130,7 +141,12 @@ def test_crud_create_error(dbsession, init_services, mock_commit):
     state["failed"] = True
 
     with pytest.raises(crud.CrudError):
-        _service = crud.service.create(obj_in=)
+        _service = crud.service.create(
+            dbsession,
+            obj_in=schemas.ServiceCreate(
+                name="Wonderful service", unit_price=1000.0, vat_rate_id=2
+            ),
+        )
     assert (
         dbsession.scalars(
             sa.select(models.Service).where(models.Service.name == "Wonderful service")

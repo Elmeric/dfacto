@@ -44,7 +44,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def get_active(self) -> CommandResponse:
         try:
-            clients = self.crud_object.get_active(self.Session)
+            clients = self.crud_object.get_active(self.session)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -56,7 +56,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def get_basket(self, obj_id: int) -> CommandResponse:
         try:
-            basket = self.crud_object.get_basket(self.Session, obj_id)
+            basket = self.crud_object.get_basket(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -101,7 +101,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     ) -> CommandResponse:
         try:
             invoices = self.crud_object.get_invoices_by_status(
-                self.Session, obj_id, status=status, period=period
+                self.session, obj_id, status=status, period=period
             )
         except crud.CrudError as exc:
             return CommandResponse(
@@ -115,7 +115,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def _get_invoices(self, obj_id: int, *, period: Period) -> CommandResponse:
         try:
             invoices = self.crud_object.get_invoices(
-                self.Session, obj_id, period=period
+                self.session, obj_id, period=period
             )
         except crud.CrudError as exc:
             return CommandResponse(
@@ -143,7 +143,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def delete(self, obj_id: int) -> CommandResponse:
         try:
-            client_ = self.crud_object.get(self.Session, obj_id)
+            client_ = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -164,7 +164,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
-                self.crud_object.delete(self.Session, db_obj=client_)
+                self.crud_object.delete(self.session, db_obj=client_)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -177,8 +177,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         self, obj_id: int, *, service_id: int, quantity: int = 1
     ) -> CommandResponse:
         try:
-            basket = self.crud_object.get_basket(self.Session, obj_id)
-            service = crud.service.get(self.Session, service_id)
+            basket = self.crud_object.get_basket(self.session, obj_id)
+            service = crud.service.get(self.session, service_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -194,7 +194,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
             try:
                 it = self.crud_object.add_to_basket(
-                    self.Session, basket=basket, service=service, quantity=quantity
+                    self.session, basket=basket, service=service, quantity=quantity
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -209,8 +209,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         self, obj_id: int, *, invoice_id: int, service_id: int, quantity: int = 1
     ) -> CommandResponse:
         try:
-            invoice = crud.invoice.get(self.Session, invoice_id)
-            service = crud.service.get(self.Session, service_id)
+            invoice = crud.invoice.get(self.session, invoice_id)
+            service = crud.service.get(self.session, service_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -237,7 +237,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
             try:
                 it = crud.invoice.add_item(
-                    self.Session, invoice_=invoice, service=service, quantity=quantity
+                    self.session, invoice_=invoice, service=service, quantity=quantity
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -258,7 +258,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             )
 
         try:
-            item = crud.item.get(self.Session, item_id)
+            item = crud.item.get(self.session, item_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -293,7 +293,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
             try:
                 self.crud_object.update_item_quantity(
-                    self.Session, item=item, quantity=quantity
+                    self.session, item=item, quantity=quantity
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -305,7 +305,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def remove_item(self, obj_id: int, *, item_id: int) -> CommandResponse:
         try:
-            item = crud.item.get(self.Session, item_id)
+            item = crud.item.get(self.session, item_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -345,7 +345,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
-                self.crud_object.remove_item(self.Session, item=item)
+                self.crud_object.remove_item(self.session, item=item)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -356,7 +356,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     def clear_basket(self, obj_id: int) -> CommandResponse:
         try:
-            basket = self.crud_object.get_basket(self.Session, obj_id)
+            basket = self.crud_object.get_basket(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -370,7 +370,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
-                self.crud_object.clear_basket(self.Session, basket=basket)
+                self.crud_object.clear_basket(self.session, basket=basket)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -386,7 +386,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def create_invoice(self, obj_id: int) -> CommandResponse:
         try:
             invoice = crud.invoice.create(
-                self.Session, obj_in=schemas.InvoiceCreate(obj_id)
+                self.session, obj_in=schemas.InvoiceCreate(obj_id)
             )
         except crud.CrudError as exc:
             return CommandResponse(
@@ -401,7 +401,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         self, obj_id: int, clear_basket: bool = True
     ) -> CommandResponse:
         try:
-            basket = crud.client.get_basket(self.Session, obj_id)
+            basket = crud.client.get_basket(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -419,7 +419,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
             try:
                 invoice = crud.invoice.invoice_from_basket(
-                    self.Session, basket, clear_basket=clear_basket
+                    self.session, basket, clear_basket=clear_basket
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -442,7 +442,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     ) -> CommandResponse:
         action = "clear" if clear_only else "delete"
         try:
-            invoice = crud.invoice.get(self.Session, invoice_id)
+            invoice = crud.invoice.get(self.session, invoice_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -468,9 +468,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
             try:
                 if clear_only:
-                    crud.invoice.clear_invoice(self.Session, invoice_=invoice)
+                    crud.invoice.clear_invoice(self.session, invoice_=invoice)
                 else:
-                    crud.invoice.delete_invoice(self.Session, invoice_=invoice)
+                    crud.invoice.delete_invoice(self.session, invoice_=invoice)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -517,7 +517,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         )
 
         try:
-            invoice = crud.invoice.get(self.Session, invoice_id)
+            invoice = crud.invoice.get(self.session, invoice_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -552,7 +552,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
-                crud.invoice.mark_as(self.Session, invoice_=invoice, status=status)
+                crud.invoice.mark_as(self.session, invoice_=invoice, status=status)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -589,8 +589,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 due_date = issued_on + delta
         """
         try:
-            orm_client = self.crud_object.get(self.Session, obj_id)
-            orm_invoice = crud.invoice.get(self.Session, invoice_id)
+            orm_client = self.crud_object.get(self.session, obj_id)
+            orm_invoice = crud.invoice.get(self.session, invoice_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -752,4 +752,4 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         }
 
 
-client = ClientModel(db.Session)
+client = ClientModel()

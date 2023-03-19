@@ -18,19 +18,40 @@ class CompanyModel:
     schema: Type[schemas.Company] = schemas.Company
 
     def get(self, name: str) -> CommandResponse:
-        prev = self.crud_object.get(name)
-        if prev is None:
+        profile = self.crud_object.get(name)
+        if profile is None:
             return CommandResponse(
                 CommandStatus.FAILED,
                 f"GET - Company profile {name} not found",
             )
-        body = self.schema.from_orm(prev)
+        body = self.schema.from_orm(profile)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    def get_current(self) -> CommandResponse:
+        profile = self.crud_object.get_current()
+        if profile is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET - No selected company profile",
+            )
+        body = self.schema.from_orm(profile)
         return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def get_all(self) -> CommandResponse:
         companies = self.crud_object.get_all()
         body = [self.schema.from_orm(company_) for company_ in companies]
         return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    def select(self, name: str, *, is_new: bool) -> CommandResponse:
+        try:
+            self.crud_object.select(name, is_new=is_new)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"SELECT - Cannot select object: {exc}",
+            )
+        else:
+            return CommandResponse(CommandStatus.COMPLETED)
 
     def add(self, obj_in: schemas.CompanyCreate) -> CommandResponse:
         try:

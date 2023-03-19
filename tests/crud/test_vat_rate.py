@@ -9,16 +9,17 @@ from typing import cast
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
-from dfacto.backend import crud, db, models, schemas
+from dfacto.backend import crud, models, schemas
+from tests.conftest import init_db_data
 
 pytestmark = pytest.mark.crud
 
 
 @pytest.fixture
-def init_vat_rates(dbsession: sa.orm.scoped_session) -> list[models.VatRate]:
-    db.init_db_data(dbsession)
+def init_vat_rates(dbsession: Session) -> list[models.VatRate]:
+    init_db_data(dbsession)
 
     for i in range(3):
         vat_rate = models.VatRate(
@@ -144,7 +145,9 @@ def test_crud_get_all_error(dbsession, init_vat_rates, mock_select):
 
 
 def test_crud_create(dbsession, init_vat_rates):
-    vat_rate = crud.vat_rate.create(obj_in=)
+    vat_rate = crud.vat_rate.create(
+        dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
+    )
 
     assert vat_rate.id is not None
     assert vat_rate.name == "A new rate"
@@ -166,7 +169,9 @@ def test_crud_create_error(dbsession, init_vat_rates, mock_commit):
     state["failed"] = True
 
     with pytest.raises(crud.CrudError):
-        _vat_rate = crud.vat_rate.create(obj_in=)
+        _vat_rate = crud.vat_rate.create(
+            dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=30.0)
+        )
     assert (
         dbsession.scalars(
             sa.select(models.VatRate).where(models.VatRate.rate == 30.0)

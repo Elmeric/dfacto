@@ -7,6 +7,8 @@
 import enum
 from typing import Any, NamedTuple, Optional
 
+from dfacto.backend.db import session_factory
+
 
 class CommandException(Exception):
     """Base command exception."""
@@ -51,3 +53,11 @@ class CommandResponse(NamedTuple):
     def __repr__(self) -> str:
         reason = f", {self.reason}" if self.reason else ""
         return f"CommandResponse({self.status.name}{reason})"
+
+
+def command(func):
+    def wrapper(self, *args, **kwargs):
+        with session_factory() as session:
+            self.session = session
+            return func(self, *args, **kwargs)
+    return wrapper

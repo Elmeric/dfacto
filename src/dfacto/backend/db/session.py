@@ -19,18 +19,11 @@ def _set_sqlite_pragma(dbapi_connection, _connection_record):  # type: ignore
         cursor.close()
 
 
-def configure_session(session: sa.orm.scoped_session, db_path: Path) -> sa.Engine:
+def configure_session(db_path: Path) -> sa.Engine:
     engine = sa.create_engine(f"sqlite+pysqlite:///{db_path}")
     sa.event.listen(engine, "connect", _set_sqlite_pragma)
-    session.configure(bind=engine)
+    session_factory.configure(bind=engine)
     return engine
 
 
-# engine = sa.create_engine("sqlite+pysqlite:///dfacto.db")
-# engine = create_engine('sqlite+pysqlite:///dfacto.db', echo=True)
-# engine = create_engine("sqlite+pysqlite:///:memory:")
-# engine = create_engine("sqlite+pysqlite:///:memory:", echo=True)
-# sa.event.listen(engine, "connect", _set_sqlite_pragma)
-# session_factory = sa.orm.sessionmaker(bind=engine)
 session_factory = sa.orm.sessionmaker()
-Session = sa.orm.scoped_session(session_factory)

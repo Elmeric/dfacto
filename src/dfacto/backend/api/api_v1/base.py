@@ -5,12 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Generic, Type, TypeVar
+from typing import Generic, Type, TypeVar, Optional
 
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from dfacto.backend import crud, schemas
-from dfacto.backend.api.command import CommandResponse, CommandStatus
+from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 
 CRUDObjectType = TypeVar("CRUDObjectType", bound=crud.CRUDBase)
 SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)
@@ -18,13 +18,22 @@ SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)
 
 @dataclass()
 class DFactoModel(Generic[CRUDObjectType, SchemaType]):
-    Session: scoped_session[Session]
     crud_object: CRUDObjectType
     schema: Type[SchemaType]
+    session: Optional[Session] = None
 
+    @property
+    def Session(self) -> Session:
+        return self.session
+
+    @Session.setter
+    def Session(self, value):
+        self.session = value
+
+    @command
     def get(self, obj_id: int) -> CommandResponse:
         try:
-            db_obj = self.crud_object.get(self.Session, obj_id)
+            db_obj = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -42,7 +51,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
 
     def get_multi(self, *, skip: int = 0, limit: int = 10) -> CommandResponse:
         try:
-            db_objs = self.crud_object.get_multi(self.Session, skip=skip, limit=limit)
+            db_objs = self.crud_object.get_multi(self.session, skip=skip, limit=limit)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -54,7 +63,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
 
     def get_all(self) -> CommandResponse:
         try:
-            db_objs = self.crud_object.get_all(self.Session)
+            db_objs = self.crud_object.get_all(self.session)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -66,7 +75,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
 
     def add(self, obj_in: crud.CreateSchemaType) -> CommandResponse:
         try:
-            db_obj = self.crud_object.create(self.Session, obj_in=obj_in)
+            db_obj = self.crud_object.create(self.session, obj_in=obj_in)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -78,7 +87,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
 
     def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
         try:
-            db_obj = self.crud_object.get(self.Session, obj_id)
+            db_obj = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -93,7 +102,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
 
             try:
                 db_obj = self.crud_object.update(
-                    self.Session, db_obj=db_obj, obj_in=obj_in
+                    self.session, db_obj=db_obj, obj_in=obj_in
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -106,7 +115,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
 
     def delete(self, obj_id: int) -> CommandResponse:
         try:
-            db_obj = self.crud_object.get(self.Session, obj_id)
+            db_obj = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -120,7 +129,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 )
 
             try:
-                self.crud_object.delete(self.Session, db_obj=db_obj)
+                self.crud_object.delete(self.session, db_obj=db_obj)
             except crud.CrudIntegrityError:
                 return CommandResponse(
                     CommandStatus.REJECTED,

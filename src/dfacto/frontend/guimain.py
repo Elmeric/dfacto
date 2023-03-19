@@ -14,7 +14,7 @@ import PyQt6.QtGui as QtGui
 import dfacto.__about__ as __about__
 from dfacto.util.logutil import LogConfig
 from dfacto.util import qtutil as QtUtil
-from dfacto.backend import db
+# from dfacto.backend import db
 
 # Models
 from dfacto import settings as Config
@@ -67,8 +67,9 @@ class QtMainView(QtWidgets.QMainWindow):
 #         _status: reference to the Main window status bar.
 #     """
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, company_profile: schemas.Company, *args, **kwargs) -> None:
     # def __init__(self, sourceManager: SourceManager, splash, *args, **kwargs) -> None:
+        self.company_profile = company_profile
         super().__init__(*args, **kwargs)
 #
 #         splash.setProgress(10, "Create Gui objects...")
@@ -199,14 +200,30 @@ class QtMainView(QtWidgets.QMainWindow):
         self.setCentralWidget(horz_splitter)
 
         # Build actions used in toolbars.
-#         self.downloadAction = QtUtil.createAction(
-#             self,
-#             "&Download",
-#             slot=self.doDownloadAction,
-#             tip="Download selected images",
-#             shortcut="Ctrl+Return",
-#             icon=f"{resources}/download.png",
-#         )
+        edit_profile_action = QtUtil.createAction(
+            self,
+            "&Edit your company profile",
+            slot=self.do_edit_profile_action,
+            tip="Edit your company profile",
+            shortcut="Ctrl+E",
+            icon=f"{resources}/edit.png",
+        )
+        select_profile_action = QtUtil.createAction(
+            self,
+            "Select another company profile",
+            slot=self.do_select_profile_action,
+            tip="Create a new company profile",
+            shortcut="Ctrl+P",
+            icon=f"{resources}/change.png",
+        )
+        new_profile_action = QtUtil.createAction(
+            self,
+            "&New company profile",
+            slot=self.do_new_profile_action,
+            tip="Create a new company profile",
+            shortcut="Ctrl+N",
+            icon=f"{resources}/add.png",
+        )
         preferences_action = QtUtil.createAction(
             self,
             "Se&ttings",
@@ -232,14 +249,6 @@ class QtMainView(QtWidgets.QMainWindow):
             icon=f"{resources}/close-window.png",
         )
 #
-#         self.downloadButton = DownloadButton(self.downloadAction.text())
-#         self.downloadButton.setToolTip(self.downloadAction.toolTip())
-#         self.downloadButton.setStatusTip(self.downloadAction.statusTip())
-#         self.downloadButton.setDefault(True)
-#         self.downloadButton.clicked.connect(self.downloadButtonClicked)
-#         self._downloader.sessionRequired.connect(self.downloadButton.requestSession)
-#         self._downloader.datetimeRequired.connect(self.downloadButton.requestDatetime)
-#
 #         sourceWidget = QtWidgets.QWidget()
 #         self.sourcePix = QtWidgets.QLabel()
 #         self.sourceLbl = QtWidgets.QLabel()
@@ -261,6 +270,22 @@ class QtMainView(QtWidgets.QMainWindow):
         )
 
         # Build the main toolbar.
+        self.company_menu = QtWidgets.QMenu()
+        self.company_menu.addAction(edit_profile_action)
+        self.company_menu.addSeparator()
+        self.company_menu.addAction(select_profile_action)
+        self.company_menu.addAction(new_profile_action)
+
+        self.company_btn = QtWidgets.QToolButton()
+        self.company_btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.company_btn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        icon_size = QtCore.QSize(24, 24)
+        menu_icon = QtGui.QIcon(f"{resources}/company.png")
+        self.company_btn.setIconSize(icon_size)
+        self.company_btn.setIcon(menu_icon)
+        self.company_btn.setText(company_profile.name)
+        self.company_btn.setMenu(self.company_menu)
+
         self.menu = QtWidgets.QMenu()
         # self.menu.addAction(self.downloadAction)
         self.menu.addAction(preferences_action)
@@ -284,7 +309,7 @@ class QtMainView(QtWidgets.QMainWindow):
         self.top_bar.setStyleSheet("QPushButton{margin-right: 20 px;}")
         # self.top_bar.addWidget(sourceWidget)
         self.top_bar.addWidget(spacer)
-        # self.top_bar.addWidget(self.downloadButton)
+        self.top_bar.addWidget(self.company_btn)
         self.top_bar.addWidget(self.menu_btn)
 #
 #         self.downloadProgress = DownloadProgress(self._downloader, self)
@@ -458,6 +483,108 @@ class QtMainView(QtWidgets.QMainWindow):
 #     @QtCore.pyqtSlot()
 #     def doDownloadAction(self):
 #         self.downloadButton.animateClick()
+
+    @QtCore.pyqtSlot()
+    def do_edit_profile_action(self):
+        # Config.dfacto_settings.last_profile = ""
+        response = api.company.get_current()
+        if response.status is not CommandStatus.COMPLETED:
+            logger.warning(
+                "Cannot edit your company profile - Reason is: %s",
+                response.reason
+            )
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"Dfacto - Connection failed",
+                f"Cannot edit your company profile\n\nReason is:\n{response.reason}",
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
+            return
+        current_profile = response.body
+        a_dialog = AddCompanyDialog(fixed_size=True)
+        a_dialog.reset()
+        a_dialog.set_mode(AddCompanyDialog.Mode.EDIT)
+        a_dialog.edit_profile(current_profile)
+        if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        company = a_dialog.company
+        self.show_status_message(f"{company}")
+        # Add the new company profile to the database (the Dfacto settings JSON file)
+        # response = api.company.add(company)
+
+    @QtCore.pyqtSlot()
+    def do_select_profile_action(self):
+        companies = api.company.get_all().body
+        if len(companies) > 0:
+            a_dialog = SelectCompanyDialog(profiles=companies, fixed_size=True)
+            if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+                return
+            company = a_dialog.company
+            if company is None:
+                return
+            logger.info("Selecting the company profile...")
+            logger.info("Connecting to database...")
+            response = api.company.select(company.name, is_new=False)
+            if response.status is not CommandStatus.COMPLETED:
+                logger.warning(
+                    "Cannot select the %s company profile - Reason is: %s",
+                    company.name, response.reason
+                )
+                QtWidgets.QMessageBox.warning(
+                    None,  # type: ignore
+                    f"Dfacto - Connection failed",
+                    f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
+                    QtWidgets.QMessageBox.StandardButton.Close,
+                )
+                return
+            service = api.service.get(1).body
+            print(service)
+            logger.info(f"Connected to {company.home / 'dfacto.db'}")
+            logger.info(f"Company profile {company.name} is selected")
+
+    @QtCore.pyqtSlot()
+    def do_new_profile_action(self):
+        a_dialog = AddCompanyDialog(fixed_size=True)
+        a_dialog.reset()
+        a_dialog.set_mode(AddCompanyDialog.Mode.ADD)
+        if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        company = a_dialog.company
+        self.show_status_message(f"{company}")
+        # Add the new company profile to the database (the Dfacto settings JSON file)
+        response = api.company.add(company)
+        if response.status is not CommandStatus.COMPLETED:
+            logger.warning(
+                "Cannot create the %s company profile - Reason is: %s",
+                company.name, response.reason
+            )
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"Dfacto - Connection failed",
+                f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
+            return
+        if company is None:
+            return
+        logger.info("Selecting the new company profile...")
+        logger.info("Connecting to database...")
+        response = api.company.select(company.name, is_new=True)
+        if response.status is not CommandStatus.COMPLETED:
+            logger.warning(
+                "Cannot select the %s company profile - Reason is: %s",
+                company.name, response.reason
+            )
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"Dfacto - Connection failed",
+                f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
+            return
+        logger.info(f"Connected to {company.home / 'dfacto.db'}")
+        logger.info(f"Company profile {company.name} is selected")
+
 
     @QtCore.pyqtSlot()
     def do_preferences_action(self):
@@ -639,11 +766,10 @@ def qt_main() -> None:
     # Initialize the Application, apply a custom style, set the app's icon and
     # increase the default font size.
     app = QtWidgets.QApplication(sys.argv)
-    # app.setStyle(QtUtil.MyAppStyle())
+    app.setStyle(QtUtil.MyAppStyle())
     app.setStyleSheet("QSplitter::handle { background-color: gray }")
     app.setApplicationName("Dfacto")
-    # app.setAttribute(QtCore.Qt.AA_DisableWindowContextHelpButton)
-    app.setWindowIcon(QtGui.QIcon(f"{resources}/fotocop.svg"))
+    app.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
     f = app.font()
     fSize = f.pointSize()
     f.setPointSize(fSize + 2)
@@ -651,21 +777,30 @@ def qt_main() -> None:
 
     # Select a company profile
     logger.info("Selecting a company profile...")
-    company_profile = _select_company_profile()
+    company_profile, is_new = _select_company_profile()
     if company_profile is None:
         logger.info(f"No company profile is selected: Dfacto is closing...")
         # Stop the log server.
         log_config.stop_logging()
         return
-    Config.dfacto_settings.last_profile = company_profile.name
-    logger.info(f"Company profile {company_profile.name} is selected")
-
-    # Connect to the database of the selected company
     logger.info("Connecting to database...")
-    db_path = company_profile.home / "dfacto.db"
-    engine = db.configure_session(db.Session, db_path)
-    db.init_db(engine, db.Session)
-    logger.info(f"Connected to {db_path}")
+    response = api.company.select(company_profile.name, is_new=is_new)
+    if response.status is not CommandStatus.COMPLETED:
+        logger.warning(
+            "Cannot select the %s company profile - Reason is: %s",
+            company_profile.name, response.reason
+        )
+        QtWidgets.QMessageBox.warning(
+            None,  # type: ignore
+            f"Dfacto - Connection failed",
+            f"Cannot create the {company_profile.name} company profile\n\nReason is:\n{response.reason}",
+            QtWidgets.QMessageBox.StandardButton.Close,
+        )
+        # Stop the log server.
+        log_config.stop_logging()
+        return
+    logger.info(f"Connected to {company_profile.home / 'dfacto.db'}")
+    logger.info(f"Company profile {company_profile.name} is selected")
 
     # Initialize the images sources manager.
     # sourceManager = SourceManager()
@@ -679,25 +814,23 @@ def qt_main() -> None:
     # splash.show()
 
     # Build and show the main view after the splash screen delay.
-    mainView = QtMainView()
+    mainView = QtMainView(company_profile)
     # splash.finish(mainView)
     mainView.show()
 
     # Start the Qt main loop.
     app.exec()
 
-    # Config.dfacto_settings.save()
     logger.info("Dfacto is closing...")
     # Stop the log server.
     log_config.stop_logging()
 
 
-def _select_company_profile() -> Optional[schemas.Company]:
+def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
     # If a previously used company profile exists, select it.
-    last_profile = Config.dfacto_settings.last_profile
-    response = api.company.get(last_profile)
+    response = api.company.get_current()
     if response.status is CommandStatus.COMPLETED:
-        return response.body
+        return response.body, False
 
     # If some company profiles already exists, ask to select one of them.
     companies = api.company.get_all().body
@@ -706,10 +839,10 @@ def _select_company_profile() -> Optional[schemas.Company]:
         # Open the company selection dialog to select a company among the existing ones,
         a_dialog = SelectCompanyDialog(profiles=companies, fixed_size=True)
         if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-            return
+            return None, False
         company = a_dialog.company
         if company is not None:
-            return company
+            return company, False
         # No company is selected but the user requests to add a new one
         add = True
 
@@ -725,7 +858,7 @@ def _select_company_profile() -> Optional[schemas.Company]:
     a_dialog.reset()
     a_dialog.set_mode(mode)
     if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-        return
+        return None, False
     company = a_dialog.company
     # Add the new company profile to the database (the Dfacto settings JSON file)
     response = api.company.add(company)
@@ -740,8 +873,8 @@ def _select_company_profile() -> Optional[schemas.Company]:
             f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
             QtWidgets.QMessageBox.StandardButton.Close,
         )
-        return
-    return response.body
+        return None, False
+    return response.body, True
 
 
 if __name__ == "__main__":

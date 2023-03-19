@@ -25,7 +25,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
 
     def get_default(self) -> CommandResponse:
         try:
-            vat_rate_ = self.crud_object.get_default(self.Session)
+            vat_rate_ = self.crud_object.get_default(self.session)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -43,8 +43,8 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
 
     def set_default(self, obj_id: int) -> CommandResponse:
         try:
-            old = self.crud_object.get_default(self.Session)
-            new = self.crud_object.get(self.Session, obj_id)
+            old = self.crud_object.get_default(self.session)
+            new = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -61,7 +61,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
 
             try:
                 self.crud_object.set_default(
-                    self.Session, old_default=old, new_default=new
+                    self.session, old_default=old, new_default=new
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -72,7 +72,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
 
     def update(self, obj_id: int, *, obj_in: schemas.VatRateUpdate) -> CommandResponse:
         try:
-            vat_rate_ = self.crud_object.get(self.Session, obj_id)
+            vat_rate_ = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -93,7 +93,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
 
             try:
                 vat_rate_ = self.crud_object.update(
-                    self.Session, db_obj=vat_rate_, obj_in=obj_in
+                    self.session, db_obj=vat_rate_, obj_in=obj_in
                 )
             except crud.CrudError as exc:
                 return CommandResponse(
@@ -106,7 +106,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
 
     def delete(self, obj_id: int) -> CommandResponse:
         try:
-            vat_rate_ = self.crud_object.get(self.Session, obj_id)
+            vat_rate_ = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -134,7 +134,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
                 )
 
             try:
-                self.crud_object.delete(self.Session, db_obj=vat_rate_)
+                self.crud_object.delete(self.session, db_obj=vat_rate_)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -144,4 +144,4 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
                 return CommandResponse(CommandStatus.COMPLETED)
 
 
-vat_rate = VatRateModel(db.Session)
+vat_rate = VatRateModel()

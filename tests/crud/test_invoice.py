@@ -93,7 +93,9 @@ def test_crud_get_all_error(dbsession, init_data, mock_select):
 def test_crud_create(dbsession, init_data, mock_datetime_now):
     client = init_data.clients[1]
 
-    invoice = crud.invoice.create(obj_in=)
+    invoice = crud.invoice.create(
+        dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id)
+    )
 
     assert invoice.id is not None
     assert invoice.client_id == client.id
@@ -133,7 +135,9 @@ def test_crud_create_error(dbsession, init_data, mock_commit):
     initial_log_count = len(dbsession.scalars(sa.select(models.StatusLog)).all())
 
     with pytest.raises(crud.CrudError):
-        _invoice = crud.invoice.create(obj_in=)
+        _invoice = crud.invoice.create(
+            dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id)
+        )
     assert len(client.invoices) == initial_invoices_count
     assert (
         len(

@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Session, scoped_session
 
 from dfacto.backend import models
-from dfacto.backend.db import base
+from dfacto.backend.db import base, session_factory
 
 
 class PresetRate(TypedDict):
@@ -40,8 +40,11 @@ def init_db_data(session: Union[Session, scoped_session[Session]]) -> None:
         session.commit()
 
 
-def init_db(
-    engine: sa.Engine, session: Union[Session, scoped_session[Session]]
+def init_database(
+    engine: sa.Engine
+    # engine: sa.Engine, session: Union[Session, scoped_session[Session]]
 ) -> None:
     create_tables(engine)
+    session = session_factory()
     init_db_data(session)
+    session.close()

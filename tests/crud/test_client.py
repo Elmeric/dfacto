@@ -10,17 +10,18 @@ from typing import cast
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import scoped_session
+from sqlalchemy.orm import Session
 
-from dfacto.backend import crud, db, models, schemas
+from dfacto.backend import crud, models, schemas
 from dfacto.backend.util import Period
+from tests.conftest import init_db_data
 
 pytestmark = pytest.mark.crud
 
 
 @pytest.fixture
-def init_clients(dbsession: sa.orm.scoped_session) -> list[models.Client]:
-    db.init_db_data(dbsession)
+def init_clients(dbsession: Session) -> list[models.Client]:
+    init_db_data(dbsession)
 
     for i in range(5):
         client = models.Client(
@@ -41,7 +42,7 @@ def init_clients(dbsession: sa.orm.scoped_session) -> list[models.Client]:
 
 
 @pytest.fixture
-def init_services(dbsession: sa.orm.scoped_session) -> list[models.Service]:
+def init_services(dbsession: Session) -> list[models.Service]:
     for i in range(5):
         service = models.Service(
             name=f"Service_{i + 1}", unit_price=100 + 10 * i, vat_rate_id=(i % 3) + 1
@@ -299,7 +300,15 @@ def test_crud_create(is_active, expected, dbsession, init_clients):
         zip_code="67890",
         city="La Bas",
     )
-    client = crud.client.create(obj_in=)
+    client = crud.client.create(
+        dbsession,
+        obj_in=schemas.ClientCreate(
+            name="Super client",
+            address=address,
+            email="super.client@domain.com",
+            is_active=is_active,
+        ),
+    )
 
     assert client.id is not None
     assert client.name == "Super client"
@@ -327,7 +336,15 @@ def test_crud_create_duplicate(dbsession, init_clients):
         city="La Bas",
     )
     with pytest.raises(crud.CrudError):
-        _client = crud.client.create(obj_in=)
+        _client = crud.client.create(
+            dbsession,
+            obj_in=schemas.ClientCreate(
+                name="Client_1",
+                address=address,
+                email="super.client@domain.com",
+                is_active=True,
+            ),
+        )
     assert (
         len(
             dbsession.scalars(
@@ -348,7 +365,15 @@ def test_crud_create_error(dbsession, init_clients, mock_commit):
         city="La Bas",
     )
     with pytest.raises(crud.CrudError):
-        _client = crud.client.create(obj_in=)
+        _client = crud.client.create(
+            dbsession,
+            obj_in=schemas.ClientCreate(
+                name="Super client",
+                address=address,
+                email="super.client@domain.com",
+                is_active=True,
+            ),
+        )
     assert (
         dbsession.scalars(
             sa.select(models.Client).where(models.Client.name == "Super client")
