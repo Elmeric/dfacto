@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Optional
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dfacto.backend import db
+from .base_model import BaseModel, intpk
 
 if TYPE_CHECKING:  # pragma: no cover
     from .client import Client
@@ -26,10 +26,10 @@ class InvoiceStatus(enum.Enum):
     CANCELLED = 5
 
 
-class Invoice(db.BaseModel):
+class Invoice(BaseModel):
     __tablename__ = "invoice"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"))
     raw_amount: Mapped[float] = mapped_column(default=0.0)
     vat: Mapped[float] = mapped_column(default=0.0)
@@ -47,10 +47,10 @@ class Invoice(db.BaseModel):
     )
 
 
-class StatusLog(db.BaseModel):
+class StatusLog(BaseModel):
     __tablename__ = "status_log"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     from_: Mapped[datetime]
     invoice_id: Mapped[int] = mapped_column(ForeignKey("invoice.id"))
     to: Mapped[Optional[datetime]] = mapped_column(default=None)

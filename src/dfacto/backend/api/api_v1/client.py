@@ -13,7 +13,7 @@ import jinja2 as jinja
 from babel.dates import format_date
 
 from dfacto.backend import crud, db, schemas
-from dfacto.backend.api.command import CommandResponse, CommandStatus
+from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 from dfacto.backend.models import InvoiceStatus
 from dfacto.backend.util import Period, PeriodFilter
 
@@ -42,6 +42,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         ISSUE = 2
         REMIND = 3
 
+    @command
     def get_active(self) -> CommandResponse:
         try:
             clients = self.crud_object.get_active(self.session)
@@ -54,6 +55,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             body = [schemas.Client.from_orm(client_) for client_ in clients]
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def get_basket(self, obj_id: int) -> CommandResponse:
         try:
             basket = self.crud_object.get_basket(self.session, obj_id)
@@ -72,6 +74,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Basket.from_orm(basket)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def get_invoices(
         self,
         obj_id: int,  # client id
@@ -96,6 +99,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         else:
             return self._get_invoices(obj_id, period=period)
 
+    @command
     def _get_invoices_by_status(
         self, obj_id: int, *, status: InvoiceStatus, period: Period
     ) -> CommandResponse:
@@ -112,6 +116,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def _get_invoices(self, obj_id: int, *, period: Period) -> CommandResponse:
         try:
             invoices = self.crud_object.get_invoices(
@@ -141,6 +146,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def set_inactive(self, obj_id: int) -> CommandResponse:
         return self.update(obj_id, obj_in=schemas.ClientUpdate(is_active=False))
 
+    @command
     def delete(self, obj_id: int) -> CommandResponse:
         try:
             client_ = self.crud_object.get(self.session, obj_id)
@@ -173,6 +179,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
+    @command
     def add_to_basket(
         self, obj_id: int, *, service_id: int, quantity: int = 1
     ) -> CommandResponse:
@@ -205,6 +212,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Item.from_orm(it)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def add_to_invoice(
         self, obj_id: int, *, invoice_id: int, service_id: int, quantity: int = 1
     ) -> CommandResponse:
@@ -248,6 +256,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Item.from_orm(it)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def update_item_quantity(
         self, obj_id: int, *, item_id: int, quantity: int
     ) -> CommandResponse:
@@ -303,6 +312,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
+    @command
     def remove_item(self, obj_id: int, *, item_id: int) -> CommandResponse:
         try:
             item = crud.item.get(self.session, item_id)
@@ -354,6 +364,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
+    @command
     def clear_basket(self, obj_id: int) -> CommandResponse:
         try:
             basket = self.crud_object.get_basket(self.session, obj_id)
@@ -383,6 +394,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     # emit: send in pdf in an email (optional, check yagmail or sendgrid or sendinblue.
     # Examples on Real Python)
     # remind: send a reminder in an email (optional)
+    @command
     def create_invoice(self, obj_id: int) -> CommandResponse:
         try:
             invoice = crud.invoice.create(
@@ -397,6 +409,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             body = schemas.Invoice.from_orm(invoice)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def invoice_from_basket(
         self, obj_id: int, clear_basket: bool = True
     ) -> CommandResponse:
@@ -431,9 +444,11 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 body = schemas.Invoice.from_orm(invoice)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def clear_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._clear_or_delete_invoice(obj_id, invoice_id, clear_only=True)
 
+    @command
     def delete_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._clear_or_delete_invoice(obj_id, invoice_id, clear_only=False)
 
@@ -480,18 +495,23 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
+    @command
     def cancel_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.CANCELLED)
 
+    @command
     def mark_as_emitted(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.EMITTED)
 
+    @command
     def mark_as_reminded(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.REMINDED)
 
+    @command
     def mark_as_paid(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.PAID)
 
+    @command
     def mark_as_cancelled(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._mark_as(obj_id, invoice_id, status=InvoiceStatus.CANCELLED)
 
@@ -562,6 +582,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
+    @command
     def preview_invoice(
         self, obj_id: int, *, invoice_id: int, mode: HtmlMode
     ) -> CommandResponse:

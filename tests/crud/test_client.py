@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 
 from dfacto.backend import crud, models, schemas
 from dfacto.backend.util import Period
-from tests.conftest import init_db_data
+from dfacto.backend.db.session import init_db_data
 
 pytestmark = pytest.mark.crud
 
@@ -58,7 +58,7 @@ def init_services(dbsession: Session) -> list[models.Service]:
 
 @pytest.fixture
 def init_items(
-    init_clients, init_services, dbsession: sa.orm.scoped_session
+    init_clients, init_services, dbsession: sa.orm.Session
 ) -> list[models.Item]:
     clients = init_clients
     rates = (0.0, 2.1, 5.5)

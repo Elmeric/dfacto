@@ -7,8 +7,8 @@
 from dataclasses import dataclass
 from typing import Type, TypedDict
 
-from dfacto.backend import crud, db, schemas
-from dfacto.backend.api.command import CommandResponse, CommandStatus
+from dfacto.backend import crud, schemas
+from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 
 from .base import DFactoModel
 
@@ -23,6 +23,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
     crud_object: crud.CRUDVatRate = crud.vat_rate
     schema: Type[schemas.VatRate] = schemas.VatRate
 
+    @command
     def get_default(self) -> CommandResponse:
         try:
             vat_rate_ = self.crud_object.get_default(self.session)
@@ -41,6 +42,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
                 body = self.schema.from_orm(vat_rate_)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def set_default(self, obj_id: int) -> CommandResponse:
         try:
             old = self.crud_object.get_default(self.session)
@@ -70,6 +72,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
 
+    @command
     def update(self, obj_id: int, *, obj_in: schemas.VatRateUpdate) -> CommandResponse:
         try:
             vat_rate_ = self.crud_object.get(self.session, obj_id)
@@ -104,6 +107,7 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
                 body = self.schema.from_orm(vat_rate_)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def delete(self, obj_id: int) -> CommandResponse:
         try:
             vat_rate_ = self.crud_object.get(self.session, obj_id)

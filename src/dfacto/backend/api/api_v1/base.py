@@ -22,14 +22,6 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
     schema: Type[SchemaType]
     session: Optional[Session] = None
 
-    @property
-    def Session(self) -> Session:
-        return self.session
-
-    @Session.setter
-    def Session(self, value):
-        self.session = value
-
     @command
     def get(self, obj_id: int) -> CommandResponse:
         try:
@@ -49,6 +41,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 body = self.schema.from_orm(db_obj)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def get_multi(self, *, skip: int = 0, limit: int = 10) -> CommandResponse:
         try:
             db_objs = self.crud_object.get_multi(self.session, skip=skip, limit=limit)
@@ -61,6 +54,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
             body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def get_all(self) -> CommandResponse:
         try:
             db_objs = self.crud_object.get_all(self.session)
@@ -73,6 +67,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
             body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def add(self, obj_in: crud.CreateSchemaType) -> CommandResponse:
         try:
             db_obj = self.crud_object.create(self.session, obj_in=obj_in)
@@ -85,6 +80,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
             body = self.schema.from_orm(db_obj)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
         try:
             db_obj = self.crud_object.get(self.session, obj_id)
@@ -113,6 +109,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 body = self.schema.from_orm(db_obj)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
     def delete(self, obj_id: int) -> CommandResponse:
         try:
             db_obj = self.crud_object.get(self.session, obj_id)

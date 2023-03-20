@@ -10,15 +10,17 @@ import dataclasses
 import sys
 from datetime import datetime, timedelta
 from sqlite3 import Connection as SQLite3Connection
-from typing import Any, Optional, Union, cast, TypedDict
+from typing import Any, Optional, Union, cast
 
 import pytest
-from sqlalchemy import create_engine, select, insert
+from sqlalchemy import create_engine, select
 from sqlalchemy.event import listen
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, scoped_session, sessionmaker  # , Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from dfacto.backend import crud, db, models, schemas
+from dfacto.backend import crud, models, schemas
+from dfacto.backend.models.base_model import BaseModel
+from dfacto.backend.db.session import init_db_data
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):
@@ -57,9 +59,9 @@ def engine():
 
 @pytest.fixture(scope="session")
 def tables(engine):
-    db.BaseModel.metadata.create_all(engine)
+    BaseModel.metadata.create_all(engine)
     yield
-    db.BaseModel.metadata.drop_all(engine)
+    BaseModel.metadata.drop_all(engine)
 
 
 @pytest.fixture
@@ -73,13 +75,11 @@ def dbsession(engine, tables):
     session_factory = sessionmaker(
         bind=connection, join_transaction_mode="create_savepoint"
     )
-    Session = scoped_session(session_factory)
+    session = session_factory()
 
-    # yield session
-    yield Session
+    yield session
 
-    # session.close()
-    Session.remove()
+    session.close()
     # roll back the broader transaction
     transaction.rollback()
     # put back the connection to the connection pool
@@ -99,7 +99,7 @@ def mock_commit(monkeypatch):
         if state["failed"]:
             raise SQLAlchemyError("Commit failed")
 
-    monkeypatch.setattr("dfacto.backend.crud.base.scoped_session.commit", _commit)
+    monkeypatch.setattr("dfacto.backend.crud.base.Session.commit", _commit)
 
     return state, called
 
@@ -109,12 +109,12 @@ def mock_get(monkeypatch):
     state = {"failed": False}
     called = []
 
-    def _get(_1, _2, _3):
+    def _get(_1, _2, _3, **kwargs):
         called.append(True)
         if state["failed"]:
             raise SQLAlchemyError("Get failed")
 
-    monkeypatch.setattr("dfacto.backend.crud.base.scoped_session.get", _get)
+    monkeypatch.setattr("dfacto.backend.crud.base.Session.get", _get)
 
     return state, called
 
@@ -237,7 +237,7 @@ def mock_dfacto_model(monkeypatch):
                     setattr(db_obj, field, update_data[field])
             return db_obj
 
-    def _delete(_, db: scoped_session, *, db_obj: dict[str, Any]) -> None:
+    def _delete(_, db: Session, *, db_obj: dict[str, Any]) -> None:
         methods_called.append("DELETE")
         exc = state["raises"]["DELETE"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
@@ -266,27 +266,27 @@ class TestData:
     invoices: list[models.Invoice]
 
 
-class PresetRate(TypedDict):
-    name: str
-    rate: float
-    is_default: bool
-    is_preset: bool
-
-
-PRESET_RATES: list[PresetRate] = [
-    {"name": "taux zéro", "rate": 0.0, "is_default": True, "is_preset": True},
-    {"name": "taux particulier", "rate": 2.1, "is_default": False, "is_preset": True},
-    {"name": "taux réduit", "rate": 5.5, "is_default": False, "is_preset": True},
-    {"name": "taux intermédiaire", "rate": 10, "is_default": False, "is_preset": True},
-    {"name": "taux normal", "rate": 20, "is_default": False, "is_preset": True},
-]
-
-
-def init_db_data(session: Session) -> None:
-    if session.scalars(select(models.VatRate)).first() is None:
-        # No VAT rates in the database: add the presets and mark "taux zéro" as default.
-        session.execute(insert(models.VatRate), PRESET_RATES)
-        session.commit()
+# class PresetRate(TypedDict):
+#     name: str
+#     rate: float
+#     is_default: bool
+#     is_preset: bool
+#
+#
+# PRESET_RATES: list[PresetRate] = [
+#     {"name": "taux zéro", "rate": 0.0, "is_default": True, "is_preset": True},
+#     {"name": "taux particulier", "rate": 2.1, "is_default": False, "is_preset": True},
+#     {"name": "taux réduit", "rate": 5.5, "is_default": False, "is_preset": True},
+#     {"name": "taux intermédiaire", "rate": 10, "is_default": False, "is_preset": True},
+#     {"name": "taux normal", "rate": 20, "is_default": False, "is_preset": True},
+# ]
+#
+#
+# def init_db_data(session: Session) -> None:
+#     if session.scalars(select(models.VatRate)).first() is None:
+#         # No VAT rates in the database: add the presets and mark "taux zéro" as default.
+#         session.execute(insert(models.VatRate), PRESET_RATES)
+#         session.commit()
 
 
 @pytest.fixture

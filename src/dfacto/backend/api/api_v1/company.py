@@ -42,6 +42,16 @@ class CompanyModel:
         body = [self.schema.from_orm(company_) for company_ in companies]
         return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    def get_others(self) -> CommandResponse:
+        profile = self.crud_object.get_current()
+        companies = self.crud_object.get_all()
+        body = [
+            self.schema.from_orm(company_)
+            for company_ in companies
+            if company_.name != profile.name
+        ]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
+
     def select(self, name: str, *, is_new: bool) -> CommandResponse:
         try:
             self.crud_object.select(name, is_new=is_new)
@@ -60,6 +70,25 @@ class CompanyModel:
             return CommandResponse(
                 CommandStatus.FAILED,
                 f"ADD - Cannot add object: {exc}",
+            )
+        else:
+            body = self.schema.from_orm(db_obj)
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    def update(self, name: str, *, obj_in: schemas.CompanyUpdate) -> CommandResponse:
+        db_obj = self.crud_object.get(name)
+        if db_obj is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE - Company profile {name} not found.",
+            )
+
+        try:
+            db_obj = self.crud_object.update(db_obj=db_obj, obj_in=obj_in)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE - Cannot update company profile {name}: {exc}",
             )
         else:
             body = self.schema.from_orm(db_obj)

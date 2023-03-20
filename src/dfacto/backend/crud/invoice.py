@@ -8,7 +8,7 @@ from datetime import datetime
 
 from sqlalchemy import update
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import Session, scoped_session
+from sqlalchemy.orm import Session
 
 from dfacto.backend import models, schemas
 
@@ -19,7 +19,7 @@ class CRUDInvoice(
     CRUDBase[models.Invoice, schemas.InvoiceCreate, schemas.InvoiceUpdate]
 ):
     def create(
-        self, dbsession: scoped_session[Session], *, obj_in: schemas.InvoiceCreate
+        self, dbsession: Session, *, obj_in: schemas.InvoiceCreate
     ) -> models.Invoice:
         obj_in_data = obj_in.flatten()
         db_obj = self.model(**obj_in_data)
@@ -48,7 +48,7 @@ class CRUDInvoice(
 
     def invoice_from_basket(
         self,
-        dbsession: scoped_session[Session],
+        dbsession: Session,
         basket: models.Basket,
         *,
         clear_basket: bool = True,
@@ -85,7 +85,7 @@ class CRUDInvoice(
 
     def add_item(
         self,
-        dbsession: scoped_session[Session],
+        dbsession: Session,
         *,
         invoice_: models.Invoice,
         service: models.Service,
@@ -118,7 +118,7 @@ class CRUDInvoice(
             return item_
 
     def clear_invoice(
-        self, dbsession: scoped_session[Session], *, invoice_: models.Invoice
+        self, dbsession: Session, *, invoice_: models.Invoice
     ) -> None:
         assert (
             invoice_.status is models.InvoiceStatus.DRAFT
@@ -127,7 +127,7 @@ class CRUDInvoice(
 
     def delete_invoice(
         self,
-        dbsession: scoped_session[Session],
+        dbsession: Session,
         *,
         invoice_: models.Invoice,
     ) -> None:
@@ -138,7 +138,7 @@ class CRUDInvoice(
 
     def _clear_or_delete(
         self,
-        dbsession: scoped_session[Session],
+        dbsession: Session,
         invoice_: models.Invoice,
         clear_only: bool = False,
     ) -> None:
@@ -163,7 +163,7 @@ class CRUDInvoice(
             raise CrudError() from exc
 
     def cancel_invoice(
-        self, dbsession: scoped_session[Session], *, invoice_: models.Invoice
+        self, dbsession: Session, *, invoice_: models.Invoice
     ) -> None:
         assert invoice_.status in (
             models.InvoiceStatus.EMITTED,
@@ -194,7 +194,7 @@ class CRUDInvoice(
 
     def mark_as(
         self,
-        dbsession: scoped_session[Session],
+        dbsession: Session,
         *,
         invoice_: models.Invoice,
         status: models.InvoiceStatus,

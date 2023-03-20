@@ -7,7 +7,7 @@
 from dataclasses import asdict, dataclass
 from typing import Any, Generic
 
-from dfacto.backend.db import ModelType
+from dfacto.backend.models import ModelType
 
 
 @dataclass

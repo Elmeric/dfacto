@@ -4,6 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any, Optional
 
@@ -11,7 +12,6 @@ from dfacto import settings as Config
 from dfacto.util.settings import SettingsError
 from dfacto.backend.crud import CrudError
 from dfacto.backend import db, models, schemas
-from dfacto.backend.db.init_db import init_database
 
 
 class CRUDCompany:
@@ -50,9 +50,7 @@ class CRUDCompany:
             raise CrudError(f"Cannot persist company profiles: {exc}")
 
         db_path = profiles[name]["home"] / "dfacto.db"
-        engine = db.configure_session(db_path)
-        if is_new:
-            init_database(engine)
+        db.configure_session(db_path, is_new=is_new)
 
     def create(self, *, obj_in: schemas.CompanyCreate) -> models.Company:
         name = obj_in.name
@@ -74,6 +72,36 @@ class CRUDCompany:
             Config.dfacto_settings.save()
         except SettingsError as exc:
             raise  CrudError(f"Cannot persist company profiles: {exc}")
+
+        return db_obj
+
+    def update(
+        self, *, db_obj: models.Company, obj_in: schemas.CompanyUpdate
+    ) -> models.Company:
+        updated = False
+        renamed = (obj_in.name is not None and db_obj.name != obj_in.name)
+        old_name = db_obj.name
+        update_data = obj_in.flatten()
+
+        for field in update_data:
+            if (
+                update_data[field] is not None
+                and getattr(db_obj, field) != update_data[field]
+            ):
+                setattr(db_obj, field, update_data[field])
+                updated = True
+
+        if updated:
+            profiles = self.profiles
+            profiles[db_obj.name] = asdict(db_obj)
+            if renamed:
+                del profiles[old_name]
+                Config.dfacto_settings.last_profile = db_obj.name
+            Config.dfacto_settings.profiles = profiles
+            try:
+                Config.dfacto_settings.save()
+            except SettingsError as exc:
+                raise CrudError(f"Cannot persist company profiles: {exc}")
 
         return db_obj
 

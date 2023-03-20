@@ -175,6 +175,37 @@ class AddCompanyDialog(QtWidgets.QDialog):
         )
 
     @property
+    def updated_company(self) -> schemas.CompanyUpdate:
+        updated_profile = {}
+
+        for field, widget in (
+            ("address", self.address_text),
+            ("zip_code", self.zipcode_text),
+            ("city", self.city_text),
+        ):
+            origin_address = self.origin_profile.address
+            if widget.text() != getattr(origin_address, field):
+                updated_address = schemas.Address(
+                    address=self.address_text.text(),
+                    zip_code=self.zipcode_text.text(),
+                    city=self.city_text.text()
+                )
+                updated_profile["address"] = updated_address
+                break
+
+        for field, widget in (
+            ("name", self.name_text),
+            ("phone_number", self.phone_text),
+            ("email", self.email_text),
+            ("siret", self.siret_text),
+            ("rcs", self.rcs_text),
+        ):
+            if (text := widget.text()) != getattr(self.origin_profile, field):
+                updated_profile[field] = text
+
+        return schemas.CompanyUpdate(**updated_profile)
+
+    @property
     def is_valid(self) -> bool:
         name_ok = self.name_text.text() not in self.forbidden_names
         if self.mode in (AddCompanyDialog.Mode.NEW, AddCompanyDialog.Mode.ADD):
@@ -252,6 +283,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
             self.setWindowTitle('Edit your company profile')
 
     def edit_profile(self, profile: schemas.Company) -> None:
+        self.origin_profile = profile
         self.name_text.setText(profile.name)
         self.name_text.updateGeometry()
         self.home_dir_selector.setText(profile.home.as_posix())
@@ -318,6 +350,7 @@ class SelectCompanyDialog(QtWidgets.QDialog):
         self.profile_cmb = QtWidgets.QComboBox()
         for profile in profiles:
             self.profile_cmb.addItem(profile.name, userData=profile)
+        self.profile_cmb.model().sort(0)
         self.profile_cmb.activated.connect(self.on_profile_selection)
 
         self.home_lbl = QtWidgets.QLabel()
@@ -355,7 +388,7 @@ class SelectCompanyDialog(QtWidgets.QDialog):
 
         self.setLayout(main_layout)
 
-        self.profile_cmb.setCurrentIndex(-1)
+        self.profile_cmb.setCurrentIndex(0)
         self.enable_buttons(self.is_valid)
         self.new = False
         self.profile_cmb.setFocus()

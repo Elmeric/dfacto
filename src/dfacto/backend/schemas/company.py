@@ -66,6 +66,7 @@ class CompanyUpdate(_CompanyDefaultsBase):
             zip_code = self.address.zip_code
             city = self.address.city
         return dict(
+            name=self.name,
             address=address,
             zip_code=zip_code,
             city=city,

@@ -3,7 +3,7 @@
 import sys
 import os
 import logging
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Union
 from enum import Enum
 
 
@@ -486,7 +486,7 @@ class QtMainView(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot()
     def do_edit_profile_action(self):
-        # Config.dfacto_settings.last_profile = ""
+        # Retrieve the current company profile
         response = api.company.get_current()
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
@@ -501,56 +501,64 @@ class QtMainView(QtWidgets.QMainWindow):
             )
             return
         current_profile = response.body
+
+        # Open the Add-Edit Company Dialog in EDIT mode and load the current profile
         a_dialog = AddCompanyDialog(fixed_size=True)
         a_dialog.reset()
         a_dialog.set_mode(AddCompanyDialog.Mode.EDIT)
         a_dialog.edit_profile(current_profile)
+
         if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
-        company = a_dialog.company
-        self.show_status_message(f"{company}")
-        # Add the new company profile to the database (the Dfacto settings JSON file)
-        # response = api.company.add(company)
+        company = a_dialog.updated_company
+
+        # Update the company profile in the database (the Dfacto settings JSON file)
+        response = api.company.update(current_profile.name, obj_in=company)
+        if response.status is not CommandStatus.COMPLETED:
+            logger.warning(
+                "Cannot update the %s company profile - Reason is: %s",
+                current_profile.name, response.reason
+            )
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"Dfacto - Connection failed",
+                f"Cannot update the {current_profile.name} company profile\n\nReason is:\n{response.reason}",
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
+            return
+
+        self.company_btn.setText(response.body.name)
 
     @QtCore.pyqtSlot()
     def do_select_profile_action(self):
-        companies = api.company.get_all().body
-        if len(companies) > 0:
-            a_dialog = SelectCompanyDialog(profiles=companies, fixed_size=True)
-            if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
-                return
-            company = a_dialog.company
-            if company is None:
-                return
-            logger.info("Selecting the company profile...")
-            logger.info("Connecting to database...")
-            response = api.company.select(company.name, is_new=False)
-            if response.status is not CommandStatus.COMPLETED:
-                logger.warning(
-                    "Cannot select the %s company profile - Reason is: %s",
-                    company.name, response.reason
-                )
-                QtWidgets.QMessageBox.warning(
-                    None,  # type: ignore
-                    f"Dfacto - Connection failed",
-                    f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
-                    QtWidgets.QMessageBox.StandardButton.Close,
-                )
-                return
-            service = api.service.get(1).body
-            print(service)
-            logger.info(f"Connected to {company.home / 'dfacto.db'}")
-            logger.info(f"Company profile {company.name} is selected")
+        companies = api.company.get_others().body
+
+        if len(companies) <= 0:
+            return
+
+        a_dialog = SelectCompanyDialog(profiles=companies, fixed_size=True)
+
+        if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+            return
+        company = a_dialog.company
+
+        if company is None:
+            # The user request to create a new company profile
+            self.do_new_profile_action()
+        else:
+            # Select the requested company profile
+            self._select_profile(company, is_new=False)
 
     @QtCore.pyqtSlot()
     def do_new_profile_action(self):
         a_dialog = AddCompanyDialog(fixed_size=True)
         a_dialog.reset()
         a_dialog.set_mode(AddCompanyDialog.Mode.ADD)
+
         if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
             return
         company = a_dialog.company
-        self.show_status_message(f"{company}")
+
         # Add the new company profile to the database (the Dfacto settings JSON file)
         response = api.company.add(company)
         if response.status is not CommandStatus.COMPLETED:
@@ -565,11 +573,18 @@ class QtMainView(QtWidgets.QMainWindow):
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
-        if company is None:
-            return
-        logger.info("Selecting the new company profile...")
+
+        # Select the new company profile
+        self._select_profile(response.body, is_new=True)
+
+    def _select_profile(
+        self, company: schemas.Company, is_new: bool
+    ) -> None:
+        logger.info("Selecting the company profile...")
         logger.info("Connecting to database...")
-        response = api.company.select(company.name, is_new=True)
+
+        response = api.company.select(company.name, is_new=is_new)
+
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
                 "Cannot select the %s company profile - Reason is: %s",
@@ -578,10 +593,15 @@ class QtMainView(QtWidgets.QMainWindow):
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
                 f"Dfacto - Connection failed",
-                f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
+                f"Cannot select the {company.name} company profile\n\nReason is:\n{response.reason}",
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
+
+        # service = api.service.get(1).body
+        # print(service)
+        self.company_btn.setText(company.name)
+
         logger.info(f"Connected to {company.home / 'dfacto.db'}")
         logger.info(f"Company profile {company.name} is selected")
 

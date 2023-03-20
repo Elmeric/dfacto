@@ -8,16 +8,16 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dfacto.backend import db
+from .base_model import BaseModel, intpk
 
 if TYPE_CHECKING:  # pragma: no cover
     from .service import Service
 
 
-class VatRate(db.BaseModel):
+class VatRate(BaseModel):
     __tablename__ = "vat_rate"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     name: Mapped[str] = mapped_column(unique=True)
     rate: Mapped[float]
     is_default: Mapped[bool] = mapped_column(default=False)

@@ -10,7 +10,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.schema import CheckConstraint
 
-from dfacto.backend import db
+from .base_model import BaseModel, intpk
 
 if TYPE_CHECKING:  # pragma: no cover
     from .basket import Basket
@@ -18,7 +18,7 @@ if TYPE_CHECKING:  # pragma: no cover
     from .service import Service
 
 
-class Item(db.BaseModel):
+class Item(BaseModel):
     __tablename__ = "item"
     __table_args__ = (
         CheckConstraint(
@@ -28,7 +28,7 @@ class Item(db.BaseModel):
         ),
     )
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     raw_amount: Mapped[float]
     vat: Mapped[float]
     service_id: Mapped[int] = mapped_column(ForeignKey("service.id"))

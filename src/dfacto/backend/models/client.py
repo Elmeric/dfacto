@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, cast
 from sqlalchemy import String, and_, case, exists, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from dfacto.backend import db
+from .base_model import BaseModel, intpk
 
 from .basket import Basket
 from .invoice import Invoice, InvoiceStatus
@@ -21,10 +21,10 @@ else:
     from sqlalchemy.ext.hybrid import hybrid_property
 
 
-class Client(db.BaseModel):
+class Client(BaseModel):
     __tablename__ = "client"
 
-    id: Mapped[db.intpk] = mapped_column(init=False)
+    id: Mapped[intpk] = mapped_column(init=False)
     name: Mapped[str] = mapped_column(String(50), unique=True)
     address: Mapped[str]
     zip_code: Mapped[str] = mapped_column(String(5))
