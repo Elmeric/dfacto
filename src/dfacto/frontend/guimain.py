@@ -3,8 +3,7 @@
 import sys
 import os
 import logging
-from typing import TYPE_CHECKING, Optional, Union
-from enum import Enum
+from typing import Optional
 
 
 import PyQt6.QtCore as QtCore
@@ -14,30 +13,15 @@ import PyQt6.QtGui as QtGui
 import dfacto.__about__ as __about__
 from dfacto.util.logutil import LogConfig
 from dfacto.util import qtutil as QtUtil
-# from dfacto.backend import db
 
 # Models
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api.command import CommandStatus
-# from fotocop.models.sources import SourceManager, Source, ImageProperty, Device, LogicalDisk
-# from fotocop.models.downloader import Downloader
-# from fotocop.models.naming import Case, TemplateType
 
 # Views
 from dfacto.frontend.companydialogs import AddCompanyDialog, SelectCompanyDialog
-# from .fileexplorer import FileSystemModel, FileSystemDelegate, FileSystemFilter
 from .serviceselector import ServiceSelector
-from .serviceeditor import ServiceEditor
-# from .thumbnailviewer import ThumbnailViewer
-# from .timelineviewer import TimelineViewer
-# from .renamepanel import RenamePanel
-# from .destinationpanel import DestinationPanel
-# from .download import DownloadButton, DownloadProgress
-# from .sessioneditor import SessionEditor
-
-# if TYPE_CHECKING:
-#     from fotocop.models.sources import ImageKey
 
 __all__ = ["qt_main"]
 
@@ -45,28 +29,28 @@ logger = logging.getLogger(__name__)
 
 
 class QtMainView(QtWidgets.QMainWindow):
-#     """The fotocop main view.
-#
-#     The Main view is composed of:
-#         The source selector:  browse and select an images' source.
-#         The thumbnail viewer: show images from the selected source.
-#         The timeline viewer: select a time range to filter the thumbnails.
-#         The toolbar: propose acces to fotocop setings and help.
-#         The status bar: display information and warning messages.
-#
-#     Args:
-#         sourceManager: reference to the images' sources manager.
-#         splash: reference to the splash screen to show the main view initialization
-#             progress.
-#         *args, **kwargs: Any other positional and keyword argument are passed to
-#             the parent QMainWindow.
-#
-#     Attributes:
-#         _sourceManager: reference to the images' sources manager.
-#         _splash: reference to the splash screen to show the main view initialization
-#             progress.
-#         _status: reference to the Main window status bar.
-#     """
+    #     """The fotocop main view.
+    #
+    #     The Main view is composed of:
+    #         The source selector:  browse and select an images' source.
+    #         The thumbnail viewer: show images from the selected source.
+    #         The timeline viewer: select a time range to filter the thumbnails.
+    #         The toolbar: propose access to fotocop settings and help.
+    #         The status bar: display information and warning messages.
+    #
+    #     Args:
+    #         sourceManager: reference to the images' sources manager.
+    #         splash: reference to the splash screen to show the main view initialization
+    #             progress.
+    #         *args, **kwargs: Any other positional and keyword argument are passed to
+    #             the parent QMainWindow.
+    #
+    #     Attributes:
+    #         _sourceManager: reference to the images' sources manager.
+    #         _splash: reference to the splash screen to show the main view initialization
+    #             progress.
+    #         _status: reference to the Main window status bar.
+    #     """
 
     # def __init__(self, sourceManager: SourceManager, splash, *args, **kwargs) -> None:
     def __init__(self, company_profile: schemas.Company, *args, **kwargs) -> None:
@@ -87,7 +71,6 @@ class QtMainView(QtWidgets.QMainWindow):
         invoice_selector.setMinimumWidth(900)
         invoice_editor = QtWidgets.QWidget()
         self.service_selector = ServiceSelector()
-        self.service_editor = ServiceEditor()
 #         fsModel = FileSystemModel()
 #         fsDelegate = FileSystemDelegate()
 #         fsFilter = FileSystemFilter()
@@ -109,18 +92,6 @@ class QtMainView(QtWidgets.QMainWindow):
 #             fsDelegate=fsDelegate,
 #             parent=self,
 #         )
-
-        self.service_selector.service_selected.connect(self.service_editor.show_service)
-        self.service_selector.add_selected.connect(
-            lambda: self.service_editor.add_service(self.service_selector.forbidden_names)
-        )
-        self.service_selector.edition_selected.connect(
-            lambda: self.service_editor.edit_service(self.service_selector.forbidden_names)
-        )
-        # self.service_selector.add_to_selected.connect(service_editor.add_to_service)
-        self.service_editor.service_added.connect(self.service_selector.update_service_list)
-        self.service_editor.service_updated.connect(self.service_selector.update_service)
-        self.service_editor.edition_cancelled.connect(self.service_selector.services_lst.setFocus)
 #
 #         self._sourceManager.sourcesChanged.connect(sourceSelector.displaySources)
 #
@@ -199,7 +170,6 @@ class QtMainView(QtWidgets.QMainWindow):
         # )
         right_vert_splitter.setChildrenCollapsible(False)
         right_vert_splitter.setHandleWidth(3)
-        right_vert_splitter.addWidget(self.service_editor)
         right_vert_splitter.addWidget(self.service_selector)
         right_vert_splitter.setStretchFactor(0, 3)
         right_vert_splitter.setStretchFactor(1, 1)
@@ -619,13 +589,10 @@ class QtMainView(QtWidgets.QMainWindow):
             )
             return
 
-        # service = api.service.get(1).body
-        # print(service)
         self.company_btn.setText(company.name)
 
         logger.info(f"Connected to {company.home / 'dfacto.db'}")
         logger.info(f"Company profile {company.name} is selected")
-
 
     @QtCore.pyqtSlot()
     def do_preferences_action(self):
@@ -824,6 +791,7 @@ def qt_main() -> None:
         # Stop the log server.
         log_config.stop_logging()
         return
+
     logger.info("Connecting to database...")
     response = api.company.select(company_profile.name, is_new=is_new)
     if response.status is not CommandStatus.COMPLETED:
@@ -895,12 +863,15 @@ def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
         # No company exists, create the first new one
         mode = AddCompanyDialog.Mode.NEW
     names_in_use = [company.name for company in companies]
+
     a_dialog = AddCompanyDialog(forbidden_names=names_in_use, fixed_size=True)
     a_dialog.reset()
     a_dialog.set_mode(mode)
+
     if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
         return None, False
     company = a_dialog.company
+
     # Add the new company profile to the database (the Dfacto settings JSON file)
     response = api.company.add(company)
     if response.status is not CommandStatus.COMPLETED:
@@ -915,6 +886,7 @@ def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
             QtWidgets.QMessageBox.StandardButton.Close,
         )
         return None, False
+
     return response.body, True
 
 
