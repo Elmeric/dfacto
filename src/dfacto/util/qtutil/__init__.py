@@ -105,26 +105,26 @@ def createAction(
     if checkable:
         action.setCheckable(True)
     return action
-#
-#
-# def getMainWindow() -> QtWidgets.QMainWindow:
-#     """A convenient function to retrieve the application main window.
-#
-#     The application main window is defined as the first QMainWindow object
-#     retrieved from its top level widgets.
-#
-#     Returns:
-#         The application main window.
-#
-#     Raises:
-#         ValueError if no QMainWindow object exists in the application top level
-#             widgets list.
-#     """
-#     widgets = QtWidgets.qApp.topLevelWidgets()
-#     for w in widgets:
-#         if isinstance(w, QtWidgets.QMainWindow):
-#             return w
-#     raise ValueError('No Main Window found!')
+
+
+def getMainWindow() -> QtWidgets.QMainWindow:
+    """A convenient function to retrieve the application main window.
+
+    The application main window is defined as the first QMainWindow object
+    retrieved from its top level widgets.
+
+    Returns:
+        The application main window.
+
+    Raises:
+        ValueError if no QMainWindow object exists in the application top level
+            widgets list.
+    """
+    widgets = QtWidgets.QApplication.topLevelWidgets()
+    for w in widgets:
+        if isinstance(w, QtWidgets.QMainWindow):
+            return w
+    raise ValueError('No Main Window found!')
 #
 #
 # def reconnect(signal, newSlot=None, oldSlot=None):
@@ -195,24 +195,24 @@ class MyAppStyle(QtWidgets.QProxyStyle):
             if dh >= 0:
                 rect.setRect(rect.x(), rect.y() + dh, rect.width(), 16)
         return rect
-#
-#
-# class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
-#     """A standard QStyledItemDelegate that hides focus decoration.
-#
-#     From https://stackoverflow.com/questions/9795791/removing-dotted-border-without-setting-nofocus-in-windows-pyqt.
-#
-#     Args:
-#         parent: an optional parent for the delegate.
-#     """
-#     def __init__(self, parent):
-#         super().__init__(parent)
-#
-#     def paint(self, QPainter, QStyleOptionViewItem, QModelIndex):
-#         if QStyleOptionViewItem.state & QtWidgets.QStyle.State_HasFocus:
-#             QStyleOptionViewItem.state = \
-#                 QStyleOptionViewItem.state ^ QtWidgets.QStyle.State_HasFocus
-#         super().paint(QPainter, QStyleOptionViewItem, QModelIndex)
+
+
+class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
+    """A standard QStyledItemDelegate that hides focus decoration.
+
+    From https://stackoverflow.com/questions/9795791/removing-dotted-border-without-setting-nofocus-in-windows-pyqt.
+
+    Args:
+        parent: an optional parent for the delegate.
+    """
+    def __init__(self, parent):
+        super().__init__(parent)
+
+    def paint(self, QPainter, QStyleOptionViewItem, QModelIndex):
+        if QStyleOptionViewItem.state & QtWidgets.QStyle.StateFlag.State_HasFocus:
+            QStyleOptionViewItem.state = \
+                QStyleOptionViewItem.state ^ QtWidgets.QStyle.StateFlag.State_HasFocus
+        super().paint(QPainter, QStyleOptionViewItem, QModelIndex)
 #
 #
 # class PatternHighlighter(QtGui.QSyntaxHighlighter):

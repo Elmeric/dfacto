@@ -27,7 +27,8 @@ from dfacto.backend.api.command import CommandStatus
 # Views
 from dfacto.frontend.companydialogs import AddCompanyDialog, SelectCompanyDialog
 # from .fileexplorer import FileSystemModel, FileSystemDelegate, FileSystemFilter
-# from .sourceselector import SourceSelector
+from .serviceselector import ServiceSelector
+from .serviceeditor import ServiceEditor
 # from .thumbnailviewer import ThumbnailViewer
 # from .timelineviewer import TimelineViewer
 # from .renamepanel import RenamePanel
@@ -67,8 +68,8 @@ class QtMainView(QtWidgets.QMainWindow):
 #         _status: reference to the Main window status bar.
 #     """
 
-    def __init__(self, company_profile: schemas.Company, *args, **kwargs) -> None:
     # def __init__(self, sourceManager: SourceManager, splash, *args, **kwargs) -> None:
+    def __init__(self, company_profile: schemas.Company, *args, **kwargs) -> None:
         self.company_profile = company_profile
         super().__init__(*args, **kwargs)
 #
@@ -80,11 +81,13 @@ class QtMainView(QtWidgets.QMainWindow):
 
         # Initialize the app's views. Init order fixed to comply with the editors' dependencies.
         client_selector = QtWidgets.QWidget()
+        client_selector.setMinimumWidth(500)
         client_editor = QtWidgets.QWidget()
         invoice_selector = QtWidgets.QWidget()
+        invoice_selector.setMinimumWidth(900)
         invoice_editor = QtWidgets.QWidget()
-        service_selector = QtWidgets.QWidget()
-        service_editor = QtWidgets.QWidget()
+        self.service_selector = ServiceSelector()
+        self.service_editor = ServiceEditor()
 #         fsModel = FileSystemModel()
 #         fsDelegate = FileSystemDelegate()
 #         fsFilter = FileSystemFilter()
@@ -106,6 +109,18 @@ class QtMainView(QtWidgets.QMainWindow):
 #             fsDelegate=fsDelegate,
 #             parent=self,
 #         )
+
+        self.service_selector.service_selected.connect(self.service_editor.show_service)
+        self.service_selector.add_selected.connect(
+            lambda: self.service_editor.add_service(self.service_selector.forbidden_names)
+        )
+        self.service_selector.edition_selected.connect(
+            lambda: self.service_editor.edit_service(self.service_selector.forbidden_names)
+        )
+        # self.service_selector.add_to_selected.connect(service_editor.add_to_service)
+        self.service_editor.service_added.connect(self.service_selector.update_service_list)
+        self.service_editor.service_updated.connect(self.service_selector.update_service)
+        self.service_editor.edition_cancelled.connect(self.service_selector.services_lst.setFocus)
 #
 #         self._sourceManager.sourcesChanged.connect(sourceSelector.displaySources)
 #
@@ -178,10 +193,14 @@ class QtMainView(QtWidgets.QMainWindow):
         center_vert_splitter.setOpaqueResize(False)
 
         right_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        # right_vert_splitter.setSizePolicy(
+        #     QtWidgets.QSizePolicy.Policy.Maximum,
+        #     QtWidgets.QSizePolicy.Policy.Preferred
+        # )
         right_vert_splitter.setChildrenCollapsible(False)
         right_vert_splitter.setHandleWidth(3)
-        right_vert_splitter.addWidget(service_selector)
-        right_vert_splitter.addWidget(service_editor)
+        right_vert_splitter.addWidget(self.service_editor)
+        right_vert_splitter.addWidget(self.service_selector)
         right_vert_splitter.setStretchFactor(0, 3)
         right_vert_splitter.setStretchFactor(1, 1)
         right_vert_splitter.setOpaqueResize(False)
@@ -371,6 +390,8 @@ class QtMainView(QtWidgets.QMainWindow):
 
         self.move(settings.window_position[0], settings.window_position[1])
         self.resize(settings.window_size[0], settings.window_size[1])
+
+        self.service_selector.load_services()
         #
         # self._downloader.selectDestination(Path(settings.lastDestination))
         # self._downloader.setNamingTemplate(

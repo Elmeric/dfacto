@@ -155,7 +155,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
 
         self.set_mode(mode)
         self.extension_widget.hide()
-        self.enable_buttons(self.is_valid)
+        self._enable_buttons(self.is_valid)
         self.name_text.setFocus()
 
     @property
@@ -215,12 +215,12 @@ class AddCompanyDialog(QtWidgets.QDialog):
 
     @QtCore.pyqtSlot(str)
     def check_name(self, _text: str) -> None:
-        self.enable_buttons(self.is_valid)
+        self._enable_buttons(self.is_valid)
 
     @QtCore.pyqtSlot(str)
     def check_home(self, path: str) -> None:
         self.home_dir_selector.setText(path)
-        self.enable_buttons(self.is_valid)
+        self._enable_buttons(self.is_valid)
 
     def reset(self) -> None:
         self.name_text.clear()
@@ -235,7 +235,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.siret_text.clear()
         self.rcs_text.clear()
         self.set_mode(AddCompanyDialog.Mode.ADD)
-        self.enable_buttons(self.is_valid)
+        self._enable_buttons(self.is_valid)
 
     def set_mode(self, mode: Mode) -> None:
         self.mode = mode
@@ -297,15 +297,15 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.rcs_text.setText(profile.rcs)
         self.set_mode(AddCompanyDialog.Mode.EDIT)
         self.details_btn.setChecked(True)
-        self.enable_buttons(self.is_valid)
-
-    def enable_buttons(self, is_valid: bool):
-        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(is_valid)
+        self._enable_buttons(self.is_valid)
 
     @QtCore.pyqtSlot(bool)
     def toggle_details(self, state: bool):
         self.extension_widget.setVisible(state)
         self.adjustSize()
+
+    def _enable_buttons(self, is_valid: bool):
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(is_valid)
 
 
 class SelectCompanyDialog(QtWidgets.QDialog):
@@ -389,7 +389,7 @@ class SelectCompanyDialog(QtWidgets.QDialog):
         self.setLayout(main_layout)
 
         self.profile_cmb.setCurrentIndex(0)
-        self.enable_buttons(self.is_valid)
+        self._enable_buttons(self.is_valid)
         self.new = False
         self.profile_cmb.setFocus()
 
@@ -407,12 +407,12 @@ class SelectCompanyDialog(QtWidgets.QDialog):
     def on_profile_selection(self, index: int) -> None:
         self.home_lbl.setText(self.profile_cmb.itemData(index).home.as_posix())
         self.new = False
-        self.enable_buttons(self.is_valid)
+        self._enable_buttons(self.is_valid)
 
     @QtCore.pyqtSlot()
     def new(self) -> None:
         self.new = True
         self.accept()
 
-    def enable_buttons(self, is_valid: bool):
+    def _enable_buttons(self, is_valid: bool):
         self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(is_valid)

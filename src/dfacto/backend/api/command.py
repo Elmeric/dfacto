@@ -56,7 +56,7 @@ class CommandResponse(NamedTuple):
 
 
 def command(func):
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args, **kwargs) -> CommandResponse:
         with session_factory() as session:
             self.session = session
             return func(self, *args, **kwargs)
