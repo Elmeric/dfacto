@@ -97,7 +97,22 @@ class QtMainView(QtWidgets.QMainWindow):
 #
 #         self._sourceManager.sourceSelected.connect(sourceSelector.displaySelectedSource)
 #         self._sourceManager.sourceSelected.connect(self.displaySelectedSource)
-#         self._sourceManager.sourceSelected.connect(thumbnailViewer.setSourceSelection)
+        client = api.client.add(
+            schemas.ClientCreate(
+                name="Client 1",
+                address=schemas.Address(
+                    address="3 rue du moulin",
+                    zip_code=33640,
+                    city="Portets"
+                ),
+                email="client.un@gmail.com",
+            )
+        ).body
+        if client is not None:
+            self.service_selector.set_current_client(client)
+        else:
+            self.service_selector.set_current_client(api.client.get(1).body)
+        # client_selector.clientSelected.connect(self.service_selector.set_current_client)
 #         self._sourceManager.sourceSelected.connect(timelineViewer.setTimeline)
 #         self._sourceManager.sourceSelected.connect(self._downloader.setSourceSelection)
 #
@@ -168,6 +183,7 @@ class QtMainView(QtWidgets.QMainWindow):
         #     QtWidgets.QSizePolicy.Policy.Maximum,
         #     QtWidgets.QSizePolicy.Policy.Preferred
         # )
+        right_vert_splitter.setContentsMargins(5, 0, 0, 5)
         right_vert_splitter.setChildrenCollapsible(False)
         right_vert_splitter.setHandleWidth(3)
         right_vert_splitter.addWidget(self.service_selector)

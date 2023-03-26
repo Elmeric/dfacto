@@ -1,4 +1,4 @@
-import PyQt5.QtWidgets as QtWidgets
+import PyQt6.QtWidgets as QtWidgets
 
 __all__ = ["QFramedWidget"]
 
@@ -13,5 +13,5 @@ class QFramedWidget(QtWidgets.QWidget):
         painter = QtWidgets.QStylePainter(self)
         option = QtWidgets.QStyleOptionFrame()
         option.initFrom(self)
-        painter.drawPrimitive(QtWidgets.QStyle.PE_Frame, option)
+        painter.drawPrimitive(QtWidgets.QStyle.PrimitiveElement.PE_Frame, option)
         super().paintEvent(*opts)

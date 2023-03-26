@@ -12,7 +12,7 @@ from typing import Optional, Type
 import jinja2 as jinja
 from babel.dates import format_date
 
-from dfacto.backend import crud, db, schemas
+from dfacto.backend import crud, schemas
 from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 from dfacto.backend.models import InvoiceStatus
 from dfacto.backend.util import Period, PeriodFilter
@@ -73,6 +73,33 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 body = schemas.Basket.from_orm(basket)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    @command
+    def get_quantity_in_basket(
+        self, obj_id: int, *, service_id: int
+    ) -> CommandResponse:
+        try:
+            basket = self.crud_object.get_basket(self.session, obj_id)
+            service = crud.service.get(self.session, service_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"QTY-IN-BASKET - SQL or database error: {exc}",
+            )
+        else:
+            if basket is None or service is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"QTY-IN-BASKET - Client {obj_id} or "
+                    f"service {service_id} not found.",
+                )
+
+            quantity = 0
+            for item_ in basket.items:
+                if item_.service_id == service.id:
+                    quantity = item_.quantity
+                    break
+            return CommandResponse(CommandStatus.COMPLETED, body=quantity)
 
     @command
     def get_invoices(
@@ -183,6 +210,11 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def add_to_basket(
         self, obj_id: int, *, service_id: int, quantity: int = 1
     ) -> CommandResponse:
+        if quantity == 0:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                "ADD-TO-BASKET - Quantity shall not be zero",
+            )
         try:
             basket = self.crud_object.get_basket(self.session, obj_id)
             service = crud.service.get(self.session, service_id)
@@ -211,6 +243,39 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             else:
                 body = schemas.Item.from_orm(it)
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    @command
+    def remove_from_basket(
+        self, obj_id: int, *, service_id: int
+    ) -> CommandResponse:
+        try:
+            basket = self.crud_object.get_basket(self.session, obj_id)
+            service = crud.service.get(self.session, service_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REMOVE_FROM-BASKET - SQL or database error: {exc}",
+            )
+        else:
+            if basket is None or service is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"REMOVE_FROM-BASKET - Client {obj_id} or "
+                    f"service {service_id} not found.",
+                )
+
+            try:
+                self.crud_object.remove_from_basket(
+                    self.session, basket=basket, service=service
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"REMOVE_FROM-BASKET - Cannot remove {service.name} basket "
+                    f"of client {obj_id}: {exc}",
+                )
+            else:
+                return CommandResponse(CommandStatus.COMPLETED)
 
     @command
     def add_to_invoice(

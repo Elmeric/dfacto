@@ -40,6 +40,9 @@ class ServiceEditor(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Maximum
         )
 
+        header_lbl = QtWidgets.QLabel("SERVICE INFO")
+        header_lbl.setMaximumHeight(32)
+
         icon_size = QtCore.QSize(32, 32)
         self.ok_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/ok.png"), "")
         self.ok_btn.setIconSize(icon_size)
@@ -47,12 +50,6 @@ class ServiceEditor(QtWidgets.QWidget):
         self.cancel_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/cancel.png"), "")
         self.cancel_btn.setIconSize(icon_size)
         self.cancel_btn.setFlat(True)
-        tool_layout = QtWidgets.QHBoxLayout()
-        tool_layout.setSpacing(0)
-        tool_layout.setContentsMargins(0, 0, 0, 0)
-        tool_layout.addWidget(self.ok_btn)
-        tool_layout.addWidget(self.cancel_btn)
-        tool_layout.addStretch()
 
         self.name_text = QtUtil.FittedLineEdit()
         self.name_text.setValidator(
@@ -64,11 +61,77 @@ class ServiceEditor(QtWidgets.QWidget):
 
         self.price_spin = QtWidgets.QDoubleSpinBox()
         self.price_spin.setMaximum(10000.00)
+        self.price_spin.setPrefix("€ ")
         self.price_spin.setAccelerated(True)
         self.price_spin.setGroupSeparatorShown(True)
         self.price_spin.lineEdit().textEdited.connect(self.check_price)
 
         self.vat_cmb = QtWidgets.QComboBox()
+
+        header = QtWidgets.QWidget()
+        header_color = QtGui.QColor('#5d5b59')
+        header_font_color = QtGui.QColor(QtCore.Qt.GlobalColor.white)
+        header_style = f"""
+            QWidget {{
+                background-color: {header_color.name()};
+                color: {header_font_color.name()};
+            }}
+        """
+        header.setStyleSheet(header_style)
+        header.setMinimumWidth(350)
+        header.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Policy.Fixed
+        )
+
+        header_layout = QtWidgets.QHBoxLayout()
+        header_layout.setContentsMargins(5, 5, 0, 5)
+        header_layout.setSpacing(5)
+        header_layout.addWidget(header_lbl)
+        header_layout.addStretch()
+        header.setLayout(header_layout)
+
+        tool_layout = QtWidgets.QHBoxLayout()
+        tool_layout.setContentsMargins(0, 0, 0, 0)
+        tool_layout.setSpacing(0)
+        tool_layout.addWidget(self.ok_btn)
+        tool_layout.addWidget(self.cancel_btn)
+        tool_layout.addStretch()
+
+        service_layout = QtWidgets.QFormLayout()
+        service_layout.setContentsMargins(5, 5, 5, 5)
+        service_layout.setSpacing(5)
+        service_layout.addRow("Service:", self.name_text)
+        service_layout.addRow("Unit price:", self.price_spin)
+        service_layout.addRow("VAT rate:", self.vat_cmb)
+
+        editor_widget = QtWidgets.QWidget()
+        editor_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.Maximum
+        )
+        editor_layout = QtWidgets.QVBoxLayout()
+        editor_layout.setContentsMargins(0, 0, 0, 0)
+        editor_layout.setSpacing(0)
+        editor_layout.addLayout(tool_layout)
+        editor_layout.addLayout(service_layout)
+        editor_widget.setLayout(editor_layout)
+
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        main_layout.addWidget(header)
+        main_layout.addWidget(editor_widget)
+        self.setLayout(main_layout)
+
+        self.ok_btn.clicked.connect(self.accept)
+        self.cancel_btn.clicked.connect(self.reject)
+
+        self._forbidden_names: list[str] = []
+        self._mode = ServiceEditor.Mode.SHOW
+        self._load_vat_rates()
+
+    def _load_vat_rates(self):
         response = api.vat_rate.get_all()
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
@@ -84,27 +147,10 @@ class ServiceEditor(QtWidgets.QWidget):
         vat_rates: list[schemas.VatRate] = response.body
         for vat_rate in vat_rates:
             self.vat_cmb.addItem(
-                f"{vat_rate.rate} ({vat_rate.name})",
+                f"{vat_rate.rate} % ({vat_rate.name})",
                 userData=vat_rate.id
             )
         self.vat_cmb.model().sort(0)
-
-        service_layout = QtWidgets.QFormLayout()
-        service_layout.addRow("Service:", self.name_text)
-        service_layout.addRow("Unit price:", self.price_spin)
-        service_layout.addRow("VAT rate:", self.vat_cmb)
-
-        main_layout = QtWidgets.QVBoxLayout()
-        main_layout.setContentsMargins(5, 0, 0, 5)
-        main_layout.addLayout(tool_layout)
-        main_layout.addLayout(service_layout)
-        self.setLayout(main_layout)
-
-        self.ok_btn.clicked.connect(self.accept)
-        self.cancel_btn.clicked.connect(self.reject)
-
-        self._forbidden_names: list[str] = []
-        self._mode = ServiceEditor.Mode.SHOW
 
     @property
     def mode(self) -> Mode:
@@ -164,7 +210,7 @@ class ServiceEditor(QtWidgets.QWidget):
 
         self.name_text.setText(service.name)
         self.price_spin.setValue(service.unit_price)
-        self.vat_cmb.setCurrentText(f"{vat_rate.rate} ({vat_rate.name})")
+        self.vat_cmb.setCurrentText(f"{vat_rate.rate} % ({vat_rate.name})")
 
         self.mode = ServiceEditor.Mode.SHOW
 

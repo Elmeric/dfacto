@@ -93,35 +93,95 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         *,
         basket: models.Basket,
         service: models.Service,
-        quantity: int = 1,
+        quantity: int = 1,  # may be negative to decrease service quantity in basket
     ) -> models.Item:
         raw_amount = service.unit_price * quantity
         vat = raw_amount * service.vat_rate.rate / 100
-        item_ = models.Item(
-            raw_amount=raw_amount,
-            vat=vat,
-            service_id=service.id,
-            quantity=quantity,
-        )
-        item_.basket_id = basket.id
-        dbsession.add(item_)
-        basket.raw_amount += raw_amount
-        basket.vat += vat
-
+        # Check if an item already exist in basket for this service
         try:
-            dbsession.commit()
+            item_ = cast(
+                models.Item,
+                dbsession.scalars(
+                    select(models.Item)
+                    .where(models.Item.basket_id == basket.id)
+                    .where(models.Item.service_id == service.id)
+                ).first(),
+            )
         except SQLAlchemyError as exc:
-            dbsession.rollback()
-            raise CrudError() from exc
+            raise CrudError from exc
         else:
-            dbsession.refresh(item_)
-            return item_
+            if item_ is None:
+                # No item found: create it
+                item_ = models.Item(
+                    raw_amount=raw_amount,
+                    vat=vat,
+                    service_id=service.id,
+                    quantity=quantity,
+                )
+                item_.basket_id = basket.id
+                dbsession.add(item_)
+            else:
+                # Item found: update it
+                item_.raw_amount += raw_amount
+                item_.vat += vat
+                item_.quantity += quantity
+
+            # Finally update basket
+            basket.raw_amount += raw_amount
+            basket.vat += vat
+
+            try:
+                dbsession.commit()
+            except SQLAlchemyError as exc:
+                dbsession.rollback()
+                raise CrudError() from exc
+            else:
+                dbsession.refresh(item_)
+                return item_
+
+    def remove_from_basket(
+        self,
+        dbsession: Session,
+        *,
+        basket: models.Basket,
+        service: models.Service,
+    ) -> None:
+        try:
+            item_ = cast(
+                models.Item,
+                dbsession.scalars(
+                    select(models.Item)
+                    .where(models.Item.basket_id == basket.id)
+                    .where(models.Item.service_id == service.id)
+                ).first(),
+            )
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        else:
+            if item_ is None:
+                return
+
+            basket.raw_amount -= item_.raw_amount
+            basket.vat -= item_.vat
+            dbsession.delete(item_)
+
+            try:
+                dbsession.commit()
+            except SQLAlchemyError as exc:
+                dbsession.rollback()
+                raise CrudError() from exc
+            else:
+                return
 
     def update_item_quantity(
         self, dbsession: Session, *, item: models.Item, quantity: int
     ) -> None:
-        # heck that the quantity is actually changed
+        # Check that the quantity is actually changed
         if item.quantity == quantity:
+            return
+
+        if item.quantity == 0:
+            self.remove_item(dbsession, item=item)
             return
 
         item.quantity = quantity

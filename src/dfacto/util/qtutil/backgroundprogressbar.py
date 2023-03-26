@@ -70,5 +70,5 @@ class BackgroundProgressBar(QtWidgets.QWidget):
         progress = int(((value - minvalue) / (maxvalue - minvalue)) * 100)
         if progress - self.__previousProgress >= self._minProgressStep:
             self.__previousProgress = progress
-            self.progressBar.setValue(value)
+            self.progressBar.set_value(value)
             self.progressValueChanged.emit(progress)

@@ -7,6 +7,7 @@
 import logging
 from copy import copy
 from enum import IntEnum
+from typing import Optional
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtWidgets as QtWidgets
@@ -26,7 +27,7 @@ class ServiceListItem(QtWidgets.QListWidgetItem):
         super().__init__(*args, **kwargs)
 
 
-class ServiceSelector(QtWidgets.QWidget):
+class ServiceSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ServiceRole = QtCore.Qt.ItemDataRole.UserRole + 1
 
@@ -35,10 +36,8 @@ class ServiceSelector(QtWidgets.QWidget):
 
         resources = Config.dfacto_settings.resources
 
-        # self.setSizePolicy(
-        #     QtWidgets.QSizePolicy.Policy.Preferred,
-        #     QtWidgets.QSizePolicy.Policy.Maximum
-        # )
+        header_lbl = QtWidgets.QLabel("SERVICES LIST")
+        header_lbl.setMaximumHeight(32)
 
         self.service_editor = ServiceEditor()
 
@@ -52,45 +51,69 @@ class ServiceSelector(QtWidgets.QWidget):
         self.edit_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/edit.png"), "")
         self.edit_btn.setIconSize(icon_size)
         self.edit_btn.setFlat(True)
-        self.add_to_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/add-to-basket.png"), "")
-        self.add_to_btn.setIconSize(icon_size)
-        self.add_to_btn.setFlat(True)
-        self.qty_selector = QtWidgets.QSpinBox()
+        self.add_to_selector = QtUtil.BasketController(
+            basket_icon=QtGui.QIcon(f"{resources}/add-to-basket.png"),
+            add_icon=QtGui.QIcon(f"{resources}/add-blue.png"),
+            minus_icon=QtGui.QIcon(f"{resources}/minus-blue.png")
+        )
+
+        self.services_lst = QtUtil.UndeselectableListWidget()
+
+        header = QtWidgets.QWidget()
+        header_color = QtGui.QColor('#5d5b59')
+        header_font_color = QtGui.QColor(QtCore.Qt.GlobalColor.white)
+        header_style = f"""
+            QWidget {{
+                background-color: {header_color.name()};
+                color: {header_font_color.name()};
+            }}
+        """
+        header.setStyleSheet(header_style)
+        header.setMinimumWidth(350)
+        header.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
+            QtWidgets.QSizePolicy.Policy.Fixed
+        )
+
+        header_layout = QtWidgets.QHBoxLayout()
+        header_layout.setContentsMargins(5, 5, 0, 5)
+        header_layout.setSpacing(5)
+        header_layout.addWidget(header_lbl)
+        header_layout.addStretch()
+        header.setLayout(header_layout)
+
         tool_layout = QtWidgets.QHBoxLayout()
-        tool_layout.setSpacing(0)
         tool_layout.setContentsMargins(0, 0, 0, 0)
+        tool_layout.setSpacing(0)
         tool_layout.addWidget(self.new_btn)
         tool_layout.addWidget(self.delete_btn)
         tool_layout.addWidget(self.edit_btn)
-        tool_layout.addWidget(self.add_to_btn)
-        tool_layout.addWidget(self.qty_selector)
+        tool_layout.addStretch()
+        tool_layout.addWidget(self.add_to_selector)
         tool_layout.addStretch()
 
-        self.services_lst = QtWidgets.QListWidget()
-        self.services_lst.setAlternatingRowColors(True)
-        self.services_lst.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        # self.services_lst.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.services_lst.setStyleSheet(
-            "QListView::item{border: 1px solid transparent;}"
-            "QListView::item:selected{color: blue;}"
-            "QListView::item:selected{background-color: rgba(0,0,255,64);}"
-            "QListView::item:selected:hover{border-color: rgba(0,0,255,128);}"
-            "QListView::item:hover{background: rgba(0,0,255,32);}"
+        selector_widget = QtWidgets.QWidget()
+        selector_widget.setSizePolicy(
+            QtWidgets.QSizePolicy.Policy.Preferred,
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding
         )
-        self.services_lst.setItemDelegate(QtUtil.NoFocusDelegate(self))
-        self.services_lst.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.services_lst.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.services_lst.setResizeMode(QtWidgets.QListWidget.ResizeMode.Adjust)
-        # self.services_lst.setSizeAdjustPolicy(QtWidgets.QListWidget.SizeAdjustPolicy.AdjustToContents)
+        editor_layout = QtWidgets.QVBoxLayout()
+        editor_layout.setContentsMargins(0, 0, 0, 0)
+        editor_layout.setSpacing(0)
+        editor_layout.addLayout(tool_layout)
+        editor_layout.addWidget(self.services_lst)
+        selector_widget.setLayout(editor_layout)
 
         main_layout = QtWidgets.QVBoxLayout()
-        main_layout.setContentsMargins(5, 0, 0, 5)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         main_layout.addWidget(self.service_editor)
-        main_layout.addLayout(tool_layout)
-        main_layout.addWidget(self.services_lst)
+        main_layout.addWidget(header)
+        main_layout.addWidget(selector_widget)
+        main_layout.addStretch()
         self.setLayout(main_layout)
 
-        self.services_lst.currentItemChanged.connect(self.show_service)
+        self.services_lst.itemSelectionChanged.connect(self.show_service)
         self.services_lst.itemActivated.connect(
             lambda: self.open_editor(mode=ServiceEditor.Mode.EDIT)
         )
@@ -104,9 +127,11 @@ class ServiceSelector(QtWidgets.QWidget):
             lambda: self.open_editor(mode=ServiceEditor.Mode.ADD)
         )
         self.delete_btn.clicked.connect(self.delete_service)
+        self.add_to_selector.quantity_changed.connect(self.update_basket)
         self.service_editor.finished.connect(self.apply)
 
         self._forbidden_names: list[str] = []
+        self.current_client: Optional[schemas.Client] = None
 
     @property
     def current_service(self) -> schemas.Service:
@@ -137,12 +162,28 @@ class ServiceSelector(QtWidgets.QWidget):
         self.services_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
         self.services_lst.setCurrentRow(0)
 
-    @QtCore.pyqtSlot(QtWidgets.QListWidgetItem, QtWidgets.QListWidgetItem)
-    def show_service(
-        self,
-        _current: QtWidgets.QListWidgetItem,
-        _previous: QtWidgets.QListWidgetItem
-    ) -> None:
+    def set_current_client(self, client: schemas.Client) -> None:
+        self.current_client = client
+
+    @QtCore.pyqtSlot()
+    def show_service(self) -> None:
+        response = api.client.get_quantity_in_basket(
+            self.current_client.id,
+            service_id=self.current_service.id
+        )
+        if response.status is not CommandStatus.COMPLETED:
+            logger.warning(
+                "Cannot retrieve service usage - Reason is: %s",
+                response.reason
+            )
+            QtUtil.getMainWindow().show_status_message(
+                f"Cannot delete service usage",
+                is_warning=True
+            )
+            quantity = 0
+        else:
+            quantity = response.body
+        self.add_to_selector.reset(quantity)
         self._show_in_editor(self.current_service)
 
     @QtCore.pyqtSlot()
@@ -186,9 +227,6 @@ class ServiceSelector(QtWidgets.QWidget):
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
 
-        _deleted_item = self.services_lst.takeItem(row)
-        del _deleted_item
-
         response = api.service.delete(service.id)
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
@@ -201,10 +239,20 @@ class ServiceSelector(QtWidgets.QWidget):
             )
             return
 
+        _deleted_item = self.services_lst.takeItem(row)
+        del _deleted_item
+
         self._forbidden_names.remove(service.name)
 
         self.services_lst.setCurrentRow(max(0, row - 1))
         self.services_lst.setFocus()
+
+    @QtCore.pyqtSlot(int)
+    def update_basket(self, delta: int) -> None:
+        if delta == 0:
+            self._remove_from_basket()
+        else:
+            self._add_to_basket(delta)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
@@ -297,3 +345,34 @@ class ServiceSelector(QtWidgets.QWidget):
         row = self.services_lst.row(item)
         self.services_lst.setCurrentRow(row)
         self.services_lst.setFocus()
+
+    def _remove_from_basket(self) -> None:
+        response = api.client.remove_from_basket(
+            self.current_client.id,
+            service_id=self.current_service.id,
+        )
+        if response.status is not CommandStatus.COMPLETED:
+            logger.warning(
+                "Cannot remove service - Reason is: %s",
+                response.reason
+            )
+            QtUtil.getMainWindow().show_status_message(
+                f"Cannot remove service",
+                is_warning=True
+            )
+
+    def _add_to_basket(self, qty: int) -> None:
+        response = api.client.add_to_basket(
+            self.current_client.id,
+            service_id=self.current_service.id,
+            quantity=qty
+        )
+        if response.status is not CommandStatus.COMPLETED:
+            logger.warning(
+                "Cannot add service to basket - Reason is: %s",
+                response.reason
+            )
+            QtUtil.getMainWindow().show_status_message(
+                f"Cannot add service to basket",
+                is_warning=True
+            )
