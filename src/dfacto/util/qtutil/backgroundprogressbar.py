@@ -1,12 +1,11 @@
 import PyQt5.QtCore as QtCore
-import PyQt5.QtWidgets as QtWidgets
 import PyQt5.QtGui as QtGui
+import PyQt5.QtWidgets as QtWidgets
 
 __all__ = ["BackgroundProgressBar"]
 
 
 class BackgroundProgressBar(QtWidgets.QWidget):
-
     progressValueChanged = QtCore.pyqtSignal(int)
 
     def __init__(self, parent=None):
@@ -60,7 +59,7 @@ class BackgroundProgressBar(QtWidgets.QWidget):
         self.progressBar.hide()
         self.progressBar.reset()
         self.__previousProgress = 0
-        self.hidingTimer.start(5000)    # hide widget after 5s
+        self.hidingTimer.start(5000)  # hide widget after 5s
 
     def setActionProgressValue(self, value: int):
         minvalue = self.progressBar.minimum()

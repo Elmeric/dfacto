@@ -1,8 +1,8 @@
 from typing import Optional
 
 import PyQt5.QtCore as QtCore
-import PyQt5.QtWidgets as QtWidgets
 import PyQt5.QtGui as QtGui
+import PyQt5.QtWidgets as QtWidgets
 
 
 class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
@@ -21,6 +21,7 @@ class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
         completer: a QCompleter for text auto-completion.
         validator: A QRegularExpressionValidator for text validation.
     """
+
     def __init__(self, parent=None):
         self._completer = None
         self._validator = None
@@ -37,7 +38,7 @@ class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
             completer: a QCompleter for text auto-completion.
         """
         if self._completer:
-            self._completer.activated.disconnect(self)                  # noqa
+            self._completer.activated.disconnect(self)  # noqa
 
         self._completer = completer
 
@@ -47,7 +48,7 @@ class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
         self._completer.setWidget(self)
         self._completer.setCompletionMode(QtWidgets.QCompleter.PopupCompletion)
         self._completer.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
-        self._completer.activated.connect(self.insertCompletion)        # noqa
+        self._completer.activated.connect(self.insertCompletion)  # noqa
 
     def completer(self) -> Optional[QtWidgets.QCompleter]:
         """Getter for the completer property.
@@ -106,40 +107,44 @@ class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
         """
         # The following keys are forwarded by the completer to the widget.
         if self._completer and self._completer.popup().isVisible():
-            if e.key() in (QtCore.Qt.Key_Enter,
-                           QtCore.Qt.Key_Return,
-                           QtCore.Qt.Key_Escape,
-                           QtCore.Qt.Key_Tab,
-                           QtCore.Qt.Key_Backtab):
+            if e.key() in (
+                QtCore.Qt.Key_Enter,
+                QtCore.Qt.Key_Return,
+                QtCore.Qt.Key_Escape,
+                QtCore.Qt.Key_Tab,
+                QtCore.Qt.Key_Backtab,
+            ):
                 # Let the completer do default behavior.
                 e.ignore()
                 return
 
         # True if the CTRL-SPACE prompt is pressed.
-        isShortcut = (e.modifiers() & QtCore.Qt.ControlModifier         # noqa
-                      and e.key() == QtCore.Qt.Key_Space)
+        isShortcut = (
+            e.modifiers() & QtCore.Qt.ControlModifier  # noqa
+            and e.key() == QtCore.Qt.Key_Space
+        )
         # Do not process the shortcut when we have a completer.
         if not self._completer or not isShortcut:
             super(AutoCompleteTextEdit, self).keyPressEvent(e)
 
         # CTRL or SHIFT keys without SPACE are not trapped.
-        ctrlOrShift = (e.modifiers() & QtCore.Qt.ControlModifier        # noqa
-                       or e.modifiers() & QtCore.Qt.ShiftModifier)      # noqa
-        if not self._completer or (ctrlOrShift and e.text() == ''):
+        ctrlOrShift = (
+            e.modifiers() & QtCore.Qt.ControlModifier  # noqa
+            or e.modifiers() & QtCore.Qt.ShiftModifier
+        )  # noqa
+        if not self._completer or (ctrlOrShift and e.text() == ""):
             return
 
-        eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="   # End of Word
+        eow = "~!@#$%^&*()_+{}|:\"<>?,./;'[]\\-="  # End of Word
         hasModifier = e.modifiers() != QtCore.Qt.NoModifier and not ctrlOrShift
         completionPrefix = self._textUnderCursor()
 
-        if (
-                not isShortcut
-                and (
-                        hasModifier
-                        or e.text() == ''
-                        or len(completionPrefix) < 3
-                        or e.text()[-1:] in eow
-                )):
+        if not isShortcut and (
+            hasModifier
+            or e.text() == ""
+            or len(completionPrefix) < 3
+            or e.text()[-1:] in eow
+        ):
             self._completer.popup().hide()
             return
 
@@ -151,8 +156,10 @@ class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
 
         # Popup the completer.
         cr = self.cursorRect()
-        cr.setWidth(self._completer.popup().sizeHintForColumn(0)
-                    + self._completer.popup().verticalScrollBar().sizeHint().width())
+        cr.setWidth(
+            self._completer.popup().sizeHintForColumn(0)
+            + self._completer.popup().verticalScrollBar().sizeHint().width()
+        )
         self._completer.complete(cr)
 
     def validator(self) -> Optional[QtCore.QRegularExpression]:
@@ -184,7 +191,7 @@ class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
         state = QtGui.QValidator.Acceptable
         if self._validator:
             state, _, _ = self._validator.validate(text, 0)
-        return text != '' and state == QtGui.QValidator.Acceptable
+        return text != "" and state == QtGui.QValidator.Acceptable
 
     def setHeight(self, nRows: int):
         """Set the height of the text editor to a fixed rows count.
@@ -196,10 +203,10 @@ class AutoCompleteTextEdit(QtWidgets.QPlainTextEdit):
         fm = QtGui.QFontMetrics(doc.defaultFont())
         margins = self.contentsMargins()
         height = (
-                fm.lineSpacing() * nRows
-                + (doc.documentMargin() + self.frameWidth()) * 2
-                + margins.top()
-                + margins.bottom()
+            fm.lineSpacing() * nRows
+            + (doc.documentMargin() + self.frameWidth()) * 2
+            + margins.top()
+            + margins.bottom()
         )
         self.setFixedHeight(height)
 

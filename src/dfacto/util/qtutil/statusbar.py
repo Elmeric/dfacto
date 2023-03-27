@@ -5,7 +5,6 @@ __all__ = ["StatusBar"]
 
 
 class StatusBar(QtWidgets.QStatusBar):
-
     DEFAULT_COLOR = (0, 0, 0, 0)
     DEFAULT_MSG_STYLE = f"""
         QStatusBar{{

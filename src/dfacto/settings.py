@@ -4,8 +4,8 @@ The DfactoSettings model defines the dfacto application settings and make them
 accessible throughout the application by exposing a dfacto_settings instance.
 """
 import os
-from typing import TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from win32com.shell import shell, shellcon  # noqa
 
@@ -46,6 +46,7 @@ class DfactoSettings(settings.Settings):
         resources: Path to the UI resources directory (images, icons,..).
         templates: Path to the Jinja templates directory.
     """
+
     app_dirs: "WinAppDirs"
     resources: Path
     templates: Path

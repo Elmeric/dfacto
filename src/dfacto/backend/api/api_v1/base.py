@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Generic, Type, TypeVar, Optional
+from typing import Generic, Optional, Type, TypeVar
 
 from sqlalchemy.orm import Session
 

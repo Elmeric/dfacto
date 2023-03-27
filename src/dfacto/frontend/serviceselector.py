@@ -10,13 +10,14 @@ from enum import IntEnum
 from typing import Optional
 
 import PyQt6.QtCore as QtCore
-import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
-from dfacto.util import qtutil as QtUtil
+import PyQt6.QtWidgets as QtWidgets
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
+from dfacto.util import qtutil as QtUtil
+
 from .serviceeditor import Service, ServiceEditor
 
 logger = logging.getLogger(__name__)
@@ -44,23 +45,31 @@ class ServiceSelector(QtUtil.QFramedWidget):
         icon_size = QtCore.QSize(32, 32)
         self.new_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/add.png"), "")
         self.new_btn.setIconSize(icon_size)
+        self.new_btn.setToolTip("Create a new service")
+        self.new_btn.setStatusTip("Create a new service")
         self.new_btn.setFlat(True)
-        self.delete_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/remove.png"), "")
+        self.delete_btn = QtWidgets.QPushButton(
+            QtGui.QIcon(f"{resources}/remove.png"), ""
+        )
+        self.delete_btn.setToolTip("Delete the selected service (Delete)")
+        self.delete_btn.setStatusTip("Delete the selected service (Delete)")
         self.delete_btn.setIconSize(icon_size)
         self.delete_btn.setFlat(True)
         self.edit_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/edit.png"), "")
         self.edit_btn.setIconSize(icon_size)
+        self.edit_btn.setToolTip("Edit the selected service")
+        self.edit_btn.setStatusTip("Edit the selected service")
         self.edit_btn.setFlat(True)
         self.add_to_selector = QtUtil.BasketController(
             basket_icon=QtGui.QIcon(f"{resources}/add-to-basket.png"),
             add_icon=QtGui.QIcon(f"{resources}/add-blue.png"),
-            minus_icon=QtGui.QIcon(f"{resources}/minus-blue.png")
+            minus_icon=QtGui.QIcon(f"{resources}/minus-blue.png"),
         )
 
         self.services_lst = QtUtil.UndeselectableListWidget()
 
         header = QtWidgets.QWidget()
-        header_color = QtGui.QColor('#5d5b59')
+        header_color = QtGui.QColor("#5d5b59")
         header_font_color = QtGui.QColor(QtCore.Qt.GlobalColor.white)
         header_style = f"""
             QWidget {{
@@ -72,7 +81,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
         header.setMinimumWidth(350)
         header.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.MinimumExpanding,
-            QtWidgets.QSizePolicy.Policy.Fixed
+            QtWidgets.QSizePolicy.Policy.Fixed,
         )
 
         header_layout = QtWidgets.QHBoxLayout()
@@ -95,7 +104,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
         selector_widget = QtWidgets.QWidget()
         selector_widget.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.Preferred,
-            QtWidgets.QSizePolicy.Policy.MinimumExpanding
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding,
         )
         editor_layout = QtWidgets.QVBoxLayout()
         editor_layout.setContentsMargins(0, 0, 0, 0)
@@ -147,12 +156,10 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
-                "Cannot load the services list - Reason is: %s",
-                response.reason
+                "Cannot load the services list - Reason is: %s", response.reason
             )
             QtUtil.getMainWindow().show_status_message(
-                "Cannot load the services list",
-                is_warning=True
+                "Cannot load the services list", is_warning=True
             )
             return
 
@@ -168,17 +175,14 @@ class ServiceSelector(QtUtil.QFramedWidget):
     @QtCore.pyqtSlot()
     def show_service(self) -> None:
         response = api.client.get_quantity_in_basket(
-            self.current_client.id,
-            service_id=self.current_service.id
+            self.current_client.id, service_id=self.current_service.id
         )
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
-                "Cannot retrieve service usage - Reason is: %s",
-                response.reason
+                "Cannot retrieve service usage - Reason is: %s", response.reason
             )
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot delete service usage",
-                is_warning=True
+                f"Cannot delete service usage", is_warning=True
             )
             quantity = 0
         else:
@@ -222,7 +226,8 @@ class ServiceSelector(QtUtil.QFramedWidget):
             <p>Do you really want to delete this service permanently?</p>
             <p><strong>{service.name}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes | QtWidgets.QMessageBox.StandardButton.No,
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -231,11 +236,11 @@ class ServiceSelector(QtUtil.QFramedWidget):
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
                 "Cannot delete service %s - Reason is: %s",
-                service.name, response.reason
+                service.name,
+                response.reason,
             )
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot delete service {service.name}",
-                is_warning=True
+                f"Cannot delete service {service.name}", is_warning=True
             )
             return
 
@@ -291,17 +296,16 @@ class ServiceSelector(QtUtil.QFramedWidget):
             updated_service["vat_rate_id"] = value
 
         response = api.service.update(
-            origin_service.id,
-            obj_in=schemas.ServiceUpdate(**updated_service)
+            origin_service.id, obj_in=schemas.ServiceUpdate(**updated_service)
         )
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
                 "Cannot update the selected service %s - Reason is: %s",
-                old_name, response.reason
+                old_name,
+                response.reason,
             )
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot update the selected service {old_name}",
-                is_warning=True
+                f"Cannot update the selected service {old_name}", is_warning=True
             )
             self._show_in_editor(origin_service)
             return
@@ -328,11 +332,11 @@ class ServiceSelector(QtUtil.QFramedWidget):
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
                 "Cannot create the new service %s - Reason is: %s",
-                service.name, response.reason
+                service.name,
+                response.reason,
             )
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot create the new service {service.name}",
-                is_warning=True
+                f"Cannot create the new service {service.name}", is_warning=True
             )
             self._show_in_editor(self.current_service)
             return
@@ -352,27 +356,19 @@ class ServiceSelector(QtUtil.QFramedWidget):
             service_id=self.current_service.id,
         )
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot remove service - Reason is: %s",
-                response.reason
-            )
+            logger.warning("Cannot remove service - Reason is: %s", response.reason)
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot remove service",
-                is_warning=True
+                f"Cannot remove service", is_warning=True
             )
 
     def _add_to_basket(self, qty: int) -> None:
         response = api.client.add_to_basket(
-            self.current_client.id,
-            service_id=self.current_service.id,
-            quantity=qty
+            self.current_client.id, service_id=self.current_service.id, quantity=qty
         )
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
-                "Cannot add service to basket - Reason is: %s",
-                response.reason
+                "Cannot add service to basket - Reason is: %s", response.reason
             )
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot add service to basket",
-                is_warning=True
+                f"Cannot add service to basket", is_warning=True
             )

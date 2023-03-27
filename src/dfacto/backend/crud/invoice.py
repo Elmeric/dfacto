@@ -117,9 +117,7 @@ class CRUDInvoice(
             dbsession.refresh(item_)
             return item_
 
-    def clear_invoice(
-        self, dbsession: Session, *, invoice_: models.Invoice
-    ) -> None:
+    def clear_invoice(self, dbsession: Session, *, invoice_: models.Invoice) -> None:
         assert (
             invoice_.status is models.InvoiceStatus.DRAFT
         ), "Cannot clear a non-draft invoice."
@@ -162,9 +160,7 @@ class CRUDInvoice(
             dbsession.rollback()
             raise CrudError() from exc
 
-    def cancel_invoice(
-        self, dbsession: Session, *, invoice_: models.Invoice
-    ) -> None:
+    def cancel_invoice(self, dbsession: Session, *, invoice_: models.Invoice) -> None:
         assert invoice_.status in (
             models.InvoiceStatus.EMITTED,
             models.InvoiceStatus.REMINDED,

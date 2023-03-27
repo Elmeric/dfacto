@@ -20,20 +20,21 @@ It provides:
 """
 from typing import Callable, Optional, Union
 
-
 import PyQt6.QtCore as QtCore
-import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
+import PyQt6.QtWidgets as QtWidgets
 
-from .statusbar import StatusBar
 # from .backgroundprogressbar import BackgroundProgressBar
 # from .signaladpater import QtSignalAdapter
 # from .splash import SplashScreen
 from .fittedlineedit import FittedLineEdit
-from .pathselector import PathSelector, DirectorySelector, FileSelector
+
 # from .autocompletetextedit import AutoCompleteTextEdit
 # from .collapsiblewidget import CollapsibleWidget
 from .framewidget import QFramedWidget
+from .pathselector import DirectorySelector, FileSelector, PathSelector
+from .statusbar import StatusBar
+
 # from .panelview import QPanelView
 
 
@@ -64,15 +65,16 @@ from .framewidget import QFramedWidget
 
 
 def createAction(
-        parent: QtCore.QObject,
-        text: str,
-        name: Optional[str] = None,
-        slot: Optional[Callable] = None,
-        shortcut: Optional[Union[str, QtGui.QKeySequence.StandardKey]] = None,
-        icon: Optional[Union[str, QtGui.QIcon]] = None,
-        tip: Optional[str] = None,
-        checkable: Optional[bool] = False,
-        signal: Optional[str] = "triggered") -> QtGui.QAction:
+    parent: QtCore.QObject,
+    text: str,
+    name: Optional[str] = None,
+    slot: Optional[Callable] = None,
+    shortcut: Optional[Union[str, QtGui.QKeySequence.StandardKey]] = None,
+    icon: Optional[Union[str, QtGui.QIcon]] = None,
+    tip: Optional[str] = None,
+    checkable: Optional[bool] = False,
+    signal: Optional[str] = "triggered",
+) -> QtGui.QAction:
     """A convenient function to create a QAction.
 
     Args:
@@ -124,7 +126,9 @@ def getMainWindow() -> QtWidgets.QMainWindow:
     for w in widgets:
         if isinstance(w, QtWidgets.QMainWindow):
             return w
-    raise ValueError('No Main Window found!')
+    raise ValueError("No Main Window found!")
+
+
 #
 #
 # def reconnect(signal, newSlot=None, oldSlot=None):
@@ -182,6 +186,7 @@ class MyAppStyle(QtWidgets.QProxyStyle):
     Adjust the size of the view item decoration (apply to QTreeView and
     QTableView).
     """
+
     def pixelMetric(self, metric, option=None, widget=None) -> int:
         size = super().pixelMetric(metric, option, widget)
         if metric == QtWidgets.QStyle.PixelMetric.PM_SmallIconSize:
@@ -205,14 +210,18 @@ class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
     Args:
         parent: an optional parent for the delegate.
     """
+
     def __init__(self, parent):
         super().__init__(parent)
 
     def paint(self, QPainter, QStyleOptionViewItem, QModelIndex):
         if QStyleOptionViewItem.state & QtWidgets.QStyle.StateFlag.State_HasFocus:
-            QStyleOptionViewItem.state = \
+            QStyleOptionViewItem.state = (
                 QStyleOptionViewItem.state ^ QtWidgets.QStyle.StateFlag.State_HasFocus
+            )
         super().paint(QPainter, QStyleOptionViewItem, QModelIndex)
+
+
 #
 #
 # class PatternHighlighter(QtGui.QSyntaxHighlighter):
@@ -354,7 +363,7 @@ class NoFocusDelegate(QtWidgets.QStyledItemDelegate):
 
 
 class UndeselectableListWidget(QtWidgets.QListWidget):
-    def __init__(self, parent = None):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         self.setAlternatingRowColors(True)
@@ -371,12 +380,13 @@ class UndeselectableListWidget(QtWidgets.QListWidget):
         self.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         # self.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.setResizeMode(QtWidgets.QListWidget.ResizeMode.Adjust)
-        self.setSizeAdjustPolicy(QtWidgets.QListWidget.SizeAdjustPolicy.AdjustToContents)
+        self.setSizeAdjustPolicy(
+            QtWidgets.QListWidget.SizeAdjustPolicy.AdjustToContents
+        )
 
         old_selection_model = self.selectionModel()
         new_selection_model = MySelectionModel(
-            self.model(),
-            old_selection_model.parent()
+            self.model(), old_selection_model.parent()
         )
         self.setSelectionModel(new_selection_model)
         old_selection_model.deleteLater()
@@ -393,7 +403,6 @@ class MySelectionModel(QtCore.QItemSelectionModel):
 
 
 class BasketController(QtWidgets.QWidget):
-
     basket_clicked = QtCore.pyqtSignal()
     quantity_changed = QtCore.pyqtSignal(int)
 
@@ -404,7 +413,7 @@ class BasketController(QtWidgets.QWidget):
         basket_icon: QtGui.QIcon,
         add_icon: QtGui.QIcon,
         minus_icon: QtGui.QIcon,
-        parent=None
+        parent=None,
     ) -> None:
         super().__init__(parent)
 
@@ -418,26 +427,28 @@ class BasketController(QtWidgets.QWidget):
         self.quantity_lbl.setFrame(False)
         palette = self.quantity_lbl.palette()
         palette.setColor(
-            QtGui.QPalette.ColorRole.Base,
-            QtCore.Qt.GlobalColor.transparent
+            QtGui.QPalette.ColorRole.Base, QtCore.Qt.GlobalColor.transparent
         )
         self.quantity_lbl.setPalette(palette)
         self.quantity_lbl.setFixedWidth(30)
 
         icon_size = QtCore.QSize(32, 32)
-        self.basket_btn = QtWidgets.QPushButton(basket_icon, '')
+        self.basket_btn = QtWidgets.QPushButton(basket_icon, "")
         self.basket_btn.setIconSize(icon_size)
-        self.basket_btn.setToolTip('Add to basket')
+        self.basket_btn.setToolTip("Add to basket")
+        self.basket_btn.setStatusTip("Add to basket")
         self.basket_btn.setFlat(True)
 
         icon_size = QtCore.QSize(18, 18)
-        self.add_btn = QtWidgets.QPushButton(add_icon, '')
+        self.add_btn = QtWidgets.QPushButton(add_icon, "")
         self.add_btn.setIconSize(icon_size)
-        self.add_btn.setToolTip('Increase')
+        self.add_btn.setToolTip("Increase")
+        self.add_btn.setStatusTip("Increase")
         self.add_btn.setFlat(True)
-        self.minus_btn = QtWidgets.QPushButton(minus_icon, '')
+        self.minus_btn = QtWidgets.QPushButton(minus_icon, "")
         self.minus_btn.setIconSize(icon_size)
-        self.minus_btn.setToolTip('Decrease')
+        self.minus_btn.setToolTip("Decrease")
+        self.minus_btn.setStatusTip("Decrease")
         self.minus_btn.setFlat(True)
 
         layout = QtWidgets.QHBoxLayout()
@@ -454,7 +465,7 @@ class BasketController(QtWidgets.QWidget):
         self.basket_btn.clicked.connect(self.start_adding)
         self.add_btn.clicked.connect(self.increase)
         self.minus_btn.clicked.connect(self.decrease)
-        self.quantity_lbl.textEdited.connect(self.input_value)
+        self.quantity_lbl.textEdited.connect(self.input_quantity)
 
         self.quantity = -1  # Unknown
         self._fold()
@@ -496,9 +507,9 @@ class BasketController(QtWidgets.QWidget):
         self.quantity = max(0, self._quantity - 1)
 
     @QtCore.pyqtSlot(str)
-    def input_value(self, value: str) -> None:
+    def input_quantity(self, quantity: str) -> None:
         try:
-            self.quantity = min(self._max, max(0, int(value)))
+            self.quantity = min(self._max, max(0, int(quantity)))
         except ValueError:
             # Ignore invalid input and display the previous quantity
             self.quantity_lbl.setText(str(self._quantity))

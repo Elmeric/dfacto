@@ -1,10 +1,10 @@
-from typing import Callable
 from enum import Enum, auto
 from pathlib import Path
+from typing import Callable
 
 import PyQt6.QtCore as QtCore
-import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
+import PyQt6.QtWidgets as QtWidgets
 
 from .fittedlineedit import FittedLineEdit
 
@@ -71,17 +71,18 @@ class PathSelector(QtWidgets.QWidget):
     pathSelected = QtCore.pyqtSignal(str)
 
     def __init__(
-            self,
-            *args,
-            label: str = 'Select path:',
-            placeHolder: str = 'Enter a path',
-            selectIcon: QtGui.QIcon = None,
-            tip: str = 'Select a path',
-            directoryGetter: Callable[[], str] = lambda: '',
-            shallExist: bool = True,
-            defaultPath: str = '',
-            parent=None,
-            **kwargs):
+        self,
+        *args,
+        label: str = "Select path:",
+        placeHolder: str = "Enter a path",
+        selectIcon: QtGui.QIcon = None,
+        tip: str = "Select a path",
+        directoryGetter: Callable[[], str] = lambda: "",
+        shallExist: bool = True,
+        defaultPath: str = "",
+        parent=None,
+        **kwargs,
+    ):
         self.tip = tip
         self.directoryGetter = directoryGetter
         self.shallExist = shallExist
@@ -93,25 +94,23 @@ class PathSelector(QtWidgets.QWidget):
         self._blinkingTimer = QtCore.QTimer(self)
         self._blinkingTimer.timeout.connect(self._blink)
         self._blinkingCount = 4
-        self._blinkingPath = ''
-        self._previousPath = ''
+        self._blinkingPath = ""
+        self._previousPath = ""
 
         label = QtWidgets.QLabel(label)
         self._pathLineEdit = FittedLineEdit()
         self._pathLineEdit.setPlaceholderText(placeHolder)
         self._pathLineEdit.editingFinished.connect(self.onPathInput)
         if selectIcon:
-            self._pathSelectButton = QtWidgets.QPushButton(selectIcon, '')
+            self._pathSelectButton = QtWidgets.QPushButton(selectIcon, "")
             self._pathSelectButton.setMaximumWidth(30)
         else:
-            self._pathSelectButton = QtWidgets.QPushButton('Select')
+            self._pathSelectButton = QtWidgets.QPushButton("Select")
         self._pathSelectButton.setToolTip(tip)
         self._pathSelectButton.setStatusTip(tip)
         self._pathSelectButton.clicked.connect(self.openPathSelector)
-        self._notFoundLabel = QtWidgets.QLabel(' Not found ! ')
-        self._notFoundLabel.setStyleSheet(
-            f'QLabel{{color:rgba{255, 25, 25, 255};}}'
-        )
+        self._notFoundLabel = QtWidgets.QLabel(" Not found ! ")
+        self._notFoundLabel.setStyleSheet(f"QLabel{{color:rgba{255, 25, 25, 255};}}")
         self._notFoundLabel.hide()
 
         layout = QtWidgets.QHBoxLayout()
@@ -135,10 +134,10 @@ class PathSelector(QtWidgets.QWidget):
         # Qt5 bug work around (editingFinished emitted twice).
         # Refer to https://bugreports.qt.io/browse/QTBUG-40
         obj = self.sender()
-        if not obj.isModified():                                        # noqa
+        if not obj.isModified():  # noqa
             # Ignore second signal
             return
-        obj.setModified(False)                                          # noqa
+        obj.setModified(False)  # noqa
 
         enteredPath = self._pathLineEdit.text()
 
@@ -161,21 +160,13 @@ class PathSelector(QtWidgets.QWidget):
                 absolutePath = self.directoryGetter() / path
             else:
                 absolutePath = path
-            if (
-                    (
-                            self._pathType is _PathType.DIR
-                            and Path(absolutePath).is_dir()
-                    )
-                    or
-                    (
-                            self._pathType is _PathType.FILE
-                            and Path(absolutePath).is_file()
-                    )
-                ):                                                      # noqa
+            if (self._pathType is _PathType.DIR and Path(absolutePath).is_dir()) or (
+                self._pathType is _PathType.FILE and Path(absolutePath).is_file()
+            ):  # noqa
                 # Stop blinking and emit the entered path in posix standard
                 self._blinkingTimer.stop()
                 self._notFoundLabel.hide()
-                self._blinkingPath = ''
+                self._blinkingPath = ""
                 self._blinkingCount = 4
                 self.pathSelected.emit(path.as_posix())
             else:
@@ -195,9 +186,7 @@ class PathSelector(QtWidgets.QWidget):
         If dialog is rejected (Cancel button), nothing is emitted.
         """
         path = QtWidgets.QFileDialog.getExistingDirectory(
-            parent=self,
-            caption=self.tip,
-            directory=self.directoryGetter()
+            parent=self, caption=self.tip, directory=self.directoryGetter()
         )
         if path:
             self.pathSelected.emit(Path(path).as_posix())
@@ -216,7 +205,7 @@ class PathSelector(QtWidgets.QWidget):
         else:
             self._pathLineEdit.setText(self._previousPath)
             self._notFoundLabel.hide()
-            self._blinkingPath = ''
+            self._blinkingPath = ""
             self._blinkingCount = 4
             self._blinkingTimer.stop()
             self._pathLineEdit.updateGeometry()
@@ -226,7 +215,7 @@ class PathSelector(QtWidgets.QWidget):
 
         Update the widget geometry to fit its new text content.
         """
-        self._previousPath = ''
+        self._previousPath = ""
         self._pathLineEdit.clear()
         self._pathLineEdit.updateGeometry()
 
@@ -270,21 +259,17 @@ class PathSelector(QtWidgets.QWidget):
 
 
 class DirectorySelector(PathSelector):
-    """Specialization of the PathSelector with dedicated defaults label and tips.
-    """
+    """Specialization of the PathSelector with dedicated defaults label and tips."""
+
     def __init__(
-            self,
-            *args,
-            label: str = 'Select directory:',
-            placeHolder: str = 'Enter a directory path',
-            tip: str = 'Select a directory path',
-            **kwargs):
-        super().__init__(
-            *args,
-            label=label,
-            placeHolder=placeHolder,
-            tip=tip,
-            **kwargs)
+        self,
+        *args,
+        label: str = "Select directory:",
+        placeHolder: str = "Enter a directory path",
+        tip: str = "Select a directory path",
+        **kwargs,
+    ):
+        super().__init__(*args, label=label, placeHolder=placeHolder, tip=tip, **kwargs)
         self._pathType = _PathType.DIR
 
 
@@ -300,21 +285,18 @@ class FileSelector(PathSelector):
         *args, **kwargs: Any other positional and keyword argument are passed to
             the parent QWidget along with the parent argument.
     """
+
     def __init__(
-            self,
-            *args,
-            label: str = 'Select file:',
-            placeHolder: str = 'Enter a file path',
-            tip: str = 'Select a file path',
-            filter: str = None,                                     # noqa
-            **kwargs):
+        self,
+        *args,
+        label: str = "Select file:",
+        placeHolder: str = "Enter a file path",
+        tip: str = "Select a file path",
+        filter: str = None,  # noqa
+        **kwargs,
+    ):
         self.filter = filter
-        super().__init__(
-            *args,
-            label=label,
-            placeHolder=placeHolder,
-            tip=tip,
-            **kwargs)
+        super().__init__(*args, label=label, placeHolder=placeHolder, tip=tip, **kwargs)
         self._pathType = _PathType.FILE
 
     @QtCore.pyqtSlot()
@@ -332,7 +314,9 @@ class FileSelector(PathSelector):
             caption=self.tip,
             directory=self.directoryGetter(),
             filter=self.filter,
-            options=QtWidgets.QFileDialog.DontConfirmOverwrite
-        )[0]                                                        # noqa
+            options=QtWidgets.QFileDialog.DontConfirmOverwrite,
+        )[
+            0
+        ]  # noqa
         if path:
             self.pathSelected.emit(Path(path).as_posix())

@@ -30,9 +30,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         else:
             return clients
 
-    def get_basket(
-        self, dbsession: Session, obj_id: int
-    ) -> Optional[models.Basket]:
+    def get_basket(self, dbsession: Session, obj_id: int) -> Optional[models.Basket]:
         try:
             basket = dbsession.scalars(
                 select(models.Basket).where(models.Basket.client_id == obj_id)
@@ -204,9 +202,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             dbsession.rollback()
             raise CrudError() from exc
 
-    def remove_item(
-        self, dbsession: Session, *, item: models.Item
-    ) -> None:
+    def remove_item(self, dbsession: Session, *, item: models.Item) -> None:
         # Check that item is in the basket or an invoice but not in both
         basket_id = item.basket_id
         invoice_id = item.invoice_id
@@ -218,9 +214,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         if invoice_id is None:
             self._remove_item_from_basket(dbsession, item)
 
-    def _remove_item_from_basket(
-        self, dbsession: Session, item: models.Item
-    ) -> None:
+    def _remove_item_from_basket(self, dbsession: Session, item: models.Item) -> None:
         assert item.invoice_id is None
         item.basket.raw_amount -= item.raw_amount
         item.basket.vat -= item.vat
@@ -232,9 +226,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             dbsession.rollback()
             raise CrudError() from exc
 
-    def _remove_item_from_invoice(
-        self, dbsession: Session, item: models.Item
-    ) -> None:
+    def _remove_item_from_invoice(self, dbsession: Session, item: models.Item) -> None:
         assert item.basket_id is None
         item.invoice.raw_amount -= item.raw_amount
         item.invoice.vat -= item.vat
@@ -246,9 +238,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             dbsession.rollback()
             raise CrudError() from exc
 
-    def clear_basket(
-        self, dbsession: Session, *, basket: models.Basket
-    ) -> None:
+    def clear_basket(self, dbsession: Session, *, basket: models.Basket) -> None:
         basket.raw_amount = 0.0
         basket.vat = 0.0
         for item in basket.items:
@@ -265,9 +255,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             dbsession.rollback()
             raise CrudError() from exc
 
-    def delete(
-        self, dbsession: Session, *, db_obj: models.Client
-    ) -> None:
+    def delete(self, dbsession: Session, *, db_obj: models.Client) -> None:
         assert (
             not db_obj.has_emitted_invoices
         ), "Cannot delete client with non-draft invoices"

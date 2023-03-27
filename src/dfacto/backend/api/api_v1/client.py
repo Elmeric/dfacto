@@ -245,9 +245,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
-    def remove_from_basket(
-        self, obj_id: int, *, service_id: int
-    ) -> CommandResponse:
+    def remove_from_basket(self, obj_id: int, *, service_id: int) -> CommandResponse:
         try:
             basket = self.crud_object.get_basket(self.session, obj_id)
             service = crud.service.get(self.session, service_id)

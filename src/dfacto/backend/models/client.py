@@ -10,7 +10,6 @@ from sqlalchemy import String, and_, case, exists, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base_model import BaseModel, intpk
-
 from .basket import Basket
 from .invoice import Invoice, InvoiceStatus
 

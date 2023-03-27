@@ -9,13 +9,13 @@ from collections import namedtuple
 from enum import Enum, auto
 
 import PyQt6.QtCore as QtCore
-import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
-from dfacto.util import qtutil as QtUtil
+import PyQt6.QtWidgets as QtWidgets
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
+from dfacto.util import qtutil as QtUtil
 
 logger = logging.getLogger(__name__)
 
@@ -36,8 +36,7 @@ class ServiceEditor(QtWidgets.QWidget):
         resources = Config.dfacto_settings.resources
 
         self.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Preferred,
-            QtWidgets.QSizePolicy.Policy.Maximum
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Maximum
         )
 
         header_lbl = QtWidgets.QLabel("SERVICE INFO")
@@ -46,9 +45,15 @@ class ServiceEditor(QtWidgets.QWidget):
         icon_size = QtCore.QSize(32, 32)
         self.ok_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/ok.png"), "")
         self.ok_btn.setIconSize(icon_size)
+        self.ok_btn.setToolTip("Confirm service edition (Alt+Enter)")
+        self.ok_btn.setStatusTip("Confirm service edition (Alt+Enter)")
         self.ok_btn.setFlat(True)
-        self.cancel_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/cancel.png"), "")
+        self.cancel_btn = QtWidgets.QPushButton(
+            QtGui.QIcon(f"{resources}/cancel.png"), ""
+        )
         self.cancel_btn.setIconSize(icon_size)
+        self.cancel_btn.setToolTip("Cancel service edition (Esc)")
+        self.cancel_btn.setStatusTip("Cancel service edition (Esc)")
         self.cancel_btn.setFlat(True)
 
         self.name_text = QtUtil.FittedLineEdit()
@@ -57,19 +62,23 @@ class ServiceEditor(QtWidgets.QWidget):
                 QtCore.QRegularExpression("[A-Z][A-Za-z0-9_ ]*")
             )
         )
-        self.name_text.textEdited.connect(self.check_name)
+        name_tip = "Service designation, shall be a unique alphanumeric sentence starting with an uppercase letter"
+        self.name_text.setToolTip(name_tip)
+        self.name_text.setStatusTip(name_tip)
 
         self.price_spin = QtWidgets.QDoubleSpinBox()
         self.price_spin.setMaximum(10000.00)
         self.price_spin.setPrefix("€ ")
         self.price_spin.setAccelerated(True)
         self.price_spin.setGroupSeparatorShown(True)
-        self.price_spin.lineEdit().textEdited.connect(self.check_price)
+        price_tip = "Service unit price, in euros, limited to 10 000 €"
+        self.price_spin.setToolTip(price_tip)
+        self.price_spin.setStatusTip(price_tip)
 
         self.vat_cmb = QtWidgets.QComboBox()
 
         header = QtWidgets.QWidget()
-        header_color = QtGui.QColor('#5d5b59')
+        header_color = QtGui.QColor("#5d5b59")
         header_font_color = QtGui.QColor(QtCore.Qt.GlobalColor.white)
         header_style = f"""
             QWidget {{
@@ -81,7 +90,7 @@ class ServiceEditor(QtWidgets.QWidget):
         header.setMinimumWidth(350)
         header.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.MinimumExpanding,
-            QtWidgets.QSizePolicy.Policy.Fixed
+            QtWidgets.QSizePolicy.Policy.Fixed,
         )
 
         header_layout = QtWidgets.QHBoxLayout()
@@ -107,8 +116,7 @@ class ServiceEditor(QtWidgets.QWidget):
 
         editor_widget = QtWidgets.QWidget()
         editor_widget.setSizePolicy(
-            QtWidgets.QSizePolicy.Policy.Preferred,
-            QtWidgets.QSizePolicy.Policy.Maximum
+            QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Maximum
         )
         editor_layout = QtWidgets.QVBoxLayout()
         editor_layout.setContentsMargins(0, 0, 0, 0)
@@ -124,6 +132,8 @@ class ServiceEditor(QtWidgets.QWidget):
         main_layout.addWidget(editor_widget)
         self.setLayout(main_layout)
 
+        self.name_text.textEdited.connect(self.check_name)
+        self.price_spin.lineEdit().textEdited.connect(self.check_price)
         self.ok_btn.clicked.connect(self.accept)
         self.cancel_btn.clicked.connect(self.reject)
 
@@ -135,20 +145,18 @@ class ServiceEditor(QtWidgets.QWidget):
         response = api.vat_rate.get_all()
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
-                "Cannot retrive the VAT rates - Reason is: %s",
-                response.reason
+                "Cannot retrive the VAT rates - Reason is: %s", response.reason
             )
             QtUtil.getMainWindow().show_status_message(
                 f"Cannot retrive the VAT rates: try to restart Dfacto.\n"
                 f"If the problem persists, contact your admin",
-                is_warning=True
+                is_warning=True,
             )
             return
         vat_rates: list[schemas.VatRate] = response.body
         for vat_rate in vat_rates:
             self.vat_cmb.addItem(
-                f"{vat_rate.rate} % ({vat_rate.name})",
-                userData=vat_rate.id
+                f"{vat_rate.rate} % ({vat_rate.name})", userData=vat_rate.id
             )
         self.vat_cmb.model().sort(0)
 
@@ -181,12 +189,15 @@ class ServiceEditor(QtWidgets.QWidget):
         return Service(
             name=self.name_text.text(),
             unit_price=self.price_spin.value(),
-            vat_rate_id=self.vat_cmb.currentData()
+            vat_rate_id=self.vat_cmb.currentData(),
         )
 
     @property
     def is_valid(self) -> bool:
-        name_ok = self.name_text.text() != "" and self.name_text.text() not in self._forbidden_names
+        name_ok = (
+            self.name_text.text() != ""
+            and self.name_text.text() not in self._forbidden_names
+        )
         price_ok = self.price_spin.value() >= 0.0
 
         if self._mode in (ServiceEditor.Mode.EDIT, ServiceEditor.Mode.ADD):

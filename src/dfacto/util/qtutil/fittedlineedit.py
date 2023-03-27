@@ -1,16 +1,16 @@
 import PyQt6.QtCore as QtCore
-import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
+import PyQt6.QtWidgets as QtWidgets
 
 
 class FittedLineEdit(QtWidgets.QLineEdit):
-    """A QLineEdit that fit its content while minimizing its size.
-    """
+    """A QLineEdit that fit its content while minimizing its size."""
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.setSizePolicy(
             QtWidgets.QSizePolicy.Policy.MinimumExpanding,
-            QtWidgets.QSizePolicy.Policy.Maximum
+            QtWidgets.QSizePolicy.Policy.Maximum,
         )
 
     def sizeHint(self) -> QtCore.QSize:

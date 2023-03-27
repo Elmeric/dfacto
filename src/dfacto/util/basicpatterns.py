@@ -1,5 +1,6 @@
 class Singleton(type):
     """A Standard Singleton metaclass."""
+
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -10,6 +11,7 @@ class Singleton(type):
 
 class ObjectFactory(object):
     """A general purpose object factory."""
+
     def __init__(self):
         self._builders = {}
 
@@ -24,8 +26,8 @@ class ObjectFactory(object):
 
 
 class Visitor(object):
-    """Base class for visitors.
-    """
+    """Base class for visitors."""
+
     def visit(self, node, *args, **kwargs):
         """Visit a node.
 
@@ -52,13 +54,13 @@ class Visitor(object):
         for cls in mro:
             clsName = cls.__name__
             clsName = clsName[0].upper() + clsName[1:]
-            meth = getattr(self, 'visit' + clsName, None)
+            meth = getattr(self, "visit" + clsName, None)
             if meth is not None:
                 return meth(node, *args, **kwargs)
 
         clsName = node.__class__.__name__
         clsName = clsName[0].upper() + clsName[1:]
-        raise NotImplementedError(f'No visitation method visit{clsName}')
+        raise NotImplementedError(f"No visitation method visit{clsName}")
 
 
 def visitable(cls):
@@ -70,8 +72,10 @@ def visitable(cls):
     Returns:
         the decorated class.
     """
+
     def accept(self, visitor: Visitor, *args, **kwargs):
         return visitor.visit(self, *args, **kwargs)
+
     cls.accept = accept
     return cls
 
@@ -108,7 +112,7 @@ class DelegatedAttribute:
         return ""
 
 
-def delegate_as(delegate_cls, to='delegate', include=None, ignore=None):
+def delegate_as(delegate_cls, to="delegate", include=None, ignore=None):
     # turn include and ignore into sets, if they aren't already
     if include is None:
         include = set()
@@ -131,10 +135,12 @@ def delegate_as(delegate_cls, to='delegate', include=None, ignore=None):
         for attr in attrs:
             setattr(cls, attr, DelegatedAttribute(to, attr))
         return cls
+
     return inner
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
+
     class A:
         def __init__(self):
             self.f1 = "f1 in A"
@@ -149,7 +155,6 @@ if __name__ == '__main__':
 
         def m3(self):
             print("m3 in A")
-
 
     # @delegate_as(A, to="a")
     @delegate_as(A, to="a", include={"f1"}, ignore={"m2", "m3"})

@@ -18,9 +18,7 @@ from .base import CRUDBase, CrudError
 class CRUDVatRate(
     CRUDBase[models.VatRate, schemas.VatRateCreate, schemas.VatRateUpdate]
 ):
-    def get_default(
-        self, dbsession: Session
-    ) -> Optional[models.VatRate]:
+    def get_default(self, dbsession: Session) -> Optional[models.VatRate]:
         try:
             db_obj = dbsession.scalars(
                 select(self.model).where(self.model.is_default == True)

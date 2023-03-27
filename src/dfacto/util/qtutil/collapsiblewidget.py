@@ -5,14 +5,13 @@ Adapt and port to PyQt5.
 """
 
 import PyQt5.QtCore as QtCore
-import PyQt5.QtWidgets as QtWidgets
 import PyQt5.QtGui as QtGui
+import PyQt5.QtWidgets as QtWidgets
 
 __all__ = ["CollapsibleWidget"]
 
 
 class _TitleFrame(QtWidgets.QFrame):
-
     clicked = QtCore.pyqtSignal()
 
     def __init__(self, title: str = "", isCollapsed: bool = False, parent=None):
@@ -84,7 +83,9 @@ class CollapsibleWidget(QtWidgets.QWidget):
 
         self._isCollapsed = isCollapsed
 
-        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum)
+        self.setSizePolicy(
+            QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Minimum
+        )
 
         self._titleFrame = _TitleFrame(title=title, isCollapsed=isCollapsed)
         self._titleFrame.clicked.connect(self.toggleCollapsed)

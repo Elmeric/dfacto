@@ -9,16 +9,15 @@ from pathlib import Path
 from typing import Iterable, Optional
 
 import PyQt6.QtCore as QtCore
-import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtGui as QtGui
+import PyQt6.QtWidgets as QtWidgets
 
 from dfacto import settings as Config
-from dfacto.util import qtutil as QtUtil
 from dfacto.backend import schemas
+from dfacto.util import qtutil as QtUtil
 
 
 class AddCompanyDialog(QtWidgets.QDialog):
-
     class Mode(Enum):
         NEW = auto()
         ADD = auto()
@@ -29,7 +28,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         forbidden_names: Iterable[str] = None,
         mode: Mode = Mode.ADD,
         fixed_size: bool = True,
-        parent=None
+        parent=None,
     ) -> None:
         self.mode = mode
         self.forbidden_names = forbidden_names or []
@@ -38,8 +37,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
         # Prevent resizing the view when required.
         if fixed_size:
             self.setWindowFlags(
-                QtCore.Qt.WindowType.Dialog |
-                QtCore.Qt.WindowType.MSWindowsFixedSizeDialogHint
+                QtCore.Qt.WindowType.Dialog
+                | QtCore.Qt.WindowType.MSWindowsFixedSizeDialogHint
             )
 
         resources = Config.dfacto_settings.resources
@@ -66,8 +65,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.name_text = QtUtil.FittedLineEdit()
         self.name_text.setPlaceholderText("Company name")
         self.name_text.setValidator(
-                QtGui.QRegularExpressionValidator(
-                    QtCore.QRegularExpression("[A-Z][A-Za-z0-9_ ]*")
+            QtGui.QRegularExpressionValidator(
+                QtCore.QRegularExpression("[A-Z][A-Za-z0-9_ ]*")
             )
         )
         self.name_text.textEdited.connect(self.check_name)
@@ -75,18 +74,20 @@ class AddCompanyDialog(QtWidgets.QDialog):
         name_layout.addWidget(name_lbl)
         name_layout.addWidget(self.name_text)
 
-        select_icon = QtGui.QIcon(f"{Config.dfacto_settings.resources}/browse-folder.png")
+        select_icon = QtGui.QIcon(
+            f"{Config.dfacto_settings.resources}/browse-folder.png"
+        )
         self.home_dir_selector = QtUtil.DirectorySelector(
             label="Dfacto data location:",
             placeHolder="Absolute path to your Dfacto data",
             selectIcon=select_icon,
             tip="Select where to store your company's Dfacto data",
             directoryGetter=lambda: str(Config.dfacto_settings.default_company_folder),
-            parent=self
+            parent=self,
         )
         self.home_dir_selector.pathSelected.connect(self.check_home)
 
-        self.extension_widget= QtWidgets.QWidget()
+        self.extension_widget = QtWidgets.QWidget()
 
         self.address_text = QtUtil.FittedLineEdit()
         self.address_text.setPlaceholderText("Company address")
@@ -94,9 +95,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.zipcode_text.setPlaceholderText("Company zip code")
         self.zipcode_text.setInputMask("99999;_")
         self.zipcode_text.setValidator(
-                QtGui.QRegularExpressionValidator(
-                    QtCore.QRegularExpression(r"[0-9_]{5}")
-            )
+            QtGui.QRegularExpressionValidator(QtCore.QRegularExpression(r"[0-9_]{5}"))
         )
         self.zipcode_text.setCursorPosition(0)
         self.city_text = QtUtil.FittedLineEdit()
@@ -127,15 +126,19 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.details_btn.toggled.connect(self.toggle_details)
         self.details_lbl = QtWidgets.QLabel()
         self.details_lbl.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
-        self.details_lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop)
+        self.details_lbl.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+        )
         details_layout = QtWidgets.QHBoxLayout()
         details_layout.addWidget(self.details_btn)
         details_layout.addWidget(self.details_lbl)
         details_layout.addStretch()
 
         self.button_box = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
-            QtCore.Qt.Orientation.Horizontal, self
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            QtCore.Qt.Orientation.Horizontal,
+            self,
         )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
@@ -166,7 +169,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
             address=schemas.Address(
                 address=self.address_text.text(),
                 zip_code=self.zipcode_text.text(),
-                city=self.city_text.text()
+                city=self.city_text.text(),
             ),
             phone_number=self.phone_text.text(),
             email=self.email_text.text(),
@@ -188,7 +191,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
                 updated_address = schemas.Address(
                     address=self.address_text.text(),
                     zip_code=self.zipcode_text.text(),
-                    city=self.city_text.text()
+                    city=self.city_text.text(),
                 )
                 updated_profile["address"] = updated_address
                 break
@@ -209,7 +212,11 @@ class AddCompanyDialog(QtWidgets.QDialog):
     def is_valid(self) -> bool:
         name_ok = self.name_text.text() not in self.forbidden_names
         if self.mode in (AddCompanyDialog.Mode.NEW, AddCompanyDialog.Mode.ADD):
-            return self.name_text.text() != "" and name_ok and self.home_dir_selector.text() != ""
+            return (
+                self.name_text.text() != ""
+                and name_ok
+                and self.home_dir_selector.text() != ""
+            )
         if self.mode is AddCompanyDialog.Mode.EDIT:
             return self.name_text.text() != "" and name_ok
 
@@ -258,7 +265,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
                 you can edit your company profile later on.)</small></p>
                 """
             )
-            self.setWindowTitle('Create your first company profile')
+            self.setWindowTitle("Create your first company profile")
         elif mode is AddCompanyDialog.Mode.ADD:
             self.intro_lbl.setText(
                 """
@@ -272,7 +279,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
                 you can edit your company profile later on.)</small></p>
                 """
             )
-            self.setWindowTitle('Add a new company profile')
+            self.setWindowTitle("Add a new company profile")
         else:
             self.intro_lbl.setText(
                 """
@@ -280,7 +287,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
                 """
             )
             self.details_lbl.clear()
-            self.setWindowTitle('Edit your company profile')
+            self.setWindowTitle("Edit your company profile")
 
     def edit_profile(self, profile: schemas.Company) -> None:
         self.origin_profile = profile
@@ -305,7 +312,9 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.adjustSize()
 
     def _enable_buttons(self, is_valid: bool):
-        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(is_valid)
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(
+            is_valid
+        )
 
 
 class SelectCompanyDialog(QtWidgets.QDialog):
@@ -317,8 +326,8 @@ class SelectCompanyDialog(QtWidgets.QDialog):
         # Prevent resizing the view when required.
         if fixed_size:
             self.setWindowFlags(
-                QtCore.Qt.WindowType.Dialog |
-                QtCore.Qt.WindowType.MSWindowsFixedSizeDialogHint
+                QtCore.Qt.WindowType.Dialog
+                | QtCore.Qt.WindowType.MSWindowsFixedSizeDialogHint
             )
 
         resources = Config.dfacto_settings.resources
@@ -369,8 +378,10 @@ class SelectCompanyDialog(QtWidgets.QDialog):
         create_layout.addStretch()
 
         self.button_box = QtWidgets.QDialogButtonBox(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
-            QtCore.Qt.Orientation.Horizontal, self
+            QtWidgets.QDialogButtonBox.StandardButton.Ok
+            | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
+            QtCore.Qt.Orientation.Horizontal,
+            self,
         )
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
@@ -401,7 +412,7 @@ class SelectCompanyDialog(QtWidgets.QDialog):
 
     @property
     def is_valid(self) -> bool:
-        return  self.profile_cmb.currentIndex() >= 0
+        return self.profile_cmb.currentIndex() >= 0
 
     @QtCore.pyqtSlot(int)
     def on_profile_selection(self, index: int) -> None:
@@ -415,4 +426,6 @@ class SelectCompanyDialog(QtWidgets.QDialog):
         self.accept()
 
     def _enable_buttons(self, is_valid: bool):
-        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(is_valid)
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(
+            is_valid
+        )

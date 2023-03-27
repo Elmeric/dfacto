@@ -60,4 +60,5 @@ def command(func):
         with session_factory() as session:
             self.session = session
             return func(self, *args, **kwargs)
+
     return wrapper

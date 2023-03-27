@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from dfacto.backend import models
-
 from dfacto.backend.schemas import Address
 
 

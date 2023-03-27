@@ -1,8 +1,8 @@
 from typing import Optional
 
-import PyQt5.QtCore as QtCore
-import PyQt5.QtWidgets as QtWidgets
-import PyQt5.QtGui as QtGui
+import PyQt6.QtCore as QtCore
+import PyQt6.QtGui as QtGui
+import PyQt6.QtWidgets as QtWidgets
 
 
 def minPanelWidth() -> int:
@@ -17,17 +17,15 @@ def minPanelWidth() -> int:
 
 
 class QPanelView(QtWidgets.QWidget):
-    """A header bar with a child widget.
-    """
+    """A header bar with a child widget."""
 
     def __init__(
-            self,
-            label: str,
-            headerColor: Optional[QtGui.QColor] = None,
-            headerFontColor: Optional[QtGui.QColor] = None,
-            parent: QtWidgets.QWidget = None
+        self,
+        label: str,
+        headerColor: Optional[QtGui.QColor] = None,
+        headerFontColor: Optional[QtGui.QColor] = None,
+        parent: QtWidgets.QWidget = None,
     ):
-
         super().__init__(parent)
 
         self.header = QtWidgets.QWidget(self)
@@ -35,7 +33,9 @@ class QPanelView(QtWidgets.QWidget):
         if headerColor is not None:
             headerStyle = f"""QWidget {{ background-color: {headerColor.name()}; }}"""
             self.header.setStyleSheet(headerStyle)
-        self.header.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Fixed)
+        self.header.setSizePolicy(
+            QtWidgets.QSizePolicy.MinimumExpanding, QtWidgets.QSizePolicy.Fixed
+        )
 
         self.label = QtWidgets.QLabel(label.upper())
         if headerFontColor is not None:

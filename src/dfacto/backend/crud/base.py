@@ -30,9 +30,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """CRUD object with default methods to Create, Read, Update, Delete (CRUD)."""
         self.model = model
 
-    def get(
-        self, dbsession: Session, obj_id: Any
-    ) -> Optional[ModelType]:
+    def get(self, dbsession: Session, obj_id: Any) -> Optional[ModelType]:
         try:
             obj = dbsession.get(self.model, obj_id)
         except SQLAlchemyError as exc:
@@ -63,9 +61,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         else:
             return obj_list
 
-    def create(
-        self, dbsession: Session, *, obj_in: CreateSchemaType
-    ) -> ModelType:
+    def create(self, dbsession: Session, *, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = obj_in.flatten()
         db_obj = self.model(**obj_in_data)
         dbsession.add(db_obj)

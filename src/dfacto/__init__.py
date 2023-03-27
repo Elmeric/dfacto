@@ -14,10 +14,10 @@ Requires Python >= 3.6.1
 Usage:
     ''python -m fotocop''
 """
-__all__ = ['run_main']
+__all__ = ["run_main"]
 
-import sys
 import logging
+import sys
 
 from dfacto.frontend import guimain as gui
 
@@ -31,10 +31,10 @@ def run_main():
         sys.exit(gui.qt_main())
     except Exception as e:
         logger = logging.getLogger(__name__)
-        logger.fatal('Fatal error!', exc_info=True)
-        sys.stderr.write(f'\ndfacto - {str(e)}\n\n')
+        logger.fatal("Fatal error!", exc_info=True)
+        sys.stderr.write(f"\ndfacto - {str(e)}\n\n")
         sys.exit(1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run_main()

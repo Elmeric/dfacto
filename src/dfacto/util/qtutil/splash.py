@@ -1,9 +1,8 @@
 from typing import Optional
 
 import PyQt5.QtCore as QtCore
-import PyQt5.QtWidgets as QtWidgets
 import PyQt5.QtGui as QtGui
-
+import PyQt5.QtWidgets as QtWidgets
 from fotocop.util import qtutil as QtUtil
 
 __all__ = ["SplashScreen"]

@@ -19,8 +19,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from dfacto.backend import crud, models, schemas
-from dfacto.backend.models.base_model import BaseModel
 from dfacto.backend.db.session import init_db_data
+from dfacto.backend.models.base_model import BaseModel
 
 
 def _set_sqlite_pragma(dbapi_connection, _connection_record):

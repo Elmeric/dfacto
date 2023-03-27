@@ -10,11 +10,11 @@ It provides:
     A getAppDir convenient function to retrieve the standard windows' application
         directories in '%LOCALAPPDATA%\<appName>'
 """
-import os
 import json
 import logging
+import os
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Any, Optional, Type, overload
+from typing import Any, Dict, List, NamedTuple, Optional, Type, overload
 
 from dfacto.util.basicpatterns import Singleton
 

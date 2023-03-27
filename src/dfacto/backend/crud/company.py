@@ -9,9 +9,9 @@ from pathlib import Path
 from typing import Any, Optional
 
 from dfacto import settings as Config
-from dfacto.util.settings import SettingsError
-from dfacto.backend.crud import CrudError
 from dfacto.backend import db, models, schemas
+from dfacto.backend.crud import CrudError
+from dfacto.util.settings import SettingsError
 
 
 class CRUDCompany:
@@ -71,7 +71,7 @@ class CRUDCompany:
         try:
             Config.dfacto_settings.save()
         except SettingsError as exc:
-            raise  CrudError(f"Cannot persist company profiles: {exc}")
+            raise CrudError(f"Cannot persist company profiles: {exc}")
 
         return db_obj
 
@@ -79,7 +79,7 @@ class CRUDCompany:
         self, *, db_obj: models.Company, obj_in: schemas.CompanyUpdate
     ) -> models.Company:
         updated = False
-        renamed = (obj_in.name is not None and db_obj.name != obj_in.name)
+        renamed = obj_in.name is not None and db_obj.name != obj_in.name
         old_name = db_obj.name
         update_data = obj_in.flatten()
 
