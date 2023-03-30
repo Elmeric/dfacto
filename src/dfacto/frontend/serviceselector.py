@@ -23,11 +23,6 @@ from .serviceeditor import Service, ServiceEditor
 logger = logging.getLogger(__name__)
 
 
-class ServiceListItem(QtWidgets.QListWidgetItem):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-
 class ServiceSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ServiceRole = QtCore.Qt.ItemDataRole.UserRole + 1
@@ -99,7 +94,6 @@ class ServiceSelector(QtUtil.QFramedWidget):
         tool_layout.addWidget(self.edit_btn)
         tool_layout.addStretch()
         tool_layout.addWidget(self.add_to_selector)
-        tool_layout.addStretch()
 
         selector_widget = QtWidgets.QWidget()
         selector_widget.setSizePolicy(
@@ -122,7 +116,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
         main_layout.addStretch()
         self.setLayout(main_layout)
 
-        self.services_lst.itemSelectionChanged.connect(self.show_service)
+        self.services_lst.itemSelectionChanged.connect(self.on_service_selection)
         self.services_lst.itemActivated.connect(
             lambda: self.open_editor(mode=ServiceEditor.Mode.EDIT)
         )
@@ -143,8 +137,10 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self.current_client: Optional[schemas.Client] = None
 
     @property
-    def current_service(self) -> schemas.Service:
+    def current_service(self) -> Optional[schemas.Service]:
         current_item = self.services_lst.currentItem()
+        if current_item is None:
+            return
         return current_item.data(ServiceSelector.UserRoles.ServiceRole)
 
     @property
@@ -152,6 +148,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
         return self.service_editor.mode
 
     def load_services(self) -> None:
+        self.services_lst.clear()
+        self.service_editor.clear()
+
         response = api.service.get_all()
 
         if response.status is not CommandStatus.COMPLETED:
@@ -169,32 +168,46 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self.services_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
         self.services_lst.setCurrentRow(0)
 
+        self._enable_buttons(self.services_lst.count() > 0)
+
+    @QtCore.pyqtSlot(schemas.Client)
     def set_current_client(self, client: schemas.Client) -> None:
         self.current_client = client
 
     @QtCore.pyqtSlot()
-    def show_service(self) -> None:
-        response = api.client.get_quantity_in_basket(
-            self.current_client.id, service_id=self.current_service.id
-        )
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot retrieve service usage - Reason is: %s", response.reason
-            )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot delete service usage", is_warning=True
-            )
+    def on_service_selection(self) -> None:
+        current_service = self.current_service
+        if current_service is None:
+            return
+
+        current_client = self.current_client
+        if current_client is None:
             quantity = 0
         else:
-            quantity = response.body
+            response = api.client.get_quantity_in_basket(
+                self.current_client.id, service_id=current_service.id
+            )
+            if response.status is not CommandStatus.COMPLETED:
+                logger.warning(
+                    "Cannot retrieve service usage - Reason is: %s", response.reason
+                )
+                QtUtil.getMainWindow().show_status_message(
+                    f"Cannot retrieve service usage", is_warning=True
+                )
+                quantity = 0
+            else:
+                quantity = response.body
         self.add_to_selector.reset(quantity)
-        self._show_in_editor(self.current_service)
+        self._show_in_editor(current_service)
 
     @QtCore.pyqtSlot()
     def open_editor(self, mode: ServiceEditor.Mode) -> None:
         if mode is ServiceEditor.Mode.EDIT:
+            current_service = self.current_service
+            assert current_service is not None
+
             forbidden_names = copy(self._forbidden_names)
-            forbidden_names.remove(self.current_service.name)
+            forbidden_names.remove(current_service.name)
 
             self.service_editor.edit_service(forbidden_names)
 
@@ -218,6 +231,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
     def delete_service(self) -> None:
         row = self.services_lst.currentRow()
         service = self.current_service
+        assert service is not None
 
         reply = QtWidgets.QMessageBox.warning(
             self,  # noqa
@@ -249,11 +263,18 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         self._forbidden_names.remove(service.name)
 
-        self.services_lst.setCurrentRow(max(0, row - 1))
-        self.services_lst.setFocus()
+        if self.services_lst.count() == 0:
+            self._show_in_editor(None)
+            self._enable_buttons(False)
+            self.new_btn.setFocus()
+        else:
+            self.services_lst.setCurrentRow(row - 1)
+            self.services_lst.setFocus()
 
     @QtCore.pyqtSlot(int)
     def update_basket(self, delta: int) -> None:
+        assert self.current_service is not None
+
         if delta == 0:
             self._remove_from_basket()
         else:
@@ -268,6 +289,11 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         super().keyPressEvent(event)
 
+    def _enable_buttons(self, enable: bool) -> None:
+        self.delete_btn.setEnabled(enable)
+        self.edit_btn.setEnabled(enable)
+        self.add_to_selector.setEnabled(enable)
+
     def _add_item_from_service(
         self, service: schemas.Service
     ) -> QtWidgets.QListWidgetItem:
@@ -279,11 +305,12 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         return item
 
-    def _show_in_editor(self, service: schemas.Service) -> None:
+    def _show_in_editor(self, service: Optional[schemas.Service]) -> None:
         self.service_editor.show_service(service)
 
     def _update_service(self, service: Service) -> None:
         origin_service = self.current_service
+        assert origin_service is not None
         old_name = origin_service.name
 
         updated_service = {}
@@ -348,6 +375,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self.services_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
         row = self.services_lst.row(item)
         self.services_lst.setCurrentRow(row)
+        self._enable_buttons(True)
         self.services_lst.setFocus()
 
     def _remove_from_basket(self) -> None:
