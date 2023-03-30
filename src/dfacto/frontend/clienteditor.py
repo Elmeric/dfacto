@@ -14,16 +14,15 @@ import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
 
 from dfacto import settings as Config
-from dfacto.backend import api, schemas
-from dfacto.backend.api import CommandStatus
+from dfacto.backend import schemas
 from dfacto.util import qtutil as QtUtil
 
 logger = logging.getLogger(__name__)
 
-Service = namedtuple("Service", ["name", "unit_price", "vat_rate_id"])
+Client = namedtuple("Client", ["name", "address", "zip_code", "city", "email"])
 
 
-class ServiceEditor(QtWidgets.QWidget):
+class ClientEditor(QtWidgets.QWidget):
     class Mode(Enum):
         SHOW = auto()
         EDIT = auto()
@@ -40,8 +39,20 @@ class ServiceEditor(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Maximum
         )
 
-        header_lbl = QtWidgets.QLabel("SERVICE INFO")
+        header_lbl = QtWidgets.QLabel("CLIENT INFO")
         header_lbl.setMaximumHeight(32)
+        self.active_pix = QtWidgets.QLabel()
+        self.active_pix.setPixmap(
+            QtGui.QPixmap(f"{resources}/active-blue.png").scaledToHeight(
+                24, QtCore.Qt.TransformationMode.SmoothTransformation
+            )
+        )
+        self.inactive_pix = QtWidgets.QLabel()
+        self.inactive_pix.setPixmap(
+            QtGui.QPixmap(f"{resources}/inactive-blue.png").scaledToHeight(
+                24, QtCore.Qt.TransformationMode.SmoothTransformation
+            )
+        )
 
         icon_size = QtCore.QSize(32, 32)
         self.ok_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/ok.png"), "")
@@ -63,20 +74,36 @@ class ServiceEditor(QtWidgets.QWidget):
                 QtCore.QRegularExpression("[A-Z][A-Za-z0-9_ ]*")
             )
         )
-        name_tip = "Service designation, shall be a unique alphanumeric sentence starting with an uppercase letter"
+        name_tip = (
+            "Service designation, shall be a unique alphanumeric sentence "
+            "starting with an uppercase letter"
+        )
         self.name_text.setToolTip(name_tip)
         self.name_text.setStatusTip(name_tip)
 
-        self.price_spin = QtWidgets.QDoubleSpinBox()
-        self.price_spin.setMaximum(10000.00)
-        self.price_spin.setPrefix("€ ")
-        self.price_spin.setAccelerated(True)
-        self.price_spin.setGroupSeparatorShown(True)
-        price_tip = "Service unit price, in euros, limited to 10 000 €"
-        self.price_spin.setToolTip(price_tip)
-        self.price_spin.setStatusTip(price_tip)
+        self.address_text = QtUtil.FittedLineEdit()
+        address_tip = "Client address: building num, street"
+        self.address_text.setToolTip(address_tip)
+        self.address_text.setStatusTip(address_tip)
 
-        self.vat_cmb = QtWidgets.QComboBox()
+        self.zipcode_text = QtUtil.FittedLineEdit()
+        zipcode_tip = "Client address: zip code (five digit)"
+        self.zipcode_text.setToolTip(zipcode_tip)
+        self.zipcode_text.setStatusTip(zipcode_tip)
+        self.zipcode_text.setValidator(
+            QtGui.QRegularExpressionValidator(QtCore.QRegularExpression(r"[0-9_]{5}"))
+        )
+        self.zipcode_text.setCursorPosition(0)
+
+        self.city_text = QtUtil.FittedLineEdit()
+        city_tip = "Client address: city"
+        self.city_text.setToolTip(city_tip)
+        self.city_text.setStatusTip(city_tip)
+
+        self.email_text = QtUtil.FittedLineEdit()
+        email_tip = "Client email"
+        self.email_text.setToolTip(email_tip)
+        self.email_text.setStatusTip(email_tip)
 
         header = QtWidgets.QWidget()
         header_color = QtGui.QColor("#5d5b59")
@@ -95,10 +122,12 @@ class ServiceEditor(QtWidgets.QWidget):
         )
 
         header_layout = QtWidgets.QHBoxLayout()
-        header_layout.setContentsMargins(5, 5, 0, 5)
+        header_layout.setContentsMargins(5, 5, 10, 5)
         header_layout.setSpacing(5)
         header_layout.addWidget(header_lbl)
         header_layout.addStretch()
+        header_layout.addWidget(self.active_pix)
+        header_layout.addWidget(self.inactive_pix)
         header.setLayout(header_layout)
 
         tool_layout = QtWidgets.QHBoxLayout()
@@ -111,9 +140,11 @@ class ServiceEditor(QtWidgets.QWidget):
         service_layout = QtWidgets.QFormLayout()
         service_layout.setContentsMargins(5, 5, 5, 5)
         service_layout.setSpacing(5)
-        service_layout.addRow("Service:", self.name_text)
-        service_layout.addRow("Unit price:", self.price_spin)
-        service_layout.addRow("VAT rate:", self.vat_cmb)
+        service_layout.addRow("Client:", self.name_text)
+        service_layout.addRow("Addresse:", self.address_text)
+        service_layout.addRow("Zip code:", self.zipcode_text)
+        service_layout.addRow("City:", self.city_text)
+        service_layout.addRow("Email:", self.email_text)
 
         editor_widget = QtWidgets.QWidget()
         editor_widget.setSizePolicy(
@@ -134,32 +165,11 @@ class ServiceEditor(QtWidgets.QWidget):
         self.setLayout(main_layout)
 
         self.name_text.textEdited.connect(self.check_name)
-        self.price_spin.lineEdit().textEdited.connect(self.check_price)
         self.ok_btn.clicked.connect(self.accept)
         self.cancel_btn.clicked.connect(self.reject)
 
         self._forbidden_names: list[str] = []
-        self.mode = ServiceEditor.Mode.SHOW
-        self._load_vat_rates()
-
-    def _load_vat_rates(self):
-        response = api.vat_rate.get_all()
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot retrieve the VAT rates - Reason is: %s", response.reason
-            )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot retrieve the VAT rates: try to restart Dfacto.\n"
-                f"If the problem persists, contact your admin",
-                is_warning=True,
-            )
-            return
-        vat_rates: list[schemas.VatRate] = response.body
-        for vat_rate in vat_rates:
-            self.vat_cmb.addItem(
-                f"{vat_rate.rate} % ({vat_rate.name})", userData=vat_rate.id
-            )
-        self.vat_cmb.model().sort(0)
+        self.mode = ClientEditor.Mode.SHOW
 
     @property
     def mode(self) -> Mode:
@@ -169,7 +179,7 @@ class ServiceEditor(QtWidgets.QWidget):
     def mode(self, mode: Mode) -> None:
         self._mode = mode
 
-        if mode is ServiceEditor.Mode.SHOW:
+        if mode is ClientEditor.Mode.SHOW:
             show_buttons = False
             read_only = True
         else:
@@ -180,54 +190,52 @@ class ServiceEditor(QtWidgets.QWidget):
         self.cancel_btn.setVisible(show_buttons)
 
         self.name_text.setDisabled(read_only)
-        self.price_spin.setDisabled(read_only)
-        self.vat_cmb.setDisabled(read_only)
+        self.address_text.setDisabled(read_only)
+        self.zipcode_text.setDisabled(read_only)
+        self.city_text.setDisabled(read_only)
+        self.email_text.setDisabled(read_only)
 
         self._enable_buttons(self.is_valid)
 
     @property
-    def service(self):
-        return Service(
+    def client(self):
+        return Client(
             name=self.name_text.text(),
-            unit_price=self.price_spin.value(),
-            vat_rate_id=self.vat_cmb.currentData(),
+            address=self.address_text.text(),
+            zip_code=self.zipcode_text.text(),
+            city=self.city_text.text(),
+            email=self.email_text.text(),
         )
 
     @property
     def is_valid(self) -> bool:
-        if self._mode not in (ServiceEditor.Mode.EDIT, ServiceEditor.Mode.ADD):
+        if self._mode not in (ClientEditor.Mode.EDIT, ClientEditor.Mode.ADD):
             return True
 
         name_ok = (
             self.name_text.text() != ""
             and self.name_text.text() not in self._forbidden_names
         )
-        price_ok = self.price_spin.value() >= 0.0
 
-        return name_ok and price_ok
+        return name_ok
 
     @QtCore.pyqtSlot(str)
     def check_name(self, _text: str) -> None:
         self._enable_buttons(self.is_valid)
 
-    @QtCore.pyqtSlot(str)
-    def check_price(self, text: str) -> None:
-        if text == "":
-            self.price_spin.setValue(0.0)
-
-        self._enable_buttons(self.is_valid)
-
-    def show_service(self, service: Optional[schemas.Service]) -> None:
-        if service is None:
+    def show_client(self, client: Optional[schemas.Client]) -> None:
+        if client is None:
             self.clear()
         else:
-            vat_rate = service.vat_rate
+            self.name_text.setText(client.name)
+            self.address_text.setText(client.address.address)
+            self.zipcode_text.setText(client.address.zip_code)
+            self.city_text.setText(client.address.city)
+            self.email_text.setText(client.email)
+            self.active_pix.setVisible(client.is_active)
+            self.inactive_pix.setVisible(not client.is_active)
 
-            self.name_text.setText(service.name)
-            self.price_spin.setValue(service.unit_price)
-            self.vat_cmb.setCurrentText(f"{vat_rate.rate} % ({vat_rate.name})")
-
-        self.mode = ServiceEditor.Mode.SHOW
+        self.mode = ClientEditor.Mode.SHOW
 
     @QtCore.pyqtSlot()
     def accept(self) -> None:
@@ -241,7 +249,7 @@ class ServiceEditor(QtWidgets.QWidget):
         key = event.key()
         alt = event.modifiers() & QtCore.Qt.KeyboardModifier.AltModifier
 
-        if self._mode in (ServiceEditor.Mode.ADD, ServiceEditor.Mode.EDIT):
+        if self._mode in (ClientEditor.Mode.ADD, ClientEditor.Mode.EDIT):
             if key == QtCore.Qt.Key.Key_Escape:
                 self.reject()
                 return
@@ -251,27 +259,30 @@ class ServiceEditor(QtWidgets.QWidget):
 
         super().keyPressEvent(event)
 
-    def edit_service(self, forbidden_names: list[str]) -> None:
+    def edit_client(self, forbidden_names: list[str]) -> None:
         self._forbidden_names = forbidden_names
 
-        self.mode = ServiceEditor.Mode.EDIT
+        self.mode = ClientEditor.Mode.EDIT
 
         self.name_text.setFocus()
 
-    def add_service(self, forbidden_names: list[str]) -> None:
+    def add_client(self, forbidden_names: list[str]) -> None:
         self._forbidden_names = forbidden_names
 
         self.clear()
 
-        self.mode = ServiceEditor.Mode.ADD
+        self.mode = ClientEditor.Mode.ADD
 
         self.name_text.setFocus()
 
     def clear(self) -> None:
         self.name_text.clear()
-        self.price_spin.clear()
-        self.price_spin.setValue(0.0)
-        self.vat_cmb.setCurrentIndex(0)
+        self.address_text.clear()
+        self.zipcode_text.clear()
+        self.city_text.clear()
+        self.email_text.clear()
+        self.active_pix.hide()
+        self.inactive_pix.hide()
 
     def _enable_buttons(self, is_valid: bool):
         self.ok_btn.setEnabled(is_valid)

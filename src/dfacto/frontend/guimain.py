@@ -21,6 +21,7 @@ from dfacto.frontend.companydialogs import AddCompanyDialog, SelectCompanyDialog
 from dfacto.util import qtutil as QtUtil
 from dfacto.util.logutil import LogConfig
 
+from .clientselector import ClientSelector
 from .serviceselector import ServiceSelector
 
 __all__ = ["qt_main"]
@@ -64,11 +65,9 @@ class QtMainView(QtWidgets.QMainWindow):
         resources = Config.dfacto_settings.resources
 
         # Initialize the app's views. Init order fixed to comply with the editors' dependencies.
-        client_selector = QtWidgets.QWidget()
-        client_selector.setMinimumWidth(500)
-        client_editor = QtWidgets.QWidget()
+        self.client_selector = ClientSelector()
         invoice_selector = QtWidgets.QWidget()
-        invoice_selector.setMinimumWidth(900)
+        invoice_selector.setMinimumWidth(700)
         invoice_editor = QtWidgets.QWidget()
         self.service_selector = ServiceSelector()
         #         fsModel = FileSystemModel()
@@ -97,20 +96,22 @@ class QtMainView(QtWidgets.QMainWindow):
         #
         #         self._sourceManager.sourceSelected.connect(sourceSelector.displaySelectedSource)
         #         self._sourceManager.sourceSelected.connect(self.displaySelectedSource)
-        client = api.client.add(
-            schemas.ClientCreate(
-                name="Client 1",
-                address=schemas.Address(
-                    address="3 rue du moulin", zip_code="33640", city="Portets"
-                ),
-                email="client.un@gmail.com",
-            )
-        ).body
-        if client is not None:
-            self.service_selector.set_current_client(client)
-        else:
-            self.service_selector.set_current_client(api.client.get(1).body)
-        # client_selector.clientSelected.connect(self.service_selector.set_current_client)
+        # client = api.client.add(
+        #     schemas.ClientCreate(
+        #         name="Client 1",
+        #         address=schemas.Address(
+        #             address="3 rue du moulin", zip_code="33640", city="Portets"
+        #         ),
+        #         email="client.un@gmail.com",
+        #     )
+        # ).body
+        # if client is not None:
+        #     self.service_selector.set_current_client(client)
+        # else:
+        #     self.service_selector.set_current_client(api.client.get(1).body)
+        self.client_selector.client_selected.connect(
+            self.service_selector.set_current_client
+        )
         #         self._sourceManager.sourceSelected.connect(timelineViewer.setTimeline)
         #         self._sourceManager.sourceSelected.connect(self._downloader.setSourceSelection)
         #
@@ -159,10 +160,10 @@ class QtMainView(QtWidgets.QMainWindow):
 
         # Build the main view layout.
         left_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        left_vert_splitter.setContentsMargins(0, 0, 5, 5)
         left_vert_splitter.setChildrenCollapsible(False)
         left_vert_splitter.setHandleWidth(3)
-        left_vert_splitter.addWidget(client_selector)
-        left_vert_splitter.addWidget(client_editor)
+        left_vert_splitter.addWidget(self.client_selector)
         left_vert_splitter.setStretchFactor(0, 3)
         left_vert_splitter.setStretchFactor(1, 1)
         left_vert_splitter.setOpaqueResize(False)
@@ -215,8 +216,8 @@ class QtMainView(QtWidgets.QMainWindow):
             self,
             "Select another company profile",
             slot=self.do_select_profile_action,
-            tip="Create a new company profile",
-            shortcut="Ctrl+P",
+            tip="Select another company profile",
+            shortcut="Alt+P",
             icon=f"{resources}/change.png",
         )
         new_profile_action = QtUtil.createAction(
@@ -381,6 +382,7 @@ class QtMainView(QtWidgets.QMainWindow):
         self.move(settings.window_position[0], settings.window_position[1])
         self.resize(settings.window_size[0], settings.window_size[1])
 
+        self.client_selector.load_clients()
         self.service_selector.load_services()
         #
         # self._downloader.selectDestination(Path(settings.lastDestination))
@@ -548,6 +550,12 @@ class QtMainView(QtWidgets.QMainWindow):
         companies = api.company.get_others().body
 
         if len(companies) <= 0:
+            QtWidgets.QMessageBox.information(
+                None,  # type: ignore
+                f"Dfacto - Company profile selection",
+                f"No other company profiles available: use 'New company profile' to create one",
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
             return
 
         a_dialog = SelectCompanyDialog(profiles=companies, fixed_size=True)
