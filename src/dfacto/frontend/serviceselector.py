@@ -173,6 +173,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
     @QtCore.pyqtSlot(schemas.Client)
     def set_current_client(self, client: schemas.Client) -> None:
         self.current_client = client
+        self._update_basket_controller()
 
     @QtCore.pyqtSlot()
     def on_service_selection(self) -> None:
@@ -180,25 +181,8 @@ class ServiceSelector(QtUtil.QFramedWidget):
         if current_service is None:
             return
 
-        current_client = self.current_client
-        if current_client is None:
-            quantity = 0
-        else:
-            response = api.client.get_quantity_in_basket(
-                self.current_client.id, service_id=current_service.id
-            )
-            if response.status is not CommandStatus.COMPLETED:
-                logger.warning(
-                    "Cannot retrieve service usage - Reason is: %s", response.reason
-                )
-                QtUtil.getMainWindow().show_status_message(
-                    f"Cannot retrieve service usage", is_warning=True
-                )
-                quantity = 0
-            else:
-                quantity = response.body
-        self.add_to_selector.reset(quantity)
         self._show_in_editor(current_service)
+        self._update_basket_controller()
 
     @QtCore.pyqtSlot()
     def open_editor(self, mode: ServiceEditor.Mode) -> None:
@@ -307,6 +291,27 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
     def _show_in_editor(self, service: Optional[schemas.Service]) -> None:
         self.service_editor.show_service(service)
+
+    def _update_basket_controller(self) -> None:
+        current_service = self.current_service
+        current_client = self.current_client
+        if current_client is None or current_service is None:
+            quantity = 0
+        else:
+            response = api.client.get_quantity_in_basket(
+                self.current_client.id, service_id=current_service.id
+            )
+            if response.status is not CommandStatus.COMPLETED:
+                logger.warning(
+                    "Cannot retrieve service usage - Reason is: %s", response.reason
+                )
+                QtUtil.getMainWindow().show_status_message(
+                    f"Cannot retrieve service usage", is_warning=True
+                )
+                quantity = 0
+            else:
+                quantity = response.body
+        self.add_to_selector.reset(quantity)
 
     def _update_service(self, service: Service) -> None:
         origin_service = self.current_service

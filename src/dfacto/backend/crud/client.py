@@ -259,6 +259,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         assert (
             not db_obj.has_emitted_invoices
         ), "Cannot delete client with non-draft invoices"
+        assert db_obj.basket is not None
 
         for item in db_obj.basket.items:
             if item.invoice_id is None:
