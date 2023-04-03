@@ -42,6 +42,7 @@ class _BasketInDBBase(_BasketBase):
 # Additional properties to return from DB
 @dataclass
 class Basket(_BasketInDBBase):
+    client_id: int
     items: list[Item]
 
     @property
@@ -54,6 +55,7 @@ class Basket(_BasketInDBBase):
             id=orm_obj.id,
             raw_amount=orm_obj.raw_amount,
             vat=orm_obj.vat,
+            client_id=orm_obj.client_id,
             items=[Item.from_orm(item) for item in orm_obj.items],
         )
 
@@ -61,4 +63,4 @@ class Basket(_BasketInDBBase):
 # Additional properties stored in DB
 @dataclass
 class BasketInDB(_BasketInDBBase):
-    client_id: int
+    pass

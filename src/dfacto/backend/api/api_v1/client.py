@@ -102,6 +102,27 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             return CommandResponse(CommandStatus.COMPLETED, body=quantity)
 
     @command
+    def get_item_from_service(self, obj_id: int, *, service_id: int) -> CommandResponse:
+        try:
+            item_ = self.crud_object.get_item_from_service(
+                self.session, obj_id, service_id=service_id
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"ITEM-FROM-SERVICE - SQL or database error: {exc}",
+            )
+        else:
+            if item_ is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"ITEM-FROM-SERVICE - Service {service_id} not found.",
+                )
+
+            body = schemas.Item.from_orm(item_)
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    @command
     def get_invoices(
         self,
         obj_id: int,  # client id

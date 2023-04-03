@@ -27,7 +27,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ServiceRole = QtCore.Qt.ItemDataRole.UserRole + 1
 
-    def __init__(self, parent=None):
+    basket_changed = QtCore.pyqtSignal(int)
+
+    def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
 
         resources = Config.dfacto_settings.resources
@@ -173,7 +175,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
     @QtCore.pyqtSlot(schemas.Client)
     def set_current_client(self, client: schemas.Client) -> None:
         self.current_client = client
-        self._update_basket_controller()
+        self.update_basket_controller()
 
     @QtCore.pyqtSlot()
     def on_service_selection(self) -> None:
@@ -182,7 +184,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
             return
 
         self._show_in_editor(current_service)
-        self._update_basket_controller()
+        self.update_basket_controller()
 
     @QtCore.pyqtSlot()
     def open_editor(self, mode: ServiceEditor.Mode) -> None:
@@ -260,9 +262,47 @@ class ServiceSelector(QtUtil.QFramedWidget):
         assert self.current_service is not None
 
         if delta == 0:
-            self._remove_from_basket()
+            success = self._remove_from_basket()
         else:
-            self._add_to_basket(delta)
+            success = self._add_to_basket(delta)
+
+        if success:
+            self.basket_changed.emit(self.current_service.id if delta != 0 else -1)
+        else:
+            quantity = self.add_to_selector.quantity
+            self.add_to_selector.reset(quantity - delta)
+
+    def update_basket_controller(self) -> None:
+        current_service = self.current_service
+        current_client = self.current_client
+        if current_client is None or current_service is None:
+            quantity = 0
+        else:
+            response = api.client.get_quantity_in_basket(
+                self.current_client.id, service_id=current_service.id
+            )
+            if response.status is not CommandStatus.COMPLETED:
+                logger.warning(
+                    "Cannot retrieve service usage - Reason is: %s", response.reason
+                )
+                QtUtil.getMainWindow().show_status_message(
+                    f"Cannot retrieve service usage", is_warning=True
+                )
+                quantity = 0
+            else:
+                quantity = response.body
+        self.add_to_selector.reset(quantity)
+
+    @QtCore.pyqtSlot(str)
+    def select_service_by_name(self, name: str) -> None:
+        if name == "":
+            return
+
+        items = self.services_lst.findItems(name, QtCore.Qt.MatchFlag.MatchExactly)
+        if len(items) > 0:
+            row = self.services_lst.row(items[0])
+            if row != self.services_lst.currentRow():
+                self.services_lst.setCurrentRow(row)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
@@ -291,27 +331,6 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
     def _show_in_editor(self, service: Optional[schemas.Service]) -> None:
         self.service_editor.show_service(service)
-
-    def _update_basket_controller(self) -> None:
-        current_service = self.current_service
-        current_client = self.current_client
-        if current_client is None or current_service is None:
-            quantity = 0
-        else:
-            response = api.client.get_quantity_in_basket(
-                self.current_client.id, service_id=current_service.id
-            )
-            if response.status is not CommandStatus.COMPLETED:
-                logger.warning(
-                    "Cannot retrieve service usage - Reason is: %s", response.reason
-                )
-                QtUtil.getMainWindow().show_status_message(
-                    f"Cannot retrieve service usage", is_warning=True
-                )
-                quantity = 0
-            else:
-                quantity = response.body
-        self.add_to_selector.reset(quantity)
 
     def _update_service(self, service: Service) -> None:
         origin_service = self.current_service
@@ -356,6 +375,8 @@ class ServiceSelector(QtUtil.QFramedWidget):
             self._forbidden_names[idx] = new_name
             self.services_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
 
+        self.basket_changed.emit(new_service.id)
+
         self.services_lst.setFocus()
 
     def _add_service(self, service: Service) -> None:
@@ -383,7 +404,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self._enable_buttons(True)
         self.services_lst.setFocus()
 
-    def _remove_from_basket(self) -> None:
+    def _remove_from_basket(self) -> bool:
         response = api.client.remove_from_basket(
             self.current_client.id,
             service_id=self.current_service.id,
@@ -393,8 +414,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
             QtUtil.getMainWindow().show_status_message(
                 f"Cannot remove service", is_warning=True
             )
+        return response.status is CommandStatus.COMPLETED
 
-    def _add_to_basket(self, qty: int) -> None:
+    def _add_to_basket(self, qty: int) -> bool:
         response = api.client.add_to_basket(
             self.current_client.id, service_id=self.current_service.id, quantity=qty
         )
@@ -405,3 +427,4 @@ class ServiceSelector(QtUtil.QFramedWidget):
             QtUtil.getMainWindow().show_status_message(
                 f"Cannot add service to basket", is_warning=True
             )
+        return response.status is CommandStatus.COMPLETED

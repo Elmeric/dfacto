@@ -40,6 +40,21 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         else:
             return basket
 
+    def get_item_from_service(
+        self, dbsession: Session, obj_id: int, *, service_id: int
+    ) -> Optional[models.Item]:
+        try:
+            item = dbsession.scalars(
+                select(models.Item)
+                .join(models.Basket)
+                .where(models.Item.service_id == service_id)
+                .where(models.Basket.client_id == obj_id)
+            ).first()
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        else:
+            return item
+
     def get_invoices(
         self, dbsession: Session, obj_id: int, *, period: Period
     ) -> list[models.Invoice]:

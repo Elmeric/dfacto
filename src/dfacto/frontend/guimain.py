@@ -21,6 +21,7 @@ from dfacto.frontend.companydialogs import AddCompanyDialog, SelectCompanyDialog
 from dfacto.util import qtutil as QtUtil
 from dfacto.util.logutil import LogConfig
 
+from .basketviewer import BasketTableModel, BasketViewer
 from .clientselector import ClientSelector
 from .serviceselector import ServiceSelector
 
@@ -66,6 +67,8 @@ class QtMainView(QtWidgets.QMainWindow):
 
         # Initialize the app's views. Init order fixed to comply with the editors' dependencies.
         self.client_selector = ClientSelector()
+        basket_model = BasketTableModel()
+        self.basket_viewer = BasketViewer(basket_model)
         invoice_selector = QtWidgets.QWidget()
         invoice_selector.setMinimumWidth(700)
         invoice_editor = QtWidgets.QWidget()
@@ -109,8 +112,18 @@ class QtMainView(QtWidgets.QMainWindow):
         #     self.service_selector.set_current_client(client)
         # else:
         #     self.service_selector.set_current_client(api.client.get(1).body)
+        self.service_selector.basket_changed.connect(self.basket_viewer.update_basket)
         self.client_selector.client_selected.connect(
             self.service_selector.set_current_client
+        )
+        self.client_selector.client_selected.connect(
+            self.basket_viewer.set_current_client
+        )
+        basket_model.basket_changed.connect(
+            self.service_selector.update_basket_controller
+        )
+        self.basket_viewer.selection_changed.connect(
+            self.service_selector.select_service_by_name
         )
         #         self._sourceManager.sourceSelected.connect(timelineViewer.setTimeline)
         #         self._sourceManager.sourceSelected.connect(self._downloader.setSourceSelection)
@@ -172,7 +185,8 @@ class QtMainView(QtWidgets.QMainWindow):
         center_vert_splitter.setChildrenCollapsible(False)
         center_vert_splitter.setHandleWidth(3)
         center_vert_splitter.addWidget(invoice_selector)
-        center_vert_splitter.addWidget(invoice_editor)
+        # center_vert_splitter.addWidget(invoice_editor)
+        center_vert_splitter.addWidget(self.basket_viewer)
         center_vert_splitter.setStretchFactor(0, 1)
         center_vert_splitter.setStretchFactor(1, 3)
         center_vert_splitter.setOpaqueResize(False)

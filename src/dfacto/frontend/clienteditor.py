@@ -30,7 +30,7 @@ class ClientEditor(QtWidgets.QWidget):
 
     finished = QtCore.pyqtSignal(QtWidgets.QDialog.DialogCode)
 
-    def __init__(self, parent=None):
+    def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
 
         resources = Config.dfacto_settings.resources
