@@ -76,10 +76,10 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 item.service.name,
                 item.service.unit_price,
                 item.quantity,
-                item.raw_amount,
+                item.amount.raw,
                 item.service.vat_rate.rate,
-                item.vat,
-                item.net_amount,
+                item.amount.vat,
+                item.amount.net,
             ]
             for item in items
         }
@@ -298,7 +298,7 @@ class BasketViewer(QtUtil.QFramedWidget):
         model.load_basket()
 
         self.header_lbl.setText(
-            f"BASKET - {client.name} - Net amount = {basket.net_amount}"
+            f"BASKET - {client.name} - Net amount = {basket.amount.net}"
         )
 
         if service_id < 0:

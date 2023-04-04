@@ -99,8 +99,6 @@ def test_crud_create(dbsession, init_data, mock_datetime_now):
 
     assert invoice.id is not None
     assert invoice.client_id == client.id
-    assert invoice.raw_amount == 0.0
-    assert invoice.vat == 0.0
     assert invoice.status is models.InvoiceStatus.DRAFT
     assert invoice.client is client
     assert len(invoice.items) == 0
@@ -114,8 +112,6 @@ def test_crud_create(dbsession, init_data, mock_datetime_now):
     except sa.exc.SQLAlchemyError:
         inv = None
     assert inv.client_id == client.id
-    assert inv.raw_amount == 0.0
-    assert inv.vat == 0.0
     assert inv.status is models.InvoiceStatus.DRAFT
     assert inv.client is client
     assert len(inv.items) == 0
@@ -160,8 +156,6 @@ def test_crud_create_error(dbsession, init_data, mock_commit):
 def test_crud_invoice_from_basket(clear, dbsession, init_data, mock_datetime_now):
     client = init_data.clients[1]
     basket = client.basket
-    raw_amount = basket.raw_amount
-    vat = basket.vat
     items_count = len(basket.items)
     assert items_count > 0
 
@@ -169,8 +163,6 @@ def test_crud_invoice_from_basket(clear, dbsession, init_data, mock_datetime_now
 
     assert invoice.id is not None
     assert invoice.client_id == client.id
-    assert invoice.raw_amount == raw_amount
-    assert invoice.vat == vat
     assert invoice.status is models.InvoiceStatus.DRAFT
     assert invoice.client is client
     assert len(invoice.items) == items_count
@@ -182,8 +174,6 @@ def test_crud_invoice_from_basket(clear, dbsession, init_data, mock_datetime_now
 
     inv = dbsession.get(models.Invoice, invoice.id)
     assert inv.client_id == client.id
-    assert inv.raw_amount == raw_amount
-    assert inv.vat == vat
     assert inv.status is models.InvoiceStatus.DRAFT
     assert inv.client is client
     assert len(inv.items) == items_count
@@ -230,8 +220,6 @@ def test_crud_add_item(dbsession, init_data):
     invoice = client.invoices[0]
     assert invoice.status is models.InvoiceStatus.DRAFT
     items_count = len(invoice.items)
-    raw_amount = invoice.raw_amount
-    vat = invoice.vat
     service = init_data.services[1]
 
     item = crud.invoice.add_item(
@@ -240,13 +228,9 @@ def test_crud_add_item(dbsession, init_data):
 
     assert item.service_id == service.id
     assert item.quantity == 2
-    assert item.raw_amount == service.unit_price * 2
-    assert item.vat == service.vat_rate.rate * service.unit_price * 2 / 100
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1
     assert invoice.items[items_count] == item
-    assert invoice.raw_amount == raw_amount + item.raw_amount
-    assert invoice.vat == vat + item.vat
 
 
 def test_crud_add_item_default_qty(dbsession, init_data):
@@ -254,21 +238,15 @@ def test_crud_add_item_default_qty(dbsession, init_data):
     invoice = client.invoices[0]
     assert invoice.status is models.InvoiceStatus.DRAFT
     items_count = len(invoice.items)
-    raw_amount = invoice.raw_amount
-    vat = invoice.vat
     service = init_data.services[1]
 
     item = crud.invoice.add_item(dbsession, invoice_=invoice, service=service)
 
     assert item.service_id == service.id
     assert item.quantity == 1
-    assert item.raw_amount == service.unit_price
-    assert item.vat == service.vat_rate.rate * service.unit_price / 100
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1
     assert invoice.items[items_count] == item
-    assert invoice.raw_amount == raw_amount + item.raw_amount
-    assert invoice.vat == vat + item.vat
 
 
 def test_crud_add_item_non_draft(dbsession, init_data):
@@ -276,8 +254,6 @@ def test_crud_add_item_non_draft(dbsession, init_data):
     invoice = client.invoices[0]
     assert invoice.status is not models.InvoiceStatus.DRAFT
     items_count = len(invoice.items)
-    raw_amount = invoice.raw_amount
-    vat = invoice.vat
     service = init_data.services[1]
 
     with pytest.raises(AssertionError):
@@ -286,8 +262,6 @@ def test_crud_add_item_non_draft(dbsession, init_data):
         )
 
     assert len(invoice.items) == items_count
-    assert invoice.raw_amount == raw_amount
-    assert invoice.vat == vat
 
 
 def test_crud_add_item_commit_error(dbsession, init_data, mock_commit):
@@ -298,8 +272,6 @@ def test_crud_add_item_commit_error(dbsession, init_data, mock_commit):
     invoice = client.invoices[0]
     assert invoice.status is models.InvoiceStatus.DRAFT
     items_count = len(invoice.items)
-    raw_amount = invoice.raw_amount
-    vat = invoice.vat
     service = init_data.services[1]
 
     with pytest.raises(crud.CrudError):
@@ -308,8 +280,6 @@ def test_crud_add_item_commit_error(dbsession, init_data, mock_commit):
         )
 
     assert len(invoice.items) == items_count
-    assert invoice.raw_amount == raw_amount
-    assert invoice.vat == vat
 
 
 def test_crud_clear_invoice_no_basket(dbsession, init_data):
@@ -330,8 +300,6 @@ def test_crud_clear_invoice_no_basket(dbsession, init_data):
         )
 
     assert len(invoice.items) == 0
-    assert invoice.raw_amount == 0.0
-    assert invoice.vat == 0.0
 
 
 def test_crud_clear_invoice_in_basket(dbsession, init_data):
@@ -350,8 +318,6 @@ def test_crud_clear_invoice_in_basket(dbsession, init_data):
     assert it1 == item_in_basket
 
     assert len(invoice.items) == 0
-    assert invoice.raw_amount == 0.0
-    assert invoice.vat == 0.0
 
 
 def test_crud_clear_invoice_non_draft(dbsession, init_data):
@@ -360,8 +326,6 @@ def test_crud_clear_invoice_non_draft(dbsession, init_data):
     assert invoice.status is not models.InvoiceStatus.DRAFT
     items = [(item.id, item) for item in invoice.items]
     items_count = len(invoice.items)
-    expected_raw_amount = invoice.raw_amount
-    expected_vat = invoice.vat
 
     with pytest.raises(AssertionError):
         crud.invoice.clear_invoice(dbsession, invoice_=invoice)
@@ -373,8 +337,6 @@ def test_crud_clear_invoice_non_draft(dbsession, init_data):
         assert it == item
 
     assert len(invoice.items) == items_count
-    assert invoice.raw_amount == expected_raw_amount
-    assert invoice.vat == expected_vat
 
 
 def test_crud_clear_invoice_commit_error(dbsession, init_data, mock_commit):
@@ -386,8 +348,6 @@ def test_crud_clear_invoice_commit_error(dbsession, init_data, mock_commit):
     assert invoice.status is models.InvoiceStatus.DRAFT
     items = [(item.id, item) for item in invoice.items]
     items_count = len(invoice.items)
-    expected_raw_amount = invoice.raw_amount
-    expected_vat = invoice.vat
 
     with pytest.raises(crud.CrudError):
         crud.invoice.clear_invoice(dbsession, invoice_=invoice)
@@ -399,8 +359,6 @@ def test_crud_clear_invoice_commit_error(dbsession, init_data, mock_commit):
         assert it == item
 
     assert len(invoice.items) == items_count
-    assert invoice.raw_amount == expected_raw_amount
-    assert invoice.vat == expected_vat
 
 
 def test_crud_delete_invoice_no_basket(dbsession, init_data):
@@ -491,8 +449,6 @@ def test_crud_delete_invoice_non_draft(dbsession, init_data):
     logs = [(log.id, log) for log in invoice.status_log]
     logs_count = len(invoice.status_log)
     assert logs_count > 0
-    expected_raw_amount = invoice.raw_amount
-    expected_vat = invoice.vat
 
     with pytest.raises(AssertionError):
         crud.invoice.delete_invoice(dbsession, invoice_=invoice)
@@ -509,8 +465,6 @@ def test_crud_delete_invoice_non_draft(dbsession, init_data):
         assert lg == log
     assert len(invoice.items) == items_count
     assert len(invoice.status_log) == logs_count
-    assert invoice.raw_amount == expected_raw_amount
-    assert invoice.vat == expected_vat
 
 
 def test_crud_delete_invoice_commit_error(dbsession, init_data, mock_commit):
@@ -526,8 +480,6 @@ def test_crud_delete_invoice_commit_error(dbsession, init_data, mock_commit):
     logs = [(log.id, log) for log in invoice.status_log]
     logs_count = len(invoice.status_log)
     assert logs_count > 0
-    expected_raw_amount = invoice.raw_amount
-    expected_vat = invoice.vat
 
     with pytest.raises(crud.CrudError):
         crud.invoice.delete_invoice(dbsession, invoice_=invoice)
@@ -544,8 +496,6 @@ def test_crud_delete_invoice_commit_error(dbsession, init_data, mock_commit):
         assert lg == log
     assert len(invoice.items) == items_count
     assert len(invoice.status_log) == logs_count
-    assert invoice.raw_amount == expected_raw_amount
-    assert invoice.vat == expected_vat
 
 
 def test_crud_cancel_invoice(dbsession, init_data, mock_datetime_now):
@@ -715,9 +665,6 @@ def test_invoice_from_orm(dbsession, init_data):
     from_db = schemas.Invoice.from_orm(invoice)
 
     assert from_db.id == invoice.id
-    assert from_db.raw_amount == invoice.raw_amount
-    assert from_db.vat == invoice.vat
-    assert from_db.net_amount == from_db.raw_amount + from_db.vat
     assert from_db.status == invoice.status
     assert from_db.client_id == invoice.client_id
     for i, item in enumerate(from_db.items):

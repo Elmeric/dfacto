@@ -846,8 +846,6 @@ def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
     state["read_value"] = ("basket", "service")
     return_value = FakeORMItem(
         id=1,
-        raw_amount=100.0,
-        vat=10.0,
         service_id=1,
         quantity=2,
         service=FakeORMService(
@@ -926,8 +924,6 @@ def test_cmd_update_item_quantity(mock_client_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
@@ -949,8 +945,6 @@ def test_cmd_update_item_quantity_bad_quantity(mock_client_model, mock_schema_fr
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
@@ -1000,14 +994,10 @@ def test_cmd_update_item_quantity_bad_basket(mock_client_model, mock_schema_from
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         basket=FakeORMBasket(
             id=1,
-            raw_amount=10.0,
-            vat=8.0,
             client_id=2,
             items=["items1"],
         ),
@@ -1030,8 +1020,6 @@ def test_cmd_update_item_quantity_bad_invoice(mock_client_model, mock_schema_fro
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
@@ -1055,8 +1043,6 @@ def test_cmd_update_item_quantity_non_draft(mock_client_model, mock_schema_from_
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.EMITTED),
@@ -1079,8 +1065,6 @@ def test_cmd_update_item_quantity_update_error(mock_client_model, mock_schema_fr
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": True}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
@@ -1102,8 +1086,6 @@ def test_cmd_remove_item(mock_client_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "REMOVE_ITEM": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
@@ -1155,14 +1137,10 @@ def test_cmd_remove_item_bad_basket(mock_client_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "REMOVE_ITEM": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         basket=FakeORMBasket(
             id=1,
-            raw_amount=10.0,
-            vat=8.0,
             client_id=2,
             items=["items1"],
         ),
@@ -1185,8 +1163,6 @@ def test_cmd_remove_item_bad_invoice(mock_client_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "REMOVE_ITEM": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
@@ -1210,8 +1186,6 @@ def test_cmd_remove_item_non_draft(mock_client_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "REMOVE_ITEM": False}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID),
@@ -1234,8 +1208,6 @@ def test_cmd_remove_item_remove_error(mock_client_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "REMOVE_ITEM": True}
     state["read_value"] = FakeORMItem(
         id=1,
-        raw_amount=1.0,
-        vat=2.0,
         service_id=1,
         quantity=1,
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
@@ -1475,8 +1447,6 @@ def test_cmd_add_to_invoice(
     state["read_value"] = FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT)
     return_value = FakeORMItem(
         id=1,
-        raw_amount=100.0,
-        vat=10.0,
         service_id=1,
         quantity=2,
         service=FakeORMService(
@@ -1586,15 +1556,11 @@ def test_cmd_clear_invoice(mock_client_model, mock_invoice_model, mock_schema_fr
     invoice.items = [
         FakeORMItem(
             id=1,
-            raw_amount=1.0,
-            vat=2.0,
             basket_id=1,
             service_id=1,
             quantity=1,
             basket=FakeORMBasket(
                 id=1,
-                raw_amount=10.0,
-                vat=8.0,
                 client_id=2,
                 items=["items1"],
             ),
@@ -1715,15 +1681,11 @@ def test_cmd_delete_invoice(
     invoice.items = [
         FakeORMItem(
             id=1,
-            raw_amount=1.0,
-            vat=2.0,
             basket_id=1,
             service_id=1,
             quantity=1,
             basket=FakeORMBasket(
                 id=1,
-                raw_amount=10.0,
-                vat=8.0,
                 client_id=2,
                 items=["items1"],
             ),

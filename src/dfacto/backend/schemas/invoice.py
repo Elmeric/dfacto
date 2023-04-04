@@ -10,7 +10,7 @@ from typing import Optional, cast
 
 from dfacto.backend import models
 
-from .base import BaseSchema
+from .base import Amount, BaseSchema
 from .item import Item
 
 
@@ -37,8 +37,6 @@ class InvoiceUpdate(_InvoiceDefaultsBase):
 @dataclass
 class _InvoiceInDBBase(_InvoiceBase):
     id: int
-    raw_amount: float
-    vat: float
     status: models.InvoiceStatus
 
 
@@ -72,8 +70,14 @@ class Invoice(_InvoiceInDBBase):
         return "FC" + str(self.id).zfill(5)
 
     @property
-    def net_amount(self) -> float:
-        return self.raw_amount + self.vat
+    def amount(self) -> Amount:
+        raw_amount = vat_amount = net_amount = 0.0
+        for item in self.items:
+            amount = item.amount
+            raw_amount += amount.raw
+            vat_amount += amount.vat
+            net_amount += amount.net
+        return Amount(raw=raw_amount, vat=vat_amount, net=net_amount)
 
     @property
     def created_on(self) -> datetime:
@@ -116,8 +120,6 @@ class Invoice(_InvoiceInDBBase):
     def from_orm(cls, orm_obj: models.Invoice) -> "Invoice":
         return cls(
             id=orm_obj.id,
-            raw_amount=orm_obj.raw_amount,
-            vat=orm_obj.vat,
             status=orm_obj.status,
             client_id=orm_obj.client_id,
             items=[Item.from_orm(item) for item in orm_obj.items],

@@ -126,8 +126,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             if item_ is None:
                 # No item found: create it
                 item_ = models.Item(
-                    raw_amount=raw_amount,
-                    vat=vat,
                     service_id=service.id,
                     quantity=quantity,
                 )
@@ -135,13 +133,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
                 dbsession.add(item_)
             else:
                 # Item found: update it
-                item_.raw_amount += raw_amount
-                item_.vat += vat
                 item_.quantity += quantity
-
-            # Finally update basket
-            basket.raw_amount += raw_amount
-            basket.vat += vat
 
             try:
                 dbsession.commit()
@@ -174,8 +166,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             if item_ is None:
                 return
 
-            basket.raw_amount -= item_.raw_amount
-            basket.vat -= item_.vat
             dbsession.delete(item_)
 
             try:
@@ -198,18 +188,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             return
 
         item.quantity = quantity
-        prev_raw_amount = item.raw_amount
-        prev_vat = item.vat
-        item.raw_amount = new_raw_amount = item.service.unit_price * quantity
-        item.vat = new_vat = item.service.vat_rate.rate * new_raw_amount / 100
-
-        if item.basket_id is not None:
-            item.basket.raw_amount += new_raw_amount - prev_raw_amount
-            item.basket.vat += new_vat - prev_vat
-
-        if item.invoice_id is not None:
-            item.invoice.raw_amount += new_raw_amount - prev_raw_amount
-            item.invoice.vat += new_vat - prev_vat
 
         try:
             dbsession.commit()
@@ -231,8 +209,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
 
     def _remove_item_from_basket(self, dbsession: Session, item: models.Item) -> None:
         assert item.invoice_id is None
-        item.basket.raw_amount -= item.raw_amount
-        item.basket.vat -= item.vat
         dbsession.delete(item)
 
         try:
@@ -243,8 +219,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
 
     def _remove_item_from_invoice(self, dbsession: Session, item: models.Item) -> None:
         assert item.basket_id is None
-        item.invoice.raw_amount -= item.raw_amount
-        item.invoice.vat -= item.vat
         dbsession.delete(item)
 
         try:
@@ -254,8 +228,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             raise CrudError() from exc
 
     def clear_basket(self, dbsession: Session, *, basket: models.Basket) -> None:
-        basket.raw_amount = 0.0
-        basket.vat = 0.0
         for item in basket.items:
             if item.invoice_id is None:
                 # Not used by an invoice: delete it.

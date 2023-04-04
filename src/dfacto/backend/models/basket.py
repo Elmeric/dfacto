@@ -19,8 +19,6 @@ class Basket(BaseModel):
     __tablename__ = "basket"
 
     id: Mapped[intpk] = mapped_column(init=False)
-    raw_amount: Mapped[float] = mapped_column(default=0.0)
-    vat: Mapped[float] = mapped_column(default=0.0)
     client_id: Mapped[int] = mapped_column(
         ForeignKey("client.id"), init=False, unique=True
     )

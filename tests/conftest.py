@@ -356,11 +356,7 @@ def init_data(dbsession: Session) -> TestData:
     for i in range(20):
         service = services[i % 5]
         quantity = i + 1
-        raw_amount = service.unit_price * quantity
-        vat = raw_amount * service.vat_rate.rate / 100
         item = models.Item(
-            raw_amount=raw_amount,
-            vat=vat,
             service_id=service.id,
             quantity=quantity,
         )
@@ -368,14 +364,10 @@ def init_data(dbsession: Session) -> TestData:
             basket = clients[i % 5].basket
             item.basket_id = basket.id
             dbsession.add(item)
-            basket.raw_amount += raw_amount
-            basket.vat += vat
         else:
             invoice = invoices[i % 5]
             item.invoice_id = invoice.id
             dbsession.add(item)
-            invoice.raw_amount += raw_amount
-            invoice.vat += vat
     dbsession.commit()
     items = cast(list[models.Item], dbsession.scalars(select(models.Item)).all())
 
@@ -409,8 +401,6 @@ class FakeORMClient(FakeORMModel):
         if self.basket is None:
             self.basket = FakeORMBasket(
                 id=1,
-                raw_amount=0.0,
-                vat=0.0,
                 client_id=self.id,
                 items=[],
             )
@@ -422,8 +412,6 @@ class FakeORMClient(FakeORMModel):
 
 @dataclasses.dataclass
 class FakeORMBasket(FakeORMModel):
-    raw_amount: float
-    vat: float
     client_id: int
     items: list[str] = dataclasses.field(default_factory=list)
 
@@ -431,15 +419,11 @@ class FakeORMBasket(FakeORMModel):
 @dataclasses.dataclass
 class FakeORMInvoice(FakeORMModel):
     client_id: int = 1
-    raw_amount: float = 0.0
-    vat: float = 0.0
     status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
 
 
 @dataclasses.dataclass
 class FakeORMItem(FakeORMModel):
-    raw_amount: float
-    vat: float
     service_id: int
     quantity: int = 1
     service: "FakeORMService" = None

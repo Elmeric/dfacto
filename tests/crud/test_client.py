@@ -64,20 +64,14 @@ def init_items(
     rates = (0.0, 2.1, 5.5)
 
     for i in range(10):
-        raw_amount = 100 + 10 * i
-        vat = raw_amount * rates[i % 3] / 100
         quantity = i + 1
         item = models.Item(
-            raw_amount=raw_amount,
-            vat=vat,
             service_id=(i % 5) + 1,
             quantity=quantity,
         )
         basket = clients[i % 5].basket
         item.basket_id = basket.id
         dbsession.add(item)
-        basket.raw_amount += raw_amount
-        basket.vat += vat
         dbsession.commit()
 
     items = cast(list[models.Item], dbsession.scalars(sa.select(models.Item)).all())
@@ -138,8 +132,6 @@ def test_crud_get_basket(dbsession, init_clients):
     basket = crud.client.get_basket(dbsession, clients[0].id)
 
     assert basket is clients[0].basket
-    assert basket.raw_amount == 0.0
-    assert basket.vat == 0.0
     assert basket.client_id == clients[0].id
     assert len(basket.items) == 0
 
@@ -550,13 +542,9 @@ def test_crud_add_to_basket(dbsession, init_clients, init_services):
 
     assert item.service_id == service.id
     assert item.quantity == 2
-    assert item.raw_amount == service.unit_price * 2
-    assert item.vat == service.vat_rate.rate
     assert item.basket_id == client.basket.id
     assert len(client.basket.items) == 1
     assert client.basket.items[0] == item
-    assert client.basket.raw_amount == item.raw_amount
-    assert client.basket.vat == item.vat
 
 
 def test_crud_add_to_basket_default_qty(dbsession, init_clients, init_services):
@@ -567,13 +555,9 @@ def test_crud_add_to_basket_default_qty(dbsession, init_clients, init_services):
 
     assert item.service_id == service.id
     assert item.quantity == 1
-    assert item.raw_amount == service.unit_price
-    assert item.vat == service.vat_rate.rate
     assert item.basket_id == client.basket.id
     assert len(client.basket.items) == 1
     assert client.basket.items[0] == item
-    assert client.basket.raw_amount == item.raw_amount
-    assert client.basket.vat == item.vat
 
 
 def test_crud_add_to_basket_commit_error(
@@ -591,8 +575,6 @@ def test_crud_add_to_basket_commit_error(
         )
 
     assert len(client.basket.items) == 0
-    assert client.basket.raw_amount == 0.0
-    assert client.basket.vat == 0.0
 
 
 def test_crud_update_item_quantity(dbsession, init_data):
@@ -601,25 +583,11 @@ def test_crud_update_item_quantity(dbsession, init_data):
     item = basket.items[0]
     invoice = client.invoices[0]
     item.invoice_id = invoice.id
-    prev_raw_amount = item.raw_amount
-    prev_vat = item.vat
     quantity = 2
-    new_raw_amount = item.service.unit_price * quantity
-    new_vat = item.service.vat_rate.rate * new_raw_amount / 100
-    expected_basket_raw_amount = basket.raw_amount - prev_raw_amount + new_raw_amount
-    expected_basket_vat = basket.vat - prev_vat + new_vat
-    expected_invoice_raw_amount = invoice.raw_amount - prev_raw_amount + new_raw_amount
-    expected_invoice_vat = invoice.vat - prev_vat + new_vat
 
     crud.client.update_item_quantity(dbsession, item=item, quantity=quantity)
 
     assert item.quantity == quantity
-    assert item.raw_amount == new_raw_amount
-    assert item.vat == new_vat
-    assert basket.raw_amount == expected_basket_raw_amount
-    assert basket.vat == expected_basket_vat
-    assert invoice.raw_amount == expected_invoice_raw_amount
-    assert invoice.vat == expected_invoice_vat
 
 
 def test_crud_update_item_quantity_commit_error(dbsession, init_items, mock_commit):
@@ -629,19 +597,11 @@ def test_crud_update_item_quantity_commit_error(dbsession, init_items, mock_comm
     item = init_items[0]
     assert item.quantity == 1
     basket = item.basket
-    expected_raw_amount = item.raw_amount
-    expected_vat = item.vat
-    expected_basket_raw_amount = basket.raw_amount
-    expected_basket_vat = basket.vat
 
     with pytest.raises(crud.CrudError):
         crud.client.update_item_quantity(dbsession, item=item, quantity=2)
 
     assert item.quantity == 1
-    assert item.raw_amount == expected_raw_amount
-    assert item.vat == expected_vat
-    assert basket.raw_amount == expected_basket_raw_amount
-    assert basket.vat == expected_basket_vat
 
 
 def test_crud_remove_item_in_basket_only(dbsession, init_data):
@@ -651,8 +611,6 @@ def test_crud_remove_item_in_basket_only(dbsession, init_data):
     item = basket.items[0]
     assert item not in client.invoices
     item_id = item.id
-    expected_raw_amount = basket.raw_amount - item.raw_amount
-    expected_vat = basket.vat - item.vat
 
     crud.client.remove_item(dbsession, item=item)
 
@@ -664,8 +622,6 @@ def test_crud_remove_item_in_basket_only(dbsession, init_data):
     )
 
     assert len(basket.items) == items_count - 1
-    assert basket.raw_amount == expected_raw_amount
-    assert basket.vat == expected_vat
 
 
 def test_crud_remove_item_in_invoice_only(dbsession, init_data):
@@ -675,8 +631,6 @@ def test_crud_remove_item_in_invoice_only(dbsession, init_data):
     item = invoice.items[0]
     assert item not in client.basket.items
     item_id = item.id
-    expected_raw_amount = invoice.raw_amount - item.raw_amount
-    expected_vat = invoice.vat - item.vat
 
     crud.client.remove_item(dbsession, item=item)
 
@@ -688,8 +642,6 @@ def test_crud_remove_item_in_invoice_only(dbsession, init_data):
     )
 
     assert len(invoice.items) == items_count - 1
-    assert invoice.raw_amount == expected_raw_amount
-    assert invoice.vat == expected_vat
 
 
 def test_crud_remove_item_commit_error(dbsession, init_data, mock_commit):
@@ -702,8 +654,6 @@ def test_crud_remove_item_commit_error(dbsession, init_data, mock_commit):
     item = basket.items[0]
     assert item not in client.invoices
     item_id = item.id
-    expected_raw_amount = basket.raw_amount
-    expected_vat = basket.vat
 
     with pytest.raises(crud.CrudError):
         crud.client.remove_item(dbsession, item=item)
@@ -715,8 +665,6 @@ def test_crud_remove_item_commit_error(dbsession, init_data, mock_commit):
 
     assert len(basket.items) == items_count
     assert it == item
-    assert basket.raw_amount == expected_raw_amount
-    assert basket.vat == expected_vat
 
 
 def test_crud_clear_basket_no_invoice(dbsession, init_items):
@@ -743,8 +691,6 @@ def test_crud_clear_basket_no_invoice(dbsession, init_items):
     )
 
     assert len(basket.items) == 0
-    assert basket.raw_amount == 0.0
-    assert basket.vat == 0.0
 
 
 def test_crud_clear_basket_in_invoice(dbsession, init_data):
@@ -763,8 +709,6 @@ def test_crud_clear_basket_in_invoice(dbsession, init_data):
     assert it1 == item_in_invoice
 
     assert len(basket.items) == 0
-    assert basket.raw_amount == 0.0
-    assert basket.vat == 0.0
 
 
 def test_crud_clear_basket_commit_error(dbsession, init_items, mock_commit):
@@ -777,8 +721,6 @@ def test_crud_clear_basket_commit_error(dbsession, init_items, mock_commit):
     item2 = init_items[5]
     item_id2 = item2.id
     assert basket == item2.basket
-    expected_raw_amount = basket.raw_amount
-    expected_vat = basket.vat
 
     with pytest.raises(crud.CrudError):
         crud.client.clear_basket(dbsession, basket=basket)
@@ -793,8 +735,6 @@ def test_crud_clear_basket_commit_error(dbsession, init_items, mock_commit):
     assert it2 == item2
 
     assert len(basket.items) == 2
-    assert basket.raw_amount == expected_raw_amount
-    assert basket.vat == expected_vat
 
 
 def test_client_from_orm(dbsession, init_clients):
@@ -817,9 +757,6 @@ def test_basket_from_orm(dbsession, init_data):
     from_db = schemas.Basket.from_orm(basket)
 
     assert from_db.id == basket.id
-    assert from_db.raw_amount == basket.raw_amount
-    assert from_db.vat == basket.vat
-    assert from_db.net_amount == from_db.raw_amount + from_db.vat
     for i, item in enumerate(from_db.items):
         assert item == schemas.Item.from_orm(basket.items[i])
 
@@ -830,9 +767,6 @@ def test_item_from_orm(dbsession, init_data):
     from_db = schemas.Item.from_orm(item)
 
     assert from_db.id == item.id
-    assert from_db.raw_amount == item.raw_amount
-    assert from_db.vat == item.vat
-    assert from_db.net_amount == from_db.raw_amount + from_db.vat
     assert from_db.service_id == item.service_id
     assert from_db.quantity == item.quantity
     assert from_db.service == schemas.Service.from_orm(item.service)

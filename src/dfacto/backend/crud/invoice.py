@@ -55,15 +55,11 @@ class CRUDInvoice(
     ) -> models.Invoice:
         db_obj = models.Invoice(
             client_id=basket.client_id,
-            raw_amount=basket.raw_amount,
-            vat=basket.vat,
             status=models.InvoiceStatus.DRAFT,
         )
         for item in basket.items:
             db_obj.items.append(item)
             if clear_basket:
-                basket.raw_amount -= item.raw_amount
-                basket.vat -= item.vat
                 item.basket_id = None
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
@@ -95,18 +91,12 @@ class CRUDInvoice(
             invoice_.status is models.InvoiceStatus.DRAFT
         ), "Cannot add items to a non-draft invoice."
 
-        raw_amount = service.unit_price * quantity
-        vat = raw_amount * service.vat_rate.rate / 100
         item_ = models.Item(
-            raw_amount=raw_amount,
-            vat=vat,
             service_id=service.id,
             quantity=quantity,
         )
         item_.invoice_id = invoice_.id
         dbsession.add(item_)
-        invoice_.raw_amount += raw_amount
-        invoice_.vat += vat
 
         try:
             dbsession.commit()
@@ -149,8 +139,7 @@ class CRUDInvoice(
                 # In use by a basket, do not delete it, only dereferences the invoice.
                 item.invoice_id = None
         if clear_only:
-            invoice_.raw_amount = 0.0
-            invoice_.vat = 0.0
+            pass
         else:
             dbsession.delete(invoice_)
 

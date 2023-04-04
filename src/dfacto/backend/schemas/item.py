@@ -8,14 +8,12 @@ from dataclasses import dataclass
 
 from dfacto.backend import models
 
-from .base import BaseSchema
+from .base import Amount, BaseSchema
 from .service import Service
 
 
 @dataclass
 class _ItemBase(BaseSchema[models.Item]):
-    raw_amount: float
-    vat: float
     service_id: int
     quantity: int
 
@@ -46,15 +44,17 @@ class Item(_ItemInDBBase):
     service: Service
 
     @property
-    def net_amount(self) -> float:
-        return self.raw_amount + self.vat
+    def amount(self) -> Amount:
+        service = self.service
+        raw_amount = service.unit_price * self.quantity
+        vat_amount = raw_amount * service.vat_rate.rate / 100
+        net_amount = raw_amount + vat_amount
+        return Amount(raw=raw_amount, vat=vat_amount, net=net_amount)
 
     @classmethod
     def from_orm(cls, orm_obj: models.Item) -> "Item":
         return cls(
             id=orm_obj.id,
-            raw_amount=orm_obj.raw_amount,
-            vat=orm_obj.vat,
             service_id=orm_obj.service.id,
             quantity=orm_obj.quantity,
             service=Service.from_orm(orm_obj.service),

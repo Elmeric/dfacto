@@ -31,8 +31,6 @@ class Invoice(BaseModel):
 
     id: Mapped[intpk] = mapped_column(init=False)
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"))
-    raw_amount: Mapped[float] = mapped_column(default=0.0)
-    vat: Mapped[float] = mapped_column(default=0.0)
     status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
     #    status: Mapped[InvoiceStatus] = mapped_column(Enum(create_constraint=True, validate_strings=True))
 

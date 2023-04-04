@@ -835,9 +835,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 "due_date": None
                 if due_date is None
                 else format_date(due_date.date(), format="long", locale="fr_FR"),
-                "raw_amount": invoice.raw_amount,
-                "vat": invoice.vat,
-                "net_amount": invoice.net_amount,
+                "raw_amount": invoice.amount.raw,
+                "vat": invoice.amount.vat,
+                "net_amount": invoice.amount.net,
                 "stamp_text": stamp,
                 "stamp_tag": tag,
                 "item_list": [
@@ -847,9 +847,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                             "unit_price": item.service.unit_price,
                         },
                         "quantity": item.quantity,
-                        "raw_amount": item.raw_amount,
-                        "vat": item.vat,
-                        "net_amount": item.net_amount,
+                        "raw_amount": item.amount.raw,
+                        "vat": item.amount.vat,
+                        "net_amount": item.amount.net,
                     }
                     for item in invoice.items
                 ],
