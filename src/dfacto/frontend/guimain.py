@@ -112,7 +112,9 @@ class QtMainView(QtWidgets.QMainWindow):
         #     self.service_selector.set_current_client(client)
         # else:
         #     self.service_selector.set_current_client(api.client.get(1).body)
-        self.service_selector.basket_changed.connect(self.basket_viewer.update_basket)
+        self.service_selector.service_added.connect(self.basket_viewer.add_item)
+        self.service_selector.service_updated.connect(self.basket_viewer.update_item)
+        self.service_selector.service_removed.connect(self.basket_viewer.remove_item_from_basket)
         self.client_selector.client_selected.connect(
             self.service_selector.set_current_client
         )

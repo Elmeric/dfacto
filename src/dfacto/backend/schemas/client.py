@@ -77,6 +77,7 @@ class _ClientInDBBase(_ClientBase):
 # Additional properties to return from DB
 @dataclass
 class Client(_ClientInDBBase):
+
     @property
     def code(self) -> str:
         return "CL" + str(self.id).zfill(5)

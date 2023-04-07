@@ -12,6 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base_model import BaseModel, intpk
 
 if TYPE_CHECKING:  # pragma: no cover
+    from .client import Client
     from .item import Item
 
 
@@ -23,6 +24,11 @@ class Basket(BaseModel):
         ForeignKey("client.id"), init=False, unique=True
     )
 
+    client: Mapped["Client"] = relationship(
+        # back_populates="basket",
+        init=False
+        # back_populates="basket", init=False, cascade="all, delete-orphan"
+    )
     items: Mapped[list["Item"]] = relationship(
         back_populates="basket",
         init=False

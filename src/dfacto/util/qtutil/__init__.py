@@ -403,10 +403,11 @@ class MySelectionModel(QtCore.QItemSelectionModel):
 
 
 class BasketController(QtWidgets.QWidget):
-    basket_clicked = QtCore.pyqtSignal()
+    add_started = QtCore.pyqtSignal(int)
     quantity_changed = QtCore.pyqtSignal(int)
 
     _quantity: int
+    _folded: bool
 
     def __init__(
         self,
@@ -465,10 +466,9 @@ class BasketController(QtWidgets.QWidget):
         self.basket_btn.clicked.connect(self.start_adding)
         self.add_btn.clicked.connect(self.increase)
         self.minus_btn.clicked.connect(self.decrease)
-        self.quantity_lbl.textEdited.connect(self.input_quantity)
+        self.quantity_lbl.editingFinished.connect(self.input_quantity)
 
-        self.quantity = -1  # Unknown
-        self._fold()
+        self.reset(0)
 
     @property
     def quantity(self) -> int:
@@ -476,24 +476,29 @@ class BasketController(QtWidgets.QWidget):
 
     @quantity.setter
     def quantity(self, qty: int) -> None:
+        delta = qty - self._quantity
+
+        # In all cases, save the new quantity and display it
+        self._quantity = qty
+        self.quantity_lbl.setText(str(qty))
+
         if qty == 0:
             # On update, 0 means "clear basket"
             self._fold()
             self.quantity_changed.emit(0)
         elif qty > 0:
-            # Increment or decrement the basket quantity
-            delta = qty - self._quantity
-            self.quantity_changed.emit(delta)
-
-        # In all cass, save the new quantity and display it
-        self._quantity = qty
-        self.quantity_lbl.setText(str(qty))
+            if self._folded:
+                # add first quantity (1) in basket
+                self._unfold()
+                self.add_started.emit(delta)
+            else:
+                # Increment or decrement the basket quantity
+                self.quantity_changed.emit(delta)
 
     @QtCore.pyqtSlot()
     def start_adding(self) -> None:
-        self.quantity = 1
-        self._unfold()
-        self.basket_clicked.emit()
+        if self._folded:
+            self.quantity = 1
 
     @QtCore.pyqtSlot()
     def increase(self) -> None:
@@ -506,10 +511,20 @@ class BasketController(QtWidgets.QWidget):
     def decrease(self) -> None:
         self.quantity = max(0, self._quantity - 1)
 
-    @QtCore.pyqtSlot(str)
-    def input_quantity(self, quantity: str) -> None:
+    @QtCore.pyqtSlot()
+    def input_quantity(self) -> None:
+        # Qt6 bug work around (editingFinished emitted twice).
+        # Refer to https://bugreports.qt.io/browse/QTBUG-40
+        obj = self.sender()
+        if not obj.isModified():                                        # noqa
+            # Ignore second signal
+            return
+        obj.setModified(False)                                          # noqa
+
+        qty_str = self.quantity_lbl.text()
+        quantity = 0 if qty_str == "" else int(qty_str)
         try:
-            self.quantity = min(self._max, max(0, int(quantity)))
+            self.quantity = min(self._max, max(0, quantity))
         except ValueError:
             # Ignore invalid input and display the previous quantity
             self.quantity_lbl.setText(str(self._quantity))
@@ -524,12 +539,14 @@ class BasketController(QtWidgets.QWidget):
         self.quantity_lbl.setText(str(quantity))
 
     def _unfold(self) -> None:
+        self._folded = False
         self.basket_btn.setIconSize(QtCore.QSize(24, 24))
         self.add_btn.show()
         self.minus_btn.show()
         self.quantity_lbl.show()
 
     def _fold(self) -> None:
+        self._folded = True
         self.basket_btn.setIconSize(QtCore.QSize(32, 32))
         self.add_btn.hide()
         self.minus_btn.hide()

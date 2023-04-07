@@ -27,7 +27,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ServiceRole = QtCore.Qt.ItemDataRole.UserRole + 1
 
-    basket_changed = QtCore.pyqtSignal(int)
+    service_added = QtCore.pyqtSignal(schemas.Item)    # Item added to basket
+    service_updated = QtCore.pyqtSignal(schemas.Item)    # Item which service properties or quantity in basket changed
+    service_removed = QtCore.pyqtSignal(int)    # service id, removed from basket
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
@@ -132,6 +134,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
             lambda: self.open_editor(mode=ServiceEditor.Mode.ADD)
         )
         self.delete_btn.clicked.connect(self.delete_service)
+        self.add_to_selector.add_started.connect(self.add_to_basket)
         self.add_to_selector.quantity_changed.connect(self.update_basket)
         self.service_editor.finished.connect(self.apply)
 
@@ -258,20 +261,30 @@ class ServiceSelector(QtUtil.QFramedWidget):
             self.services_lst.setFocus()
 
     @QtCore.pyqtSlot(int)
-    def update_basket(self, delta: int) -> None:
-        assert self.current_service is not None
-
-        if delta == 0:
-            success = self._remove_from_basket()
-        else:
-            success = self._add_to_basket(delta)
+    def add_to_basket(self, delta: int) -> None:
+        success, item = self._add_to_basket(delta)
 
         if success:
-            self.basket_changed.emit(self.current_service.id if delta != 0 else -1)
+            self.service_added.emit(item)
         else:
-            quantity = self.add_to_selector.quantity
-            self.add_to_selector.reset(quantity - delta)
+            self.update_basket_controller()
 
+    @QtCore.pyqtSlot(int)
+    def update_basket(self, delta: int) -> None:
+        if delta == 0:
+            success, item_id = self._remove_from_basket()
+            if success:
+                self.service_removed.emit(item_id)
+            else:
+                self.update_basket_controller()
+        else:
+            success, item = self._add_to_basket(delta)
+            if success:
+                self.service_updated.emit(item)
+            else:
+                self.update_basket_controller()
+
+    @QtCore.pyqtSlot()
     def update_basket_controller(self) -> None:
         current_service = self.current_service
         current_client = self.current_client
@@ -375,7 +388,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
             self._forbidden_names[idx] = new_name
             self.services_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
 
-        self.basket_changed.emit(new_service.id)
+        self.service_updated.emit(new_service.id)
 
         self.services_lst.setFocus()
 
@@ -404,27 +417,33 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self._enable_buttons(True)
         self.services_lst.setFocus()
 
-    def _remove_from_basket(self) -> bool:
+    def _remove_from_basket(self) -> tuple[bool, int]:
+        service = self.current_service
+        assert service is not None
+
         response = api.client.remove_from_basket(
             self.current_client.id,
-            service_id=self.current_service.id,
+            service_id=service.id,
         )
         if response.status is not CommandStatus.COMPLETED:
             logger.warning("Cannot remove service - Reason is: %s", response.reason)
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot remove service", is_warning=True
+                f"Cannot remove service - Reason is: {response.reason}", is_warning=True
             )
-        return response.status is CommandStatus.COMPLETED
+        return response.status is CommandStatus.COMPLETED, response.body
 
-    def _add_to_basket(self, qty: int) -> bool:
+    def _add_to_basket(self, qty: int) -> tuple[bool, schemas.Item]:
+        service = self.current_service
+        assert service is not None
+
         response = api.client.add_to_basket(
-            self.current_client.id, service_id=self.current_service.id, quantity=qty
+            self.current_client.id, service_id=service.id, quantity=qty
         )
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
                 "Cannot add service to basket - Reason is: %s", response.reason
             )
             QtUtil.getMainWindow().show_status_message(
-                f"Cannot add service to basket", is_warning=True
+                f"Cannot add service to basket - Reason is: {response.reason}", is_warning=True
             )
-        return response.status is CommandStatus.COMPLETED
+        return response.status is CommandStatus.COMPLETED, response.body

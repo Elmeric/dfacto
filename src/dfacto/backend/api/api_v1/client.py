@@ -192,6 +192,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         return self.update(obj_id, obj_in=schemas.ClientUpdate(is_active=True))
 
     def set_inactive(self, obj_id: int) -> CommandResponse:
+        response = self.clear_basket(obj_id)
+        if response.status is not CommandStatus.COMPLETED:
+            return response
         return self.update(obj_id, obj_in=schemas.ClientUpdate(is_active=False))
 
     @command
@@ -237,7 +240,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 "ADD-TO-BASKET - Quantity shall not be zero",
             )
         try:
-            basket = self.crud_object.get_basket(self.session, obj_id)
+            client_ = self.crud_object.get(self.session, obj_id)
             service = crud.service.get(self.session, service_id)
         except crud.CrudError as exc:
             return CommandResponse(
@@ -245,13 +248,20 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 f"ADD-TO-BASKET - SQL or database error: {exc}",
             )
         else:
-            if basket is None or service is None:
+            if client_ is None or service is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
                     f"ADD-TO-BASKET - Client {obj_id} or "
                     f"service {service_id} not found.",
                 )
 
+            if not client_.is_active:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"ADD-TO-BASKET - Client {client_.name} is inactive",
+                )
+
+            basket = client_.basket
             try:
                 it = self.crud_object.add_to_basket(
                     self.session, basket=basket, service=service, quantity=quantity
@@ -268,7 +278,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     @command
     def remove_from_basket(self, obj_id: int, *, service_id: int) -> CommandResponse:
         try:
-            basket = self.crud_object.get_basket(self.session, obj_id)
+            client_ = self.crud_object.get(self.session, obj_id)
             service = crud.service.get(self.session, service_id)
         except crud.CrudError as exc:
             return CommandResponse(
@@ -276,15 +286,22 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 f"REMOVE_FROM-BASKET - SQL or database error: {exc}",
             )
         else:
-            if basket is None or service is None:
+            if client_ is None or service is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
                     f"REMOVE_FROM-BASKET - Client {obj_id} or "
                     f"service {service_id} not found.",
                 )
 
+            if not client_.is_active:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"REMOVE_FROM-BASKET - Client {client_.name} is inactive",
+                )
+
+            basket = client_.basket
             try:
-                self.crud_object.remove_from_basket(
+                id_ = self.crud_object.remove_from_basket(
                     self.session, basket=basket, service=service
                 )
             except crud.CrudError as exc:
@@ -294,7 +311,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     f"of client {obj_id}: {exc}",
                 )
             else:
-                return CommandResponse(CommandStatus.COMPLETED)
+                return CommandResponse(CommandStatus.COMPLETED, body = id_)
 
     @command
     def add_to_invoice(

@@ -11,6 +11,7 @@ from dfacto.backend import models
 from .base import Amount, BaseSchema
 from .item import Item
 
+from .client import Client
 
 @dataclass
 class _BasketBase(BaseSchema[models.Basket]):
@@ -42,6 +43,7 @@ class _BasketInDBBase(_BasketBase):
 @dataclass
 class Basket(_BasketInDBBase):
     client_id: int
+    client: Client
     items: list[Item]
 
     @property
@@ -54,11 +56,20 @@ class Basket(_BasketInDBBase):
             net_amount += amount.net
         return Amount(raw=raw_amount, vat=vat_amount, net=net_amount)
 
+    @property
+    def is_empty(self) -> bool:
+        return len(self.items) == 0
+
+    @property
+    def is_active(self) -> bool:
+        return self.client.is_active
+
     @classmethod
     def from_orm(cls, orm_obj: models.Basket) -> "Basket":
         return cls(
             id=orm_obj.id,
             client_id=orm_obj.client_id,
+            client=Client.from_orm(orm_obj.client),
             items=[Item.from_orm(item) for item in orm_obj.items],
         )
 

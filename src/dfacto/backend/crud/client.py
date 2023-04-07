@@ -108,8 +108,6 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         service: models.Service,
         quantity: int = 1,  # may be negative to decrease service quantity in basket
     ) -> models.Item:
-        raw_amount = service.unit_price * quantity
-        vat = raw_amount * service.vat_rate.rate / 100
         # Check if an item already exist in basket for this service
         try:
             item_ = cast(
@@ -150,7 +148,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
         *,
         basket: models.Basket,
         service: models.Service,
-    ) -> None:
+    ) -> Optional[int]:
         try:
             item_ = cast(
                 models.Item,
@@ -166,6 +164,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             if item_ is None:
                 return
 
+            id_ = item_.id
             dbsession.delete(item_)
 
             try:
@@ -174,7 +173,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
                 dbsession.rollback()
                 raise CrudError() from exc
             else:
-                return
+                return id_
 
     def update_item_quantity(
         self, dbsession: Session, *, item: models.Item, quantity: int

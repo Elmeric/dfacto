@@ -43,13 +43,13 @@ class ClientEditor(QtWidgets.QWidget):
         header_lbl.setMaximumHeight(32)
         self.active_pix = QtWidgets.QLabel()
         self.active_pix.setPixmap(
-            QtGui.QPixmap(f"{resources}/active-blue.png").scaledToHeight(
+            QtGui.QPixmap(f"{resources}/client-active.png").scaledToHeight(
                 24, QtCore.Qt.TransformationMode.SmoothTransformation
             )
         )
         self.inactive_pix = QtWidgets.QLabel()
         self.inactive_pix.setPixmap(
-            QtGui.QPixmap(f"{resources}/inactive-blue.png").scaledToHeight(
+            QtGui.QPixmap(f"{resources}/client-inactive.png").scaledToHeight(
                 24, QtCore.Qt.TransformationMode.SmoothTransformation
             )
         )

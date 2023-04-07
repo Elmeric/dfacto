@@ -34,8 +34,8 @@ class ClientSelector(QtUtil.QFramedWidget):
 
         resources = Config.dfacto_settings.resources
 
-        self.active_icon = QtGui.QIcon(f"{resources}/active-blue.png")
-        self.inactive_icon = QtGui.QIcon(f"{resources}/inactive-blue.png")
+        self.active_icon = QtGui.QIcon(f"{resources}/client-active.png")
+        self.inactive_icon = QtGui.QIcon(f"{resources}/client-inactive.png")
 
         header_lbl = QtWidgets.QLabel("CLIENTS LIST")
         header_lbl.setMaximumHeight(32)
@@ -280,7 +280,20 @@ class ClientSelector(QtUtil.QFramedWidget):
         assert client is not None
         row = self.clients_lst.currentRow()
 
-        if self.current_client.is_active:
+        if client.is_active:
+            reply = QtWidgets.QMessageBox.warning(
+                self,  # noqa
+                f"{QtWidgets.QApplication.applicationName()} - De-activate client",
+                f"""
+                <p>Do you really want to de-activate this client: its basket will be emptied?</p>
+                <p><strong>{client.name}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
+                self.activate_btn.setChecked(True)
+                return
             action = "de-activate"
             response = api.client.set_inactive(client.id)
         else:
