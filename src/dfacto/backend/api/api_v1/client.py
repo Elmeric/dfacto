@@ -311,7 +311,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     f"of client {obj_id}: {exc}",
                 )
             else:
-                return CommandResponse(CommandStatus.COMPLETED, body = id_)
+                return CommandResponse(CommandStatus.COMPLETED, body=id_)
 
     @command
     def add_to_invoice(
@@ -411,7 +411,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     f"UPDATE-ITEM - Cannot remove item {item_id}: {exc}",
                 )
             else:
-                return CommandResponse(CommandStatus.COMPLETED)
+                body = schemas.Item.from_orm(item)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def remove_item(self, obj_id: int, *, item_id: int) -> CommandResponse:

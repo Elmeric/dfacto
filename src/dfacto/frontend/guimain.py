@@ -72,7 +72,7 @@ class QtMainView(QtWidgets.QMainWindow):
         invoice_selector = QtWidgets.QWidget()
         invoice_selector.setMinimumWidth(700)
         invoice_editor = QtWidgets.QWidget()
-        self.service_selector = ServiceSelector()
+        self.service_selector = ServiceSelector(basket_model)
         #         fsModel = FileSystemModel()
         #         fsDelegate = FileSystemDelegate()
         #         fsFilter = FileSystemFilter()
@@ -99,30 +99,9 @@ class QtMainView(QtWidgets.QMainWindow):
         #
         #         self._sourceManager.sourceSelected.connect(sourceSelector.displaySelectedSource)
         #         self._sourceManager.sourceSelected.connect(self.displaySelectedSource)
-        # client = api.client.add(
-        #     schemas.ClientCreate(
-        #         name="Client 1",
-        #         address=schemas.Address(
-        #             address="3 rue du moulin", zip_code="33640", city="Portets"
-        #         ),
-        #         email="client.un@gmail.com",
-        #     )
-        # ).body
-        # if client is not None:
-        #     self.service_selector.set_current_client(client)
-        # else:
-        #     self.service_selector.set_current_client(api.client.get(1).body)
-        self.service_selector.service_added.connect(self.basket_viewer.add_item)
-        self.service_selector.service_updated.connect(self.basket_viewer.update_item)
-        self.service_selector.service_removed.connect(self.basket_viewer.remove_item_from_basket)
-        self.client_selector.client_selected.connect(
-            self.service_selector.set_current_client
-        )
+
         self.client_selector.client_selected.connect(
             self.basket_viewer.set_current_client
-        )
-        basket_model.basket_changed.connect(
-            self.service_selector.update_basket_controller
         )
         self.basket_viewer.selection_changed.connect(
             self.service_selector.select_service_by_name
@@ -398,8 +377,8 @@ class QtMainView(QtWidgets.QMainWindow):
         self.move(settings.window_position[0], settings.window_position[1])
         self.resize(settings.window_size[0], settings.window_size[1])
 
-        self.client_selector.load_clients()
         self.service_selector.load_services()
+        self.client_selector.load_clients()
         #
         # self._downloader.selectDestination(Path(settings.lastDestination))
         # self._downloader.setNamingTemplate(

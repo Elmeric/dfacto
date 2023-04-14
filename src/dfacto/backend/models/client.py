@@ -32,7 +32,8 @@ class Client(BaseModel):
     is_active: Mapped[bool] = mapped_column(default=True)
 
     basket: Mapped["Basket"] = relationship(
-        init=False, back_populates="client"
+        init=False,
+        back_populates="client"
         # cascade="all, delete-orphan"
         # init=False, back_populates="client", cascade="all, delete-orphan"
     )

@@ -9,9 +9,9 @@ from dataclasses import dataclass
 from dfacto.backend import models
 
 from .base import Amount, BaseSchema
+from .client import Client
 from .item import Item
 
-from .client import Client
 
 @dataclass
 class _BasketBase(BaseSchema[models.Basket]):

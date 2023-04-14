@@ -7,7 +7,7 @@
 import logging
 from copy import copy
 from enum import IntEnum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
@@ -20,18 +20,197 @@ from dfacto.util import qtutil as QtUtil
 
 from .serviceeditor import Service, ServiceEditor
 
+if TYPE_CHECKING:
+    from .basketviewer import BasketTableModel
+
 logger = logging.getLogger(__name__)
+
+
+class BasketController(QtWidgets.QWidget):
+    _service_id: int
+    _quantity: int = 0
+    _folded: bool = True
+    _model: Optional["BasketTableModel"] = None
+    _current_index: QtCore.QModelIndex = QtCore.QModelIndex()
+
+    def __init__(
+        self,
+        basket_icon: QtGui.QIcon,
+        add_icon: QtGui.QIcon,
+        minus_icon: QtGui.QIcon,
+        parent=None,
+    ) -> None:
+        super().__init__(parent)
+
+        self._max = 100
+
+        self.quantity_lbl = QtWidgets.QLineEdit()
+        self.quantity_lbl.setValidator(
+            QtGui.QRegularExpressionValidator(QtCore.QRegularExpression("[0-9]*"))
+        )
+        self.quantity_lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
+        self.quantity_lbl.setFrame(False)
+        palette = self.quantity_lbl.palette()
+        palette.setColor(
+            QtGui.QPalette.ColorRole.Base, QtCore.Qt.GlobalColor.transparent
+        )
+        self.quantity_lbl.setPalette(palette)
+        self.quantity_lbl.setFixedWidth(30)
+
+        icon_size = QtCore.QSize(32, 32)
+        self.basket_btn = QtWidgets.QPushButton(basket_icon, "")
+        self.basket_btn.setIconSize(icon_size)
+        self.basket_btn.setToolTip("Add to basket")
+        self.basket_btn.setStatusTip("Add to basket")
+        self.basket_btn.setFlat(True)
+
+        icon_size = QtCore.QSize(18, 18)
+        self.add_btn = QtWidgets.QPushButton(add_icon, "")
+        self.add_btn.setIconSize(icon_size)
+        self.add_btn.setToolTip("Increase")
+        self.add_btn.setStatusTip("Increase")
+        self.add_btn.setFlat(True)
+        self.minus_btn = QtWidgets.QPushButton(minus_icon, "")
+        self.minus_btn.setIconSize(icon_size)
+        self.minus_btn.setToolTip("Decrease")
+        self.minus_btn.setStatusTip("Decrease")
+        self.minus_btn.setFlat(True)
+
+        layout = QtWidgets.QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(self.basket_btn)
+        layout.addWidget(self.minus_btn)
+        layout.addWidget(self.quantity_lbl)
+        layout.addWidget(self.add_btn)
+        layout.addStretch()
+
+        self.setLayout(layout)
+
+        self.basket_btn.clicked.connect(self.add_first)
+        self.add_btn.clicked.connect(self.increase)
+        self.minus_btn.clicked.connect(self.decrease)
+        self.quantity_lbl.editingFinished.connect(self.input_quantity)
+
+        self.reset(0)
+
+    @property
+    def quantity(self) -> int:
+        return self._quantity
+
+    @quantity.setter
+    def quantity(self, qty: int) -> None:
+        success = False
+        if qty == 0:
+            # On update, 0 means "remove from basket"
+            self._fold()
+            success = self.model().setData(self._current_index, qty)
+        elif qty > 0:
+            if self._folded:
+                # add first quantity (1) in basket
+                self._unfold()
+                success = self.model().insert_item(self._service_id, qty)
+            else:
+                # Increment or decrement the basket quantity
+                success = self.model().setData(self._current_index, qty)
+
+        if success:
+            self.reset(qty)
+        else:
+            self.reset(self._quantity)
+
+    @QtCore.pyqtSlot()
+    def add_first(self) -> None:
+        if self._folded:
+            self.quantity = 1
+
+    @QtCore.pyqtSlot()
+    def increase(self) -> None:
+        if self._quantity == self._max:
+            # We cannot go beyond the max
+            return
+        self.quantity = min(self._max, self._quantity + 1)
+
+    @QtCore.pyqtSlot()
+    def decrease(self) -> None:
+        self.quantity = max(0, self._quantity - 1)
+
+    @QtCore.pyqtSlot()
+    def input_quantity(self) -> None:
+        # Qt6 bug work around (editingFinished emitted twice).
+        # Refer to https://bugreports.qt.io/browse/QTBUG-40
+        obj = self.sender()
+        if not obj.isModified():  # noqa
+            # Ignore second signal
+            return
+        obj.setModified(False)  # noqa
+
+        qty_str = self.quantity_lbl.text()
+        quantity = 0 if qty_str == "" else int(qty_str)
+        try:
+            self.quantity = min(self._max, max(0, quantity))
+        except ValueError:
+            # Ignore invalid input and display the previous quantity
+            self.quantity_lbl.setText(str(self._quantity))
+
+    def model(self) -> "BasketTableModel":
+        return self._model
+
+    def set_model(self, model: "BasketTableModel") -> None:
+        self._model = model
+        model.dataChanged.connect(self.on_data_changed)
+
+    @QtCore.pyqtSlot(QtCore.QModelIndex, QtCore.QModelIndex)
+    def on_data_changed(
+        self, top_left: QtCore.QModelIndex, _bottom_right: QtCore.QModelIndex
+    ) -> None:
+        print(f"on_data_changed: {top_left.row()}, {top_left.column()}")
+        self.reset(self.model().quantity_from_index(top_left))
+
+    def current_service(self) -> int:
+        return self._service_id
+
+    def set_current_service(self, service_id: int) -> None:
+        self._service_id = service_id
+
+        quantity = self.model().quantity_in_basket(service_id)
+        print(f"set_current_service: {service_id}, {quantity}")
+        self.reset(quantity)
+
+        self._current_index = self.model().index_from_service_id(service_id)
+
+    def update_basket(self, service_id: int) -> None:
+        self.model().update_service(service_id)
+
+    def reset(self, quantity: int) -> None:
+        if quantity == 0:
+            # On init, 0 means "empty basket"
+            self._fold()
+        else:
+            self._unfold()
+        self._quantity = quantity
+        self.quantity_lbl.setText(str(quantity))
+
+    def _unfold(self) -> None:
+        self._folded = False
+        self.basket_btn.setIconSize(QtCore.QSize(24, 24))
+        self.add_btn.show()
+        self.minus_btn.show()
+        self.quantity_lbl.show()
+
+    def _fold(self) -> None:
+        self._folded = True
+        self.basket_btn.setIconSize(QtCore.QSize(32, 32))
+        self.add_btn.hide()
+        self.minus_btn.hide()
+        self.quantity_lbl.hide()
 
 
 class ServiceSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ServiceRole = QtCore.Qt.ItemDataRole.UserRole + 1
 
-    service_added = QtCore.pyqtSignal(schemas.Item)    # Item added to basket
-    service_updated = QtCore.pyqtSignal(schemas.Item)    # Item which service properties or quantity in basket changed
-    service_removed = QtCore.pyqtSignal(int)    # service id, removed from basket
-
-    def __init__(self, parent=None) -> None:
+    def __init__(self, basket_model: "BasketTableModel", parent=None) -> None:
         super().__init__(parent=parent)
 
         resources = Config.dfacto_settings.resources
@@ -59,7 +238,8 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self.edit_btn.setToolTip("Edit the selected service")
         self.edit_btn.setStatusTip("Edit the selected service")
         self.edit_btn.setFlat(True)
-        self.add_to_selector = QtUtil.BasketController(
+
+        self.basket_controller = BasketController(
             basket_icon=QtGui.QIcon(f"{resources}/add-to-basket.png"),
             add_icon=QtGui.QIcon(f"{resources}/add-blue.png"),
             minus_icon=QtGui.QIcon(f"{resources}/minus-blue.png"),
@@ -97,7 +277,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
         tool_layout.addWidget(self.delete_btn)
         tool_layout.addWidget(self.edit_btn)
         tool_layout.addStretch()
-        tool_layout.addWidget(self.add_to_selector)
+        tool_layout.addWidget(self.basket_controller)
 
         selector_widget = QtWidgets.QWidget()
         selector_widget.setSizePolicy(
@@ -134,12 +314,11 @@ class ServiceSelector(QtUtil.QFramedWidget):
             lambda: self.open_editor(mode=ServiceEditor.Mode.ADD)
         )
         self.delete_btn.clicked.connect(self.delete_service)
-        self.add_to_selector.add_started.connect(self.add_to_basket)
-        self.add_to_selector.quantity_changed.connect(self.update_basket)
         self.service_editor.finished.connect(self.apply)
 
+        self.basket_controller.set_model(basket_model)
         self._forbidden_names: list[str] = []
-        self.current_client: Optional[schemas.Client] = None
+        self._current_client: Optional[schemas.Client] = None
 
     @property
     def current_service(self) -> Optional[schemas.Service]:
@@ -175,11 +354,6 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         self._enable_buttons(self.services_lst.count() > 0)
 
-    @QtCore.pyqtSlot(schemas.Client)
-    def set_current_client(self, client: schemas.Client) -> None:
-        self.current_client = client
-        self.update_basket_controller()
-
     @QtCore.pyqtSlot()
     def on_service_selection(self) -> None:
         current_service = self.current_service
@@ -187,7 +361,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
             return
 
         self._show_in_editor(current_service)
-        self.update_basket_controller()
+        self.basket_controller.set_current_service(current_service.id)
 
     @QtCore.pyqtSlot()
     def open_editor(self, mode: ServiceEditor.Mode) -> None:
@@ -260,55 +434,10 @@ class ServiceSelector(QtUtil.QFramedWidget):
             self.services_lst.setCurrentRow(row - 1)
             self.services_lst.setFocus()
 
-    @QtCore.pyqtSlot(int)
-    def add_to_basket(self, delta: int) -> None:
-        success, item = self._add_to_basket(delta)
-
-        if success:
-            self.service_added.emit(item)
-        else:
-            self.update_basket_controller()
-
-    @QtCore.pyqtSlot(int)
-    def update_basket(self, delta: int) -> None:
-        if delta == 0:
-            success, item_id = self._remove_from_basket()
-            if success:
-                self.service_removed.emit(item_id)
-            else:
-                self.update_basket_controller()
-        else:
-            success, item = self._add_to_basket(delta)
-            if success:
-                self.service_updated.emit(item)
-            else:
-                self.update_basket_controller()
-
-    @QtCore.pyqtSlot()
-    def update_basket_controller(self) -> None:
-        current_service = self.current_service
-        current_client = self.current_client
-        if current_client is None or current_service is None:
-            quantity = 0
-        else:
-            response = api.client.get_quantity_in_basket(
-                self.current_client.id, service_id=current_service.id
-            )
-            if response.status is not CommandStatus.COMPLETED:
-                logger.warning(
-                    "Cannot retrieve service usage - Reason is: %s", response.reason
-                )
-                QtUtil.getMainWindow().show_status_message(
-                    f"Cannot retrieve service usage", is_warning=True
-                )
-                quantity = 0
-            else:
-                quantity = response.body
-        self.add_to_selector.reset(quantity)
-
     @QtCore.pyqtSlot(str)
     def select_service_by_name(self, name: str) -> None:
         if name == "":
+            self.services_lst.setCurrentRow(0)
             return
 
         items = self.services_lst.findItems(name, QtCore.Qt.MatchFlag.MatchExactly)
@@ -329,7 +458,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
     def _enable_buttons(self, enable: bool) -> None:
         self.delete_btn.setEnabled(enable)
         self.edit_btn.setEnabled(enable)
-        self.add_to_selector.setEnabled(enable)
+        self.basket_controller.setEnabled(enable)
 
     def _add_item_from_service(
         self, service: schemas.Service
@@ -376,11 +505,11 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         QtUtil.getMainWindow().show_status_message(f"Service update success!")
 
-        new_service = response.body
+        updated_service = response.body
 
         current_item = self.services_lst.currentItem()
-        current_item.setData(ServiceSelector.UserRoles.ServiceRole, new_service)
-        self._show_in_editor(new_service)
+        current_item.setData(ServiceSelector.UserRoles.ServiceRole, updated_service)
+        self._show_in_editor(updated_service)
 
         if (new_name := service.name) is not None:
             current_item.setText(new_name)
@@ -388,7 +517,8 @@ class ServiceSelector(QtUtil.QFramedWidget):
             self._forbidden_names[idx] = new_name
             self.services_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
 
-        self.service_updated.emit(new_service.id)
+        # Propagate changes to the basket
+        self.basket_controller.update_basket(updated_service.id)
 
         self.services_lst.setFocus()
 
@@ -416,34 +546,3 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self.services_lst.setCurrentRow(row)
         self._enable_buttons(True)
         self.services_lst.setFocus()
-
-    def _remove_from_basket(self) -> tuple[bool, int]:
-        service = self.current_service
-        assert service is not None
-
-        response = api.client.remove_from_basket(
-            self.current_client.id,
-            service_id=service.id,
-        )
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning("Cannot remove service - Reason is: %s", response.reason)
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot remove service - Reason is: {response.reason}", is_warning=True
-            )
-        return response.status is CommandStatus.COMPLETED, response.body
-
-    def _add_to_basket(self, qty: int) -> tuple[bool, schemas.Item]:
-        service = self.current_service
-        assert service is not None
-
-        response = api.client.add_to_basket(
-            self.current_client.id, service_id=service.id, quantity=qty
-        )
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot add service to basket - Reason is: %s", response.reason
-            )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot add service to basket - Reason is: {response.reason}", is_warning=True
-            )
-        return response.status is CommandStatus.COMPLETED, response.body
