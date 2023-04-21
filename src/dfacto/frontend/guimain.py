@@ -163,6 +163,7 @@ class QtMainView(QtWidgets.QMainWindow):
         left_vert_splitter.setOpaqueResize(False)
 
         center_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        center_vert_splitter.setContentsMargins(5, 0, 5, 5)
         center_vert_splitter.setChildrenCollapsible(False)
         center_vert_splitter.setHandleWidth(3)
         center_vert_splitter.addWidget(invoice_selector)
@@ -186,6 +187,7 @@ class QtMainView(QtWidgets.QMainWindow):
         right_vert_splitter.setOpaqueResize(False)
 
         horz_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
+        horz_splitter.setContentsMargins(0, 0, 0, 0)
         horz_splitter.setChildrenCollapsible(False)
         horz_splitter.setHandleWidth(3)
         horz_splitter.addWidget(left_vert_splitter)

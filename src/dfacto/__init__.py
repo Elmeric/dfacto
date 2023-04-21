@@ -22,11 +22,19 @@ import sys
 from dfacto.frontend import guimain as gui
 
 
+def except_hook(cls, exception, traceback_):
+    error_msg = f"{cls.__name__}: {exception}"
+    # error_msg = "".join(traceback.format_exception(cls, exception, traceback_))
+    logger = logging.getLogger(__name__)
+    logger.fatal("%s", error_msg, exc_info=False)
+
+
 def run_main():
     """Program entry point.
 
     Handles exceptions not trapped earlier.
     """
+    sys.excepthook = except_hook
     try:
         sys.exit(gui.qt_main())
     except Exception as e:

@@ -24,6 +24,8 @@ import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
 
+from dfacto.backend import BackendError
+
 # from .backgroundprogressbar import BackgroundProgressBar
 # from .signaladpater import QtSignalAdapter
 # from .splash import SplashScreen
@@ -400,3 +402,15 @@ class MySelectionModel(QtCore.QItemSelectionModel):
         if command & QtCore.QItemSelectionModel.SelectionFlag.Deselect:
             return
         super().select(index, command)
+
+
+def raise_fatal_error(msg: str) -> None:
+    QtWidgets.QMessageBox.critical(
+        None,  # type: ignore
+        f"Dfacto - Database error",
+        f"{msg}"
+        f"\n\nTry to restart Dfacto\nIf the problem persists, contact your admin",
+        QtWidgets.QMessageBox.StandardButton.Close,
+    )
+    getMainWindow().close()
+    raise BackendError(msg)

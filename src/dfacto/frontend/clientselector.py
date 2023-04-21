@@ -129,7 +129,6 @@ class ClientSelector(QtUtil.QFramedWidget):
         main_layout.addWidget(self.client_editor)
         main_layout.addWidget(header)
         main_layout.addWidget(selector_widget)
-        main_layout.addStretch()
         self.setLayout(main_layout)
 
         self.clients_lst.itemSelectionChanged.connect(self.on_client_selection)
@@ -184,6 +183,7 @@ class ClientSelector(QtUtil.QFramedWidget):
             self._add_item_from_client(client, not self.inactive_ckb.isChecked())
 
         self.clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
+        self.clients_lst.clearSelection()
         self.clients_lst.setCurrentRow(0)
 
         self._enable_buttons(self.clients_lst.count() > 0)
@@ -314,6 +314,7 @@ class ClientSelector(QtUtil.QFramedWidget):
 
         self.load_clients()
 
+        self.clients_lst.clearSelection()
         if response.body.is_active or self.inactive_ckb.isChecked():
             # client is still displayed: select it
             self.clients_lst.setCurrentRow(row)

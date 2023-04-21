@@ -109,7 +109,11 @@ class BasketController(QtWidgets.QWidget):
             if self._folded:
                 # add first quantity (1) in basket
                 self._unfold()
-                success = self.model().insert_item(self._service_id, qty)
+                success = self.model().add_service_to_basket(self._service_id, qty)
+                if success:
+                    self._current_index = self.model().index_from_service_id(
+                        self._service_id
+                    )
             else:
                 # Increment or decrement the basket quantity
                 success = self.model().setData(self._current_index, qty)
@@ -180,7 +184,9 @@ class BasketController(QtWidgets.QWidget):
         self._current_index = self.model().index_from_service_id(service_id)
 
     def update_basket(self, service_id: int) -> None:
-        self.model().update_service(service_id)
+        model = self.model()
+        if model.is_service_in_basket(service_id):
+            model.update_service_in_basket(service_id)
 
     def reset(self, quantity: int) -> None:
         if quantity == 0:
@@ -297,7 +303,6 @@ class ServiceSelector(QtUtil.QFramedWidget):
         main_layout.addWidget(self.service_editor)
         main_layout.addWidget(header)
         main_layout.addWidget(selector_widget)
-        main_layout.addStretch()
         self.setLayout(main_layout)
 
         self.services_lst.itemSelectionChanged.connect(self.on_service_selection)
