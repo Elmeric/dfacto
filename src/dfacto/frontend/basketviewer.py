@@ -633,8 +633,10 @@ class BasketTable(QtWidgets.QTableView):
             print(f"Edit qty - proxy ({proxy_index.row()}, {proxy_index.column()})")
             print(f"Edit qty - source ({source_index.row()}, {source_index.column()})")
             print()
-            self.setCurrentIndex(quantity_pxy_index)
+            with QtCore.QSignalBlocker(self.selectionModel()):
+                self.setCurrentIndex(quantity_pxy_index)
             self.edit(quantity_pxy_index)
+            self.selection_changed.emit("")
             self.selection_changed.emit(service_name)
         else:
             self.selection_changed.emit("")
@@ -679,9 +681,6 @@ class BasketTable(QtWidgets.QTableView):
                 self.horizontalHeader().setSectionResizeMode(
                     column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
                 )
-            # Clear selection and select first item to force currentChanged signal emission
-            self.clearSelection()
-            self.select_first_item()
 
         return success
 

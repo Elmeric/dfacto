@@ -146,7 +146,7 @@ class ClientSelector(QtUtil.QFramedWidget):
         )
         self.delete_btn.clicked.connect(self.delete_client)
         self.activate_btn.clicked.connect(self.toggle_client_activation)
-        self.inactive_ckb.stateChanged.connect(self.on_inactive_selection)
+        self.inactive_ckb.toggled.connect(self.on_inactive_selection)
         self.client_editor.finished.connect(self.apply)
 
         self.inactive_ckb.setChecked(False)
@@ -164,33 +164,49 @@ class ClientSelector(QtUtil.QFramedWidget):
     def editor_mode(self) -> ClientEditor.Mode:
         return self.client_editor.mode
 
+    @property
+    def has_visible_client(self) -> bool:
+        clients_lst = self.clients_lst
+        for row in range(clients_lst.count()):
+            if not clients_lst.item(row).isHidden():
+                return True
+        return False
+
     def load_clients(self) -> None:
-        self.clients_lst.clear()
+        clients_lst = self.clients_lst
+        clients_lst.clear()
         self.client_editor.clear()
 
         response = api.client.get_all()
 
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot load the clients list - Reason is: %s", response.reason
-            )
-            QtUtil.getMainWindow().show_status_message(
-                "Cannot load the clients list", is_warning=True
-            )
+        if response.status is CommandStatus.COMPLETED:
+            for client in response.body:
+                self._add_item_from_client(client, not self.inactive_ckb.isChecked())
+
+            clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
+            self._select_first_visible_item()
+
+            self._enable_buttons(self.has_visible_client)
             return
 
-        for client in response.body:
-            self._add_item_from_client(client, not self.inactive_ckb.isChecked())
+        QtUtil.raise_fatal_error(
+            f"Cannot load the clients list"
+            f" - Reason is: {response.reason}"
+        )
 
-        self.clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
-        self.clients_lst.clearSelection()
-        self.clients_lst.setCurrentRow(0)
+    @QtCore.pyqtSlot(bool)
+    def on_inactive_selection(self, checked: bool):
+        active_only = not checked
+        clients_lst = self.clients_lst
+        for row in range(clients_lst.count()):
+            item = clients_lst.item(row)
+            client: schemas.Client = item.data(ClientSelector.UserRoles.ClientRole)
+            item.setHidden(active_only and not client.is_active)
 
-        self._enable_buttons(self.clients_lst.count() > 0)
+        clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
+        self._select_first_visible_item()
 
-    @QtCore.pyqtSlot(int)
-    def on_inactive_selection(self, _checked: int):
-        self.load_clients()
+        self._enable_buttons(self.has_visible_client)
 
     @QtCore.pyqtSlot()
     def on_client_selection(self) -> None:
@@ -232,9 +248,10 @@ class ClientSelector(QtUtil.QFramedWidget):
 
     @QtCore.pyqtSlot()
     def delete_client(self) -> None:
-        row = self.clients_lst.currentRow()
         client = self.current_client
         assert client is not None
+        clients_lst = self.clients_lst
+        row = clients_lst.currentRow()
 
         reply = QtWidgets.QMessageBox.warning(
             self,  # noqa
@@ -250,35 +267,45 @@ class ClientSelector(QtUtil.QFramedWidget):
             return
 
         response = api.client.delete(client.id)
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot delete client %s - Reason is: %s",
-                client.name,
-                response.reason,
-            )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot delete client {client.name}", is_warning=True
-            )
+
+        if response.status is CommandStatus.COMPLETED:
+            with QtCore.QSignalBlocker(clients_lst.model()):
+                _deleted_item = clients_lst.takeItem(row)
+                del _deleted_item
+
+            self._forbidden_names.remove(client.name)
+
+            if not self.has_visible_client:
+                self._show_in_editor(None)
+                self._enable_buttons(False)
+                self.new_btn.setFocus()
+            else:
+                self._select_first_visible_item(before=row - 1)
+                clients_lst.setFocus()
             return
 
-        _deleted_item = self.clients_lst.takeItem(row)
-        del _deleted_item
-
-        self._forbidden_names.remove(client.name)
-
-        if self.clients_lst.count() == 0:
-            self._show_in_editor(None)
-            self._enable_buttons(False)
-            self.new_btn.setFocus()
-        else:
-            self.clients_lst.setCurrentRow(row - 1)
-            self.clients_lst.setFocus()
+        if response.status is CommandStatus.FAILED:
+            QtUtil.raise_fatal_error(
+                f"Cannot delete client {client.name}"
+                f" - Reason is: {response.reason}"
+            )
+        if response.status is CommandStatus.REJECTED:
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"Dfacto - Delete client",
+                f"""
+                <p>Cannot delete client {client.name}</p>
+                <p><strong>Reason is: {response.reason}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
 
     @QtCore.pyqtSlot()
     def toggle_client_activation(self) -> None:
         client = self.current_client
         assert client is not None
-        row = self.clients_lst.currentRow()
+        clients_lst = self.clients_lst
+        row = clients_lst.currentRow()
 
         if client.is_active:
             reply = QtWidgets.QMessageBox.warning(
@@ -300,27 +327,32 @@ class ClientSelector(QtUtil.QFramedWidget):
             action = "activate"
             response = api.client.set_active(client.id)
 
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot %s client %s - Reason is: %s",
-                action,
-                client.name,
-                response.reason,
+        if response.status is CommandStatus.COMPLETED:
+            with QtCore.QSignalBlocker(clients_lst.model()):
+                _deleted_item = clients_lst.takeItem(row)
+                del _deleted_item
+
+            new_client: schemas.Client = response.body
+            active_only = not self.inactive_ckb.isChecked()
+            new_item = self._add_item_from_client(
+                new_client, active_only
             )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot {action} client {client.name}", is_warning=True
-            )
+            clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
+            row = clients_lst.row(new_item)
+
+            clients_lst.clearSelection()
+            if new_client.is_active or not active_only:
+                # client is still displayed: select it
+                clients_lst.setCurrentRow(row)
+            else:
+                # client is no more displayed: select the previous one if any
+                self._select_first_visible_item(before=row - 1)
             return
 
-        self.load_clients()
-
-        self.clients_lst.clearSelection()
-        if response.body.is_active or self.inactive_ckb.isChecked():
-            # client is still displayed: select it
-            self.clients_lst.setCurrentRow(row)
-        else:
-            # client is no more displayed: select the previous one if any
-            self.clients_lst.setCurrentRow(max(0, row - 1))
+        QtUtil.raise_fatal_error(
+            f"Cannot {action} client {client.name}"
+            f" - Reason is: {response.reason}"
+        )
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
@@ -341,16 +373,32 @@ class ClientSelector(QtUtil.QFramedWidget):
     ) -> Optional[QtWidgets.QListWidgetItem]:
         self._forbidden_names.append(client.name)
 
-        if client.is_active or not active_only:
-            item = QtWidgets.QListWidgetItem(client.name)
-            icon = self.active_icon if client.is_active else self.inactive_icon
-            item.setIcon(icon)
-            item.setData(ClientSelector.UserRoles.ClientRole, client)
-            self.clients_lst.addItem(item)
-            return item
+        item = QtWidgets.QListWidgetItem(client.name)
+        icon = self.active_icon if client.is_active else self.inactive_icon
+        item.setIcon(icon)
+        item.setData(ClientSelector.UserRoles.ClientRole, client)
+        self.clients_lst.addItem(item)
+        item.setHidden(active_only and not client.is_active)
+        return item
 
     def _show_in_editor(self, client: Optional[schemas.Client]) -> None:
         self.client_editor.show_client(client)
+
+    def _select_first_visible_item(self, before: int = -1) -> None:
+        clients_lst = self.clients_lst
+        if before == -1:
+            start = 0
+            stop = clients_lst.count()
+            step = 1
+        else:
+            start = before
+            stop = -1
+            step = -1
+        for row in range(start, stop, step):
+            if not clients_lst.item(row).isHidden():
+                print(f">>> Select row: {row}")
+                clients_lst.setCurrentRow(row)
+                break
 
     def _update_client(self, client: Client) -> None:
         origin_client = self.current_client
@@ -384,33 +432,28 @@ class ClientSelector(QtUtil.QFramedWidget):
         response = api.client.update(
             origin_client.id, obj_in=schemas.ClientUpdate(**updated_client)
         )
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot update the selected client %s - Reason is: %s",
-                old_name,
-                response.reason,
-            )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot update the selected client {old_name}", is_warning=True
-            )
-            self._show_in_editor(origin_client)
+
+        if response.status is CommandStatus.COMPLETED:
+            new_client = response.body
+
+            clients_lst = self.clients_lst
+            current_item = clients_lst.currentItem()
+            current_item.setData(ClientSelector.UserRoles.ClientRole, new_client)
+            self._show_in_editor(new_client)
+
+            if (new_name := client.name) is not None:
+                current_item.setText(new_name)
+                idx = self._forbidden_names.index(old_name)
+                self._forbidden_names[idx] = new_name
+                clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
+
+            clients_lst.setFocus()
             return
 
-        QtUtil.getMainWindow().show_status_message(f"Client update success!")
-
-        new_client = response.body
-
-        current_item = self.clients_lst.currentItem()
-        current_item.setData(ClientSelector.UserRoles.ClientRole, new_client)
-        self._show_in_editor(new_client)
-
-        if (new_name := client.name) is not None:
-            current_item.setText(new_name)
-            idx = self._forbidden_names.index(old_name)
-            self._forbidden_names[idx] = new_name
-            self.clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
-
-        self.clients_lst.setFocus()
+        QtUtil.raise_fatal_error(
+            f"Cannot update the selected client {old_name}"
+            f" - Reason is: {response.reason}"
+        )
 
     def _add_client(self, client: Client) -> None:
         new_client = {
@@ -420,24 +463,18 @@ class ClientSelector(QtUtil.QFramedWidget):
         }
         response = api.client.add(obj_in=schemas.ClientCreate(**new_client))
 
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot create the new client %s - Reason is: %s",
-                client.name,
-                response.reason,
-            )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot create the new client {client.name}", is_warning=True
-            )
-            self._show_in_editor(self.current_client)
+        if response.status is CommandStatus.COMPLETED:
+            item = self._add_item_from_client(response.body)
+
+            clients_lst = self.clients_lst
+            clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
+            row = clients_lst.row(item)
+            clients_lst.setCurrentRow(row)
+            self._enable_buttons(True)
+            clients_lst.setFocus()
             return
 
-        QtUtil.getMainWindow().show_status_message(f"Client update success!")
-
-        item = self._add_item_from_client(response.body)
-
-        self.clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
-        row = self.clients_lst.row(item)
-        self.clients_lst.setCurrentRow(row)
-        self._enable_buttons(True)
-        self.clients_lst.setFocus()
+        QtUtil.raise_fatal_error(
+            f"Cannot create the new client {client.name}"
+            f" - Reason is: {response.reason}"
+        )

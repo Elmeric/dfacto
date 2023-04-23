@@ -253,7 +253,7 @@ class ClientEditor(QtWidgets.QWidget):
             if key == QtCore.Qt.Key.Key_Escape:
                 self.reject()
                 return
-            if alt and key in (QtCore.Qt.Key.Key_Enter, QtCore.Qt.Key.Key_Return):
+            if alt and key in (QtCore.Qt.Key.Key_Enter, QtCore.Qt.Key.Key_Return) and self.is_valid:
                 self.accept()
                 return
 
