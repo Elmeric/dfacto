@@ -636,7 +636,6 @@ class BasketTable(QtWidgets.QTableView):
             with QtCore.QSignalBlocker(self.selectionModel()):
                 self.setCurrentIndex(quantity_pxy_index)
             self.edit(quantity_pxy_index)
-            self.selection_changed.emit("")
             self.selection_changed.emit(service_name)
         else:
             self.selection_changed.emit("")

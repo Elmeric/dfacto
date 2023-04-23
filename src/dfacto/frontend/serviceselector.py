@@ -448,8 +448,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
         items = self.services_lst.findItems(name, QtCore.Qt.MatchFlag.MatchExactly)
         if len(items) > 0:
             row = self.services_lst.row(items[0])
-            if row != self.services_lst.currentRow():
-                self.services_lst.setCurrentRow(row)
+            with QtCore.QSignalBlocker(self.services_lst.selectionModel()):
+                self.services_lst.clearSelection()
+            self.services_lst.setCurrentRow(row)
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
