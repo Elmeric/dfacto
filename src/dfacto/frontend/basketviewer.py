@@ -20,8 +20,8 @@ logger = logging.getLogger(__name__)
 
 BasketItem = list[int, str, float, int, float, float, float, float]
 
-ID, SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT, VAT_RATE, NET_AMOUNT = range(8)
-VAT_COLUMNS = (SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT, VAT_RATE, NET_AMOUNT)
+ID, SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT_RATE, VAT, NET_AMOUNT = range(8)
+VAT_COLUMNS = (SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT_RATE, VAT, NET_AMOUNT)
 NOVAT_COLUMNS = (SERVICE, UNIT_PRICE, QUANTITY, NET_AMOUNT)
 
 
@@ -65,11 +65,6 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.add_item(response.body)
             return self._update_basket(client_id)
 
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot add service to basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
         if response.status is CommandStatus.REJECTED:
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
@@ -80,7 +75,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 """,
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
-        return False
+            return False
+
+        if response.status is CommandStatus.FAILED:
+            QtUtil.raise_fatal_error(
+                f"Cannot add service to basket of client {client_id}"
+                f" - Reason is: {response.reason}"
+            )
 
     def remove_item_from_basket(self, item_id: int) -> bool:
         client_id = self._basket.client_id
@@ -90,11 +91,6 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.remove_item(item_id)
             return self._update_basket(client_id)
 
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot remove item from the basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
         if response.status is CommandStatus.REJECTED:
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
@@ -105,7 +101,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 """,
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
-        return False
+            return False
+
+        if response.status is CommandStatus.FAILED:
+            QtUtil.raise_fatal_error(
+                f"Cannot remove item from the basket of client {client_id}"
+                f" - Reason is: {response.reason}"
+            )
 
     def update_item_quantity_in_basket(self, item_id: int, quantity: int) -> bool:
         client_id = self._basket.client_id
@@ -117,11 +119,6 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.update_item(response.body)
             return self._update_basket(client_id)
 
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot update item quantity in the basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
         if response.status is CommandStatus.REJECTED:
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
@@ -132,7 +129,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 """,
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
-        return False
+            return False
+
+        if response.status is CommandStatus.FAILED:
+            QtUtil.raise_fatal_error(
+                f"Cannot update item quantity in the basket of client {client_id}"
+                f" - Reason is: {response.reason}"
+            )
 
     def update_service_in_basket(self, service_id: int) -> bool:
         client_id = self._basket.client_id
@@ -142,11 +145,6 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.update_item(response.body)
             return self._update_basket(client_id)
 
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Service {service_id} not found in basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
         if response.status is CommandStatus.REJECTED:
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
@@ -157,7 +155,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 """,
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
-        return False
+            return False
+
+        if response.status is CommandStatus.FAILED:
+            QtUtil.raise_fatal_error(
+                f"Service {service_id} not found in basket of client {client_id}"
+                f" - Reason is: {response.reason}"
+            )
 
     def empty_basket(self) -> bool:
         client_id = self._basket.client_id
@@ -185,7 +189,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         except ValueError:
             return QtCore.QModelIndex()
         else:
-            return self.index(row, ID)
+            return self.index(row, SERVICE)
 
     def index_from_service_id(self, service_id: int) -> QtCore.QModelIndex:
         try:
@@ -422,6 +426,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
 
 class BasketViewer(QtUtil.QFramedWidget):
     selection_changed = QtCore.pyqtSignal(str)  # service name of the selected item
+    invoice_created = QtCore.pyqtSignal(schemas.Invoice)
 
     def __init__(self, basket_model: BasketTableModel, parent=None) -> None:
         super().__init__(parent=parent)
@@ -514,6 +519,7 @@ class BasketViewer(QtUtil.QFramedWidget):
         self.setLayout(main_layout)
 
         self.clear_btn.clicked.connect(self.clear_basket)
+        self.invoicing_btn.clicked.connect(self.create_invoice)
         self._basket_table.selection_changed.connect(self.selection_changed)
         basket_model.basket_updated.connect(self.update_summary)
 
@@ -569,6 +575,23 @@ class BasketViewer(QtUtil.QFramedWidget):
 
         success = self._basket_table.clear_basket()
         self._enable_buttons(not success)
+
+    @QtCore.pyqtSlot()
+    def create_invoice(self) -> None:
+        response = api.client.invoice_from_basket(
+            self._current_client.id, clear_basket=True
+        )
+
+        if response.status is CommandStatus.COMPLETED:
+            self.invoice_created.emit(response.body)
+            success = self._basket_table.clear_basket()
+            self._enable_buttons(not success)
+            return
+
+        QtUtil.raise_fatal_error(
+            f"Cannot create invoice for {self._current_client.name}"
+            f" - Reason is: {response.reason}"
+        )
 
     def _enable_buttons(self, enable: bool) -> None:
         self.clear_btn.setEnabled(enable)

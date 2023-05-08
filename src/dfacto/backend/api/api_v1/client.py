@@ -147,7 +147,6 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         else:
             return self._get_invoices(obj_id, period=period)
 
-    @command
     def _get_invoices_by_status(
         self, obj_id: int, *, status: InvoiceStatus, period: Period
     ) -> CommandResponse:
@@ -164,7 +163,6 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
-    @command
     def _get_invoices(self, obj_id: int, *, period: Period) -> CommandResponse:
         try:
             invoices = self.crud_object.get_invoices(
@@ -174,6 +172,19 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             return CommandResponse(
                 CommandStatus.FAILED,
                 f"GET-INVOICES - SQL or database error: {exc}",
+            )
+        else:
+            body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    @command
+    def get_all_invoices(self) -> CommandResponse:
+        try:
+            invoices = crud.invoice.get_all(self.session)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-ALL-INVOICES - SQL or database error: {exc}",
             )
         else:
             body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
@@ -682,7 +693,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     f"client {obj_id} as {status}: {exc}",
                 )
             else:
-                return CommandResponse(CommandStatus.COMPLETED)
+                body = schemas.Invoice.from_orm(invoice)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def preview_invoice(
@@ -734,7 +746,12 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
-                env = jinja.Environment(loader=jinja.PackageLoader("dfacto.backend"))
+                env = jinja.Environment(
+                    loader=jinja.FileSystemLoader(
+                        "F:\\Users\\Documents\\Dfacto\\MyCompany\\templates"
+                    )
+                )
+                # env = jinja.Environment(loader=jinja.PackageLoader("dfacto.backend"))
             except ValueError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -771,8 +788,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         status = invoice.status
 
         if mode is self.HtmlMode.ISSUE:
-            if status is InvoiceStatus.DRAFT:
-                return "", "is-empty"
+            # if status is InvoiceStatus.DRAFT:
+            #     return "", "is-empty"
             return "", "is-empty"
 
         if mode is self.HtmlMode.REMIND:
@@ -828,7 +845,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         )
         due_date = (
             None
-            if invoice.status is InvoiceStatus.DRAFT
+            if invoice.status is InvoiceStatus.DRAFT and mode is self.HtmlMode.VIEW
             else date_ + timedelta(days=30)
         )
         stamp, tag = self._get_stamp(invoice, mode)
@@ -850,9 +867,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             "invoice": {
                 "code": invoice.code,
                 "date": format_date(date_.date(), format="long", locale="fr_FR"),
-                "due_date": None
-                if due_date is None
-                else format_date(due_date.date(), format="long", locale="fr_FR"),
+                "due_date": None if due_date is None else format_date(
+                    due_date.date(), format="long", locale="fr_FR"
+                ),
                 "raw_amount": invoice.amount.raw,
                 "vat": invoice.amount.vat,
                 "net_amount": invoice.amount.net,

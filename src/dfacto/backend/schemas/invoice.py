@@ -12,6 +12,7 @@ from dfacto.backend import models
 
 from .base import Amount, BaseSchema
 from .item import Item
+from .client import Client
 
 
 @dataclass
@@ -64,6 +65,7 @@ class StatusLog(BaseSchema[models.StatusLog]):
 class Invoice(_InvoiceInDBBase):
     items: list[Item]
     status_log: dict[models.InvoiceStatus, StatusLog]
+    client: Client
 
     @property
     def code(self) -> str:
@@ -126,6 +128,7 @@ class Invoice(_InvoiceInDBBase):
             status_log={
                 log.status: StatusLog.from_orm(log) for log in orm_obj.status_log
             },
+            client=Client.from_orm(orm_obj.client)
         )
 
 

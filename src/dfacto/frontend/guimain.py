@@ -22,6 +22,7 @@ from dfacto.util import qtutil as QtUtil
 from dfacto.util.logutil import LogConfig
 
 from .basketviewer import BasketTableModel, BasketViewer
+from .invoiceviewer import InvoiceTableModel, InvoiceViewer
 from .clientselector import ClientSelector
 from .serviceselector import ServiceSelector
 
@@ -69,8 +70,10 @@ class QtMainView(QtWidgets.QMainWindow):
         self.client_selector = ClientSelector()
         basket_model = BasketTableModel()
         self.basket_viewer = BasketViewer(basket_model)
-        invoice_selector = QtWidgets.QWidget()
-        invoice_selector.setMinimumWidth(700)
+        invoice_model = InvoiceTableModel()
+        self.invoice_viewer = InvoiceViewer(invoice_model)
+        # invoice_selector = QtWidgets.QWidget()
+        # invoice_selector.setMinimumWidth(700)
         invoice_editor = QtWidgets.QWidget()
         self.service_selector = ServiceSelector(basket_model)
         #         fsModel = FileSystemModel()
@@ -103,8 +106,14 @@ class QtMainView(QtWidgets.QMainWindow):
         self.client_selector.client_selected.connect(
             self.basket_viewer.set_current_client
         )
+        self.client_selector.client_selected.connect(
+            self.invoice_viewer.set_current_client
+        )
         self.basket_viewer.selection_changed.connect(
             self.service_selector.select_service_by_name
+        )
+        self.basket_viewer.invoice_created.connect(
+            self.invoice_viewer.on_invoice_creation
         )
         #         self._sourceManager.sourceSelected.connect(timelineViewer.setTimeline)
         #         self._sourceManager.sourceSelected.connect(self._downloader.setSourceSelection)
@@ -166,11 +175,11 @@ class QtMainView(QtWidgets.QMainWindow):
         center_vert_splitter.setContentsMargins(5, 0, 5, 5)
         center_vert_splitter.setChildrenCollapsible(False)
         center_vert_splitter.setHandleWidth(3)
-        center_vert_splitter.addWidget(invoice_selector)
+        center_vert_splitter.addWidget(self.invoice_viewer)
         # center_vert_splitter.addWidget(invoice_editor)
         center_vert_splitter.addWidget(self.basket_viewer)
-        center_vert_splitter.setStretchFactor(0, 1)
-        center_vert_splitter.setStretchFactor(1, 3)
+        # center_vert_splitter.setStretchFactor(0, 3)
+        # center_vert_splitter.setStretchFactor(1, 1)
         center_vert_splitter.setOpaqueResize(False)
 
         right_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
@@ -380,6 +389,7 @@ class QtMainView(QtWidgets.QMainWindow):
         self.resize(settings.window_size[0], settings.window_size[1])
 
         self.service_selector.load_services()
+        self.invoice_viewer.load_invoices()
         self.client_selector.load_clients()
         #
         # self._downloader.selectDestination(Path(settings.lastDestination))

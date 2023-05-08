@@ -16,7 +16,6 @@
         <div>{{ company.phone_number }}</div>
         <div><a href="mailto:{{ company.email }}">{{ company.email }}</a></div>
       </div>
-      </div>
     </header>
     <main>
       <div id="details" class="clearfix">
@@ -50,7 +49,7 @@
               <td class="desc"><h3>{{ item.service.name }}</h3></td>
               <td class="unit">{{ item.service["unit_price"] }}</td>
               <td class="qty">{{ item.quantity }}</td>
-              <td class="total">{{ item.net_amount }}</td>
+              <td class="total">{{ item.raw_amount }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -58,7 +57,7 @@
           <tr>
             <td colspan="2"></td>
             <td colspan="2">Net à payer</td>
-            <td>{{ invoice.net_amount }}€</td>
+            <td>{{ invoice.raw_amount }}€</td>
           </tr>
         </tfoot>
       </table>

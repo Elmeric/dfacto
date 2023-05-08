@@ -370,7 +370,6 @@ class UndeselectableListWidget(QtWidgets.QListWidget):
 
         self.setAlternatingRowColors(True)
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        # self.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.setStyleSheet(
             "QListView::item{border: 1px solid transparent;}"
             "QListView::item:selected{color: blue;}"
@@ -387,14 +386,14 @@ class UndeselectableListWidget(QtWidgets.QListWidget):
         )
 
         old_selection_model = self.selectionModel()
-        new_selection_model = MySelectionModel(
+        new_selection_model = UndeselectableSelectionModel(
             self.model(), old_selection_model.parent()
         )
         self.setSelectionModel(new_selection_model)
         old_selection_model.deleteLater()
 
 
-class MySelectionModel(QtCore.QItemSelectionModel):
+class UndeselectableSelectionModel(QtCore.QItemSelectionModel):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
