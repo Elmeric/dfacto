@@ -1929,7 +1929,7 @@ def test_cmd_mark_as_mark_error(
 #     client_ = init_data.clients[0]
 #
 #     response = api.client.preview_invoice(
-#         4, invoice_id=4, mode=api.client.HtmlMode.VIEW
+#         4, invoice_id=4, mode=api.client.HtmlMode.SHOW
 #     )
 #
 #     assert response.status is CommandStatus.COMPLETED

@@ -17,7 +17,7 @@ import PyQt6.QtWidgets as QtWidgets
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
-from dfacto.backend.api import CommandStatus
+from dfacto.backend.api import CommandStatus, CommandReport
 from dfacto.backend.models.invoice import InvoiceStatus
 from dfacto.backend.util import Period, PeriodFilter
 from dfacto.util import qtutil as QtUtil
@@ -74,48 +74,69 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             f"Cannot retrieve invoices - Reason is: {response.reason}"
         )
 
-    # def set_client(self, client_id: int) -> None:
-    #     self._client_id = client_id
-    #     invoices = self._get_invoices_of_client(client_id)
-    #     self.clear_invoices()
-    #     self.add_invoices(invoices)
+    def get_html_preview(
+        self, invoice_id: int, mode: api.client.HtmlMode
+    ) -> tuple[Optional[str], CommandReport]:
+        response = api.client.preview_invoice(
+            self._get_client_of_invoice(invoice_id),
+            invoice_id=invoice_id,
+            mode=mode
+        )
 
-    # def update_invoice_status(self, invoice_id: int, status: InvoiceStatus) -> bool:
-    #     assert status in (InvoiceStatus.PAID, InvoiceStatus.CANCELLED)
-    #     invoice = self._invoices[invoice_id]
-    #     if status is InvoiceStatus.PAID:
-    #         response = api.client.mark_as_paid(
-    #             invoice[CLIENT_ID],
-    #             invoice_id=invoice_id,
-    #             status=status
-    #         )
-    #     else:
-    #         response = api.client.mark_as_cancelled(
-    #             invoice[CLIENT_ID],
-    #             invoice_id=invoice_id,
-    #             status=status
-    #         )
-    #
-    #     if response.status is CommandStatus.COMPLETED:
-    #         self.update_invoice(response.body)
-    #         return True
-    #
-    #     if response.status is CommandStatus.FAILED:
-    #         QtUtil.raise_fatal_error(
-    #             f"Cannot update invoice status"
-    #             f" - Reason is: {response.reason}"
-    #         )
-    #     if response.status is CommandStatus.REJECTED:
-    #         QtWidgets.QMessageBox.warning(
-    #             None,  # type: ignore
-    #             f"Dfacto - Update invoice status",
-    #             f"""
-    #             <p>Cannot update invoice status</p>
-    #             <p><strong>Reason is: {response.reason}</strong></p>
-    #             """,
-    #             QtWidgets.QMessageBox.StandardButton.Close,
-    #         )
-    #     return False
+        if response.status is not CommandStatus.FAILED:
+            return response.body, response.report
+
+        QtUtil.raise_fatal_error(
+            f"Cannot get HTML preview"
+            f" - Reason is: {response.reason}"
+        )
+
+    def delete_invoice(self, invoice_id: int) -> CommandReport:
+        response = api.client.delete_invoice(
+            self._get_client_of_invoice(invoice_id),
+            invoice_id=invoice_id
+        )
+
+        if response.status is CommandStatus.COMPLETED:
+            self.remove_invoice(invoice_id)
+            return response.report
+
+        if response.status is CommandStatus.REJECTED:
+            return response.report
+
+        QtUtil.raise_fatal_error(
+            f"Cannot delete invoice - Reason is: {response.reason}"
+        )
+
+    def mark_invoice_as(self, invoice_id: int, status: InvoiceStatus) -> CommandReport:
+        match status:
+            case InvoiceStatus.EMITTED:
+                action = api.client.mark_as_emitted
+            case InvoiceStatus.REMINDED:
+                action = api.client.mark_as_reminded
+            case InvoiceStatus.PAID:
+                action = api.client.mark_as_paid
+            case InvoiceStatus.CANCELLED:
+                action = api.client.mark_as_cancelled
+            case _:
+                raise ValueError(f"Cannot mark invoice as {status.name}")
+
+        response = action(
+            self._get_client_of_invoice(invoice_id),
+            invoice_id=invoice_id
+        )
+
+        if response.status is CommandStatus.COMPLETED:
+            invoice: schemas.Invoice = response.body
+            self.update_invoice(invoice)
+            return response.report
+
+        if response.status is CommandStatus.REJECTED:
+            return response.report
+
+        QtUtil.raise_fatal_error(
+            f"Cannot mark invoice as {status.name} - Reason is: {response.reason}"
+        )
 
     def invoice_from_index(self, index: QtCore.QModelIndex) -> Optional[InvoiceItem]:
         invoice_id = self._invoice_id_from_index(index)
@@ -231,20 +252,6 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
         return int(section + 1)
 
-    # def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
-    #     if index.isValid():
-    #         column = index.column()
-    #
-    #         if column == STATUS:
-    #             status = index.model().data(index, InvoiceTableModel.UserRoles.StatusRole)
-    #             if status and status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
-    #                 flags = QtCore.Qt.ItemFlag.ItemIsEditable | super().flags(index)
-    #                 return flags
-    #
-    #         return super().flags(index)
-    #
-    #     return QtCore.Qt.ItemFlag.NoItemFlags
-
     def data(
         self, index: QtCore.QModelIndex, role: int = QtCore.Qt.ItemDataRole.DisplayRole
     ) -> Any:
@@ -291,29 +298,6 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
         return None
 
-    # def setData(
-    #     self,
-    #     index: QtCore.QModelIndex,
-    #     value: Any,
-    #     role: int = QtCore.Qt.ItemDataRole.EditRole,
-    # ) -> bool:
-    #     if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
-    #         row = index.row()
-    #         column = index.column()
-    #
-    #         if 0 <= row < self.rowCount() and 0 <= column < self.columnCount():
-    #             invoice_id = self._invoice_ids[row]
-    #
-    #             if column == STATUS:
-    #                 print(f"setData: row: {row}, status: {value}")
-    #                 return self.update_invoice_status(
-    #                     invoice_id=invoice_id, status=value
-    #                 )
-    #
-    #             return super().setData(index, value, role)
-    #
-    #     return False
-
     def _invoice_id_from_index(self, index: QtCore.QModelIndex) -> Optional[int]:
         if index.isValid():
             row = index.row()
@@ -321,18 +305,12 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 return self._invoice_ids[row]
         return None
 
-    # @staticmethod
-    # def _get_invoices_of_client(client_id: int) -> list[schemas.Invoice]:
-    #     response = api.client.get_invoices(client_id)
-    #
-    #     if response.status is CommandStatus.COMPLETED:
-    #         invoices: list[schemas.Invoice] = response.body
-    #         return invoices
-    #
-    #     QtUtil.raise_fatal_error(
-    #         f"Cannot retrieve invoices of client {client_id}"
-    #         f" - Reason is: {response.reason}"
-    #     )
+    def _get_client_of_invoice(self, invoice_id: int) -> int:
+        try:
+            invoice = self._invoices[invoice_id]
+        except KeyError:
+            return -1
+        return invoice[CLIENT_ID]
 
 
 class InvoiceViewer(QtUtil.QFramedWidget):
@@ -495,12 +473,22 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         self._invoice_table.selectionModel().currentChanged.connect(self.show_buttons)
 
-        self.show_btn.clicked.connect(self.show_invoice)
-        self.emit_btn.clicked.connect(self.issue_invoice)
-        self.remind_btn.clicked.connect(self.remind_invoice)
-        self.paid_btn.clicked.connect(self.paid_invoice)
+        self.show_btn.clicked.connect(
+            lambda: self._open_html_view(mode=api.client.HtmlMode.SHOW)
+        )
+        self.emit_btn.clicked.connect(
+            lambda: self._open_html_view(mode=api.client.HtmlMode.ISSUE)
+        )
+        self.remind_btn.clicked.connect(
+            lambda: self._open_html_view(mode=api.client.HtmlMode.REMIND)
+        )
+        self.paid_btn.clicked.connect(
+            lambda: self._mark_invoice_as(InvoiceStatus.PAID, confirm=True)
+        )
         self.delete_btn.clicked.connect(self.delete_invoice)
-        self.cancel_btn.clicked.connect(self.cancel_invoice)
+        self.cancel_btn.clicked.connect(
+            lambda: self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
+        )
 
         self.invoice_html_view.finished.connect(self.on_html_view_finished)
 
@@ -513,110 +501,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.set_default_filters()
 
     @QtCore.pyqtSlot()
-    def show_invoice(self) -> None:
-        invoice = self._invoice_table.selected_invoice()
-
-        response = api.client.preview_invoice(
-            invoice[CLIENT_ID],
-            invoice_id=invoice[ID],
-            mode=api.client.HtmlMode.VIEW
-        )
-        if response.status is CommandStatus.COMPLETED:
-            status = cast(InvoiceStatus, invoice[STATUS])
-            html = response.body
-            self.invoice_html_view.set_invoice(status, html, mode=InvoiceWebViewer.Mode.SHOW)
-            self.invoice_html_view.open()
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Show invoice",
-                f"""
-                <p>Cannot show invoice {invoice[ID]} of client {invoice[CLIENT_NAME]}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot show invoice"
-                f" - Reason is: {response.reason}"
-            )
-
-    @QtCore.pyqtSlot()
-    def issue_invoice(self) -> None:
-        invoice = self._invoice_table.selected_invoice()
-
-        response = api.client.preview_invoice(
-            invoice[CLIENT_ID],
-            invoice_id=invoice[ID],
-            mode=api.client.HtmlMode.ISSUE
-        )
-        if response.status is CommandStatus.COMPLETED:
-            status = cast(InvoiceStatus, invoice[STATUS])
-            html = response.body
-            self.invoice_html_view.set_invoice(status, html, mode=InvoiceWebViewer.Mode.CONFIRM)
-            self.invoice_html_view.open()
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Preview invoice",
-                f"""
-                <p>Cannot preview invoice {invoice[ID]} of client {invoice[CLIENT_NAME]}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot preview invoice"
-                f" - Reason is: {response.reason}"
-            )
-
-    @QtCore.pyqtSlot()
-    def remind_invoice(self) -> None:
-        invoice = self._invoice_table.selected_invoice()
-
-        response = api.client.preview_invoice(
-            invoice[CLIENT_ID],
-            invoice_id=invoice[ID],
-            mode=api.client.HtmlMode.REMIND
-        )
-        if response.status is CommandStatus.COMPLETED:
-            status = cast(InvoiceStatus, invoice[STATUS])
-            html = response.body
-            self.invoice_html_view.set_invoice(status, html, mode=InvoiceWebViewer.Mode.CONFIRM)
-            self.invoice_html_view.open()
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Preview invoice",
-                f"""
-                <p>Cannot preview invoice {invoice[ID]} of client {invoice[CLIENT_NAME]}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot preview invoice"
-                f" - Reason is: {response.reason}"
-            )
-
-    @QtCore.pyqtSlot()
     def delete_invoice(self) -> None:
-        invoice = self._invoice_table.selected_invoice()
+        invoice_table = self._invoice_table
+        invoice = invoice_table.selected_invoice()
 
         reply = QtWidgets.QMessageBox.warning(
             self,  # noqa
@@ -631,186 +518,17 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
 
-        response = api.client.delete_invoice(invoice[CLIENT_ID], invoice_id=invoice[ID])
+        report = invoice_table.source_model().delete_invoice(invoice[ID])
 
-        if response.status is CommandStatus.COMPLETED:
-            self._invoice_table.source_model().remove_invoice(invoice[ID])
-            return
-
-        if response.status is CommandStatus.REJECTED:
+        if report.status is not CommandStatus.COMPLETED:
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
                 f"{QtWidgets.QApplication.applicationName()} - Delete invoice",
                 f"""
                 <p>Cannot delete invoice {invoice[ID]} of client {invoice[CLIENT_NAME]}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
+                <p><strong>Reason is: {report.reason}</strong></p>
                 """,
                 QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot delete invoice {invoice[ID]} of client {invoice[CLIENT_NAME]}"
-                f" - Reason is: {response.reason}"
-            )
-
-    @QtCore.pyqtSlot()
-    def emit_invoice(self):
-        invoice_lst = self._invoice_table.selected_invoice()
-
-        response = api.client.mark_as_emitted(
-            invoice_lst[CLIENT_ID],
-            invoice_id=invoice_lst[ID]
-        )
-
-        if response.status is CommandStatus.COMPLETED:
-            invoice: schemas.Invoice = response.body
-            self._invoice_table.source_model().update_invoice(invoice)
-            self._enable_buttons(status=InvoiceStatus.EMITTED)
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Mark invoice as emitted",
-                f"""
-                <p>Cannot mark invoice {invoice_lst[ID]} as emitted</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot mark invoice {invoice_lst[ID]} as emitted"
-                f" - Reason is: {response.reason}"
-            )
-
-    @QtCore.pyqtSlot()
-    def reemit_invoice(self):
-        invoice_lst = self._invoice_table.selected_invoice()
-
-        response = api.client.mark_as_reminded(
-            invoice_lst[CLIENT_ID],
-            invoice_id=invoice_lst[ID]
-        )
-
-        if response.status is CommandStatus.COMPLETED:
-            invoice: schemas.Invoice = response.body
-            self._invoice_table.source_model().update_invoice(invoice)
-            self._enable_buttons(status=InvoiceStatus.REMINDED)
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Mark invoice as reminded",
-                f"""
-                <p>Cannot mark invoice {invoice_lst[ID]} as reminded</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot mark invoice {invoice_lst[ID]} as reminded"
-                f" - Reason is: {response.reason}"
-            )
-
-    @QtCore.pyqtSlot()
-    def paid_invoice(self):
-        invoice_lst = self._invoice_table.selected_invoice()
-
-        reply = QtWidgets.QMessageBox.warning(
-            self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Mark invoice as paid",
-            f"""
-            <p>Do you really want to mark permanently this invoice as paid?</p>
-            <p><strong>{invoice_lst[CODE]}</strong></p>
-            """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply == QtWidgets.QMessageBox.StandardButton.No:
-            return
-
-        response = api.client.mark_as_paid(
-            invoice_lst[CLIENT_ID],
-            invoice_id=invoice_lst[ID]
-        )
-
-        if response.status is CommandStatus.COMPLETED:
-            invoice: schemas.Invoice = response.body
-            self._invoice_table.source_model().update_invoice(invoice)
-            self._enable_buttons(status=InvoiceStatus.PAID)
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Mark invoice as paid",
-                f"""
-                <p>Cannot mark invoice {invoice_lst[ID]} as paid</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot mark invoice {invoice_lst[ID]} as paid"
-                f" - Reason is: {response.reason}"
-            )
-
-    @QtCore.pyqtSlot()
-    def cancel_invoice(self):
-        invoice_lst = self._invoice_table.selected_invoice()
-
-        reply = QtWidgets.QMessageBox.warning(
-            self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Mark invoice as cancelled",
-            f"""
-            <p>Do you really want to mark permanently this invoice as cancelled?</p>
-            <p><strong>{invoice_lst[CODE]}</strong></p>
-            """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
-        )
-        if reply == QtWidgets.QMessageBox.StandardButton.No:
-            return
-
-        response = api.client.mark_as_cancelled(
-            invoice_lst[CLIENT_ID],
-            invoice_id=invoice_lst[ID]
-        )
-
-        if response.status is CommandStatus.COMPLETED:
-            invoice: schemas.Invoice = response.body
-            self._invoice_table.source_model().update_invoice(invoice)
-            self._enable_buttons(status=InvoiceStatus.CANCELLED)
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Mark invoice as cancelled",
-                f"""
-                <p>Cannot mark invoice {invoice_lst[ID]} as cancelled</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot mark invoice {invoice_lst[ID]} as cancelled"
-                f" - Reason is: {response.reason}"
             )
 
     @QtCore.pyqtSlot(schemas.Client)
@@ -903,33 +621,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         self._invoice_table.select_invoice(invoice.id)
 
-        response = api.client.preview_invoice(
-            invoice.client_id,
-            invoice_id=invoice.id,
-            mode=api.client.HtmlMode.ISSUE
-        )
-        if response.status is CommandStatus.COMPLETED:
-            self.invoice_html_view.set_invoice(invoice.status, response.body, mode=InvoiceWebViewer.Mode.ISSUE)
-            self.invoice_html_view.open()
-            return
-
-        if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"Dfacto - Delete invoice",
-                f"""
-                <p>Cannot preview invoice {invoice.code} created for {invoice.client.name}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
-
-        if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot preview invoice {invoice.code} created for {invoice.client.name}"
-                f" - Reason is: {response.reason}"
-            )
+        self._open_html_view(mode=api.client.HtmlMode.CREATE)
 
     @QtCore.pyqtSlot(int)
     def on_html_view_finished(self, result: int):
@@ -937,13 +629,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             case InvoiceWebViewer.Action.DELETE:
                 self.delete_invoice()
             case InvoiceWebViewer.Action.SEND:
-                self.emit_invoice()
+                self._mark_invoice_as(InvoiceStatus.EMITTED, confirm=False)
             case InvoiceWebViewer.Action.REMIND:
-                self.reemit_invoice()
+                self._mark_invoice_as(InvoiceStatus.REMINDED, confirm=False)
             case InvoiceWebViewer.Action.PAID:
-                self.paid_invoice()
+                self._mark_invoice_as(InvoiceStatus.PAID, confirm=True)
             case InvoiceWebViewer.Action.CANCEL:
-                self.cancel_invoice()
+                self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
             case InvoiceWebViewer.Action.TO_BASKET:
                 # TODO
                 pass
@@ -977,6 +669,78 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self.cancel_btn.setVisible(False)
             self.basket_btn.setEnabled(False)
 
+    def _open_html_view(self, mode: api.client.HtmlMode) -> None:
+        match mode:
+            case api.client.HtmlMode.CREATE:
+                viewer_mode = InvoiceWebViewer.Mode.ISSUE
+            case api.client.HtmlMode.SHOW:
+                viewer_mode = InvoiceWebViewer.Mode.SHOW
+            case api.client.HtmlMode.ISSUE:
+                viewer_mode = InvoiceWebViewer.Mode.CONFIRM
+            case api.client.HtmlMode.REMIND:
+                viewer_mode = InvoiceWebViewer.Mode.CONFIRM
+            case _:
+                viewer_mode = InvoiceWebViewer.Mode.SHOW
+
+        invoice_table = self._invoice_table
+        invoice = invoice_table.selected_invoice()
+
+        html, report = invoice_table.source_model().get_html_preview(
+            invoice[ID],
+            mode=mode
+        )
+
+        if html is not None:
+            status = cast(InvoiceStatus, invoice[STATUS])
+            self.invoice_html_view.set_invoice(status, html, mode=viewer_mode)
+            self.invoice_html_view.open()
+            return
+
+        QtWidgets.QMessageBox.warning(
+            None,  # type: ignore
+            f"{QtWidgets.QApplication.applicationName()} - Invoice view",
+            f"""
+            <p>Cannot show invoice {invoice[CODE]} of client {invoice[CLIENT_NAME]}</p>
+            <p><strong>Reason is: {report.reason}</strong></p>
+            """,
+            QtWidgets.QMessageBox.StandardButton.Close,
+        )
+
+    def _mark_invoice_as(self, status: InvoiceStatus, confirm: bool = False) -> None:
+        invoice_table = self._invoice_table
+        invoice = invoice_table.selected_invoice()
+        status_txt = status.name.lower()
+
+        if confirm:
+            reply = QtWidgets.QMessageBox.warning(
+                self,  # noqa
+                f"{QtWidgets.QApplication.applicationName()} - Mark invoice as {status_txt}",
+                f"""
+                <p>Do you really want to mark permanently this invoice as {status_txt}?</p>
+                <p><strong>{invoice[CODE]}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
+                return
+
+        report = invoice_table.source_model().mark_invoice_as(invoice[ID], status)
+
+        if report.status is CommandStatus.COMPLETED:
+            self._enable_buttons(status=status)
+            return
+
+        QtWidgets.QMessageBox.warning(
+            None,  # type: ignore
+            f"{QtWidgets.QApplication.applicationName()} - Mark invoice as {status_txt}",
+            f"""
+            <p>Cannot mark invoice {invoice[ID]} as {status_txt}</p>
+            <p><strong>Reason is: {report.reason}</strong></p>
+            """,
+            QtWidgets.QMessageBox.StandardButton.Close,
+        )
+
 
 class InvoiceTable(QtWidgets.QTableView):
     def __init__(self, invoice_model: InvoiceTableModel, parent=None) -> None:
@@ -998,7 +762,6 @@ class InvoiceTable(QtWidgets.QTableView):
             "QTableView::item:hover{background: rgba(0,0,255,32);}"
         )
         self.setItemDelegate(QtUtil.NoFocusDelegate(self))
-        # self.setItemDelegate(InvoiceTableDelegate(self))
         self.setSortingEnabled(True)
 
         proxy_model = InvoiceFilterProxyModel()
@@ -1093,95 +856,6 @@ class InvoiceTable(QtWidgets.QTableView):
         #     globalActions['DELETE']
         # ))
         menu.exec(event.globalPos())
-
-
-# class InvoiceTableDelegate(QtUtil.NoFocusDelegate):
-#     previous_status: Optional[InvoiceStatus]
-#
-#     def __init__(self, parent=None) -> None:
-#         super().__init__(parent=parent)
-#
-#     def createEditor(
-#         self,
-#         parent: QtWidgets.QWidget,
-#         options: QtWidgets.QStyleOptionViewItem,
-#         index: QtCore.QModelIndex,
-#     ) -> QtWidgets:
-#         proxy_model = cast(InvoiceFilterProxyModel, index.model())
-#         source_index = proxy_model.mapToSource(index)
-#         column = source_index.column()
-#
-#         if column == STATUS:
-#             editor = QtWidgets.QComboBox(parent)
-#             editor.setFrame(False)
-#             editor.setSizeAdjustPolicy(QtWidgets.QComboBox.SizeAdjustPolicy.AdjustToContents)
-#             tip = "Select Invoice status"
-#             editor.setToolTip(tip)
-#             editor.setStatusTip(tip)
-#             for s in (InvoiceStatus.PAID, InvoiceStatus.CANCELLED):
-#                 editor.addItem(s.name, userData=s)
-#             # editor.model().sort(0)
-#             width = editor.minimumSizeHint().width()
-#             editor.view().setMinimumWidth(width)
-#             self.previous_status = None
-#             return editor
-#
-#         return super().createEditor(parent, options, index)
-#
-#     def setEditorData(
-#         self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex
-#     ) -> None:
-#         proxy_model = cast(InvoiceFilterProxyModel, index.model())
-#         source_index = proxy_model.mapToSource(index)
-#         column = source_index.column()
-#
-#         if column == STATUS:
-#             editor: QtWidgets.QComboBox
-#             status = proxy_model.data(index, InvoiceTableModel.UserRoles.StatusRole)
-#             if status:
-#                 self.previous_status = status
-#                 editor.setCurrentText(status.name)
-#                 editor.showPopup()
-#                 return
-#
-#         super().setEditorData(editor, index)
-#
-#     def setModelData(
-#         self,
-#         editor: QtWidgets.QWidget,
-#         model: QtCore.QAbstractItemModel,
-#         index: QtCore.QModelIndex,
-#     ) -> None:
-#         source_index = model.mapToSource(index)
-#         column = source_index.column()
-#
-#         if column == STATUS:
-#             editor: QtWidgets.QComboBox
-#             status = editor.currentData()
-#             if status != self.previous_status:
-#                 print(f"setModelData: row: {source_index.row()}, status: {status.name}, previou status: {self.previous_status.name}")
-#                 model.setData(index, status, QtCore.Qt.ItemDataRole.EditRole)
-#             return
-#
-#         super().setModelData(editor, model, index)
-#
-#     def updateEditorGeometry(
-#         self,
-#         editor: QtWidgets.QWidget,
-#         option: QtWidgets.QStyleOptionViewItem,
-#         index: QtCore.QModelIndex,
-#     ) -> None:
-#         proxy_model = cast(InvoiceFilterProxyModel, index.model())
-#         source_index = proxy_model.mapToSource(index)
-#         column = source_index.column()
-#
-#         if column == STATUS:
-#             rect = option.rect
-#             rect.setWidth(rect.width() + 20)
-#             editor.setGeometry(option.rect)
-#             return
-#
-#         super().updateEditorGeometry(editor, option, index)
 
 
 class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):

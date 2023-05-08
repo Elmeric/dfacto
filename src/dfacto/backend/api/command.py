@@ -37,6 +37,15 @@ class CommandStatus(enum.Enum):
     FAILED = enum.auto()
 
 
+class CommandReport(NamedTuple):
+    status: CommandStatus
+    reason: Optional[str] = None
+
+    def __repr__(self) -> str:
+        reason = f", {self.reason}" if self.reason else ""
+        return f"CommandReport({self.status.name}{reason})"
+
+
 class CommandResponse(NamedTuple):
     """To be returned by any model's commands.
 
@@ -53,6 +62,10 @@ class CommandResponse(NamedTuple):
     def __repr__(self) -> str:
         reason = f", {self.reason}" if self.reason else ""
         return f"CommandResponse({self.status.name}{reason})"
+
+    @property
+    def report(self) -> CommandReport:
+        return CommandReport(self.status, self.reason)
 
 
 def command(func):

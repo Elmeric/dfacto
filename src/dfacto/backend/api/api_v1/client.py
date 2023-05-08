@@ -38,7 +38,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     schema: Type[schemas.Client] = schemas.Client
 
     class HtmlMode(Enum):
-        VIEW = 1
+        CREATE = 0
+        SHOW = 1
         ISSUE = 2
         REMIND = 3
 
@@ -701,7 +702,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         self, obj_id: int, *, invoice_id: int, mode: HtmlMode
     ) -> CommandResponse:
         """
-                    VIEW	                        ISSUE	                REMIND
+                    SHOW	                        ISSUE	                REMIND
         DRAFT
                 stamp = DRAFT	                stamp = None
                 date = created_on	            date = created_on
@@ -735,7 +736,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             if orm_client is None or orm_invoice is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
-                    f"PREVIEW-INVOICE - Clien {obj_id} or invoice {invoice_id} "
+                    f"PREVIEW-INVOICE - Client {obj_id} or invoice {invoice_id} "
                     f"not found.",
                 )
             if orm_invoice.client_id != obj_id:
@@ -787,7 +788,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def _get_stamp(self, invoice: schemas.Invoice, mode: HtmlMode) -> tuple[str, str]:
         status = invoice.status
 
-        if mode is self.HtmlMode.ISSUE:
+        if mode in (self.HtmlMode.CREATE, self.HtmlMode.ISSUE):
             # if status is InvoiceStatus.DRAFT:
             #     return "", "is-empty"
             return "", "is-empty"
@@ -799,7 +800,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return "Second Rappel", "is-bad"
             return "", "is-empty"
 
-        if mode is self.HtmlMode.VIEW:
+        if mode is self.HtmlMode.SHOW:
             if status is InvoiceStatus.DRAFT:
                 return "DRAFT", "is-draft"
             if status is InvoiceStatus.EMITTED:
@@ -845,7 +846,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         )
         due_date = (
             None
-            if invoice.status is InvoiceStatus.DRAFT and mode is self.HtmlMode.VIEW
+            if invoice.status is InvoiceStatus.DRAFT and mode is self.HtmlMode.SHOW
             else date_ + timedelta(days=30)
         )
         stamp, tag = self._get_stamp(invoice, mode)

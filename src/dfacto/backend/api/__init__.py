@@ -8,4 +8,4 @@ from .api_v1.client import client
 from .api_v1.company import company
 from .api_v1.service import service
 from .api_v1.vat_rate import vat_rate
-from .command import CommandResponse, CommandStatus
+from .command import CommandReport, CommandResponse, CommandStatus
