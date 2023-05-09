@@ -79,12 +79,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.emit_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-emit.png"))
         self.emit_btn.setToolTip("Emit the selected invoice")
         self.emit_btn.setStatusTip("Emit the selected invoice")
-        self.remind_btn = QtWidgets.QPushButton()
-        self.remind_btn.setFlat(True)
-        self.remind_btn.setIconSize(icon_size)
-        self.remind_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-remind.png"))
-        self.remind_btn.setToolTip("Remind the selected invoice")
-        self.remind_btn.setStatusTip("Remind the selected invoice")
         self.paid_btn = QtWidgets.QPushButton()
         self.paid_btn.setFlat(True)
         self.paid_btn.setIconSize(icon_size)
@@ -116,7 +110,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         tool_layout.addWidget(self.basket_btn)
         tool_layout.addStretch()
         tool_layout.addWidget(self.emit_btn)
-        tool_layout.addWidget(self.remind_btn)
         tool_layout.addWidget(self.paid_btn)
         tool_layout.addWidget(self.delete_btn)
         tool_layout.addWidget(self.cancel_btn)
@@ -131,7 +124,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.setLayout(main_layout)
 
         self.emit_btn.clicked.connect(self.send)
-        self.remind_btn.clicked.connect(self.remind)
         self.paid_btn.clicked.connect(self.paid)
         self.delete_btn.clicked.connect(self.delete)
         self.cancel_btn.clicked.connect(self.cancel)
@@ -165,10 +157,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
             company: schemas.Company = response.body
             file_path = company.home / "test.pdf"
             self.html_view.printToPdf(file_path.as_posix())
-
-    @QtCore.pyqtSlot()
-    def remind(self) -> None:
-        pass
 
     @QtCore.pyqtSlot()
     def paid(self) -> None:
@@ -239,7 +227,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
             if self._mode is InvoiceWebViewer.Mode.CONFIRM:
                 self.delete_btn.setVisible(False)
                 self.emit_btn.setVisible(False)
-                self.remind_btn.setVisible(False)
                 self.paid_btn.setVisible(False)
                 self.cancel_btn.setVisible(False)
                 self.basket_btn.setVisible(False)
@@ -252,7 +239,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
                 is_emitted_or_reminded = status is InvoiceStatus.EMITTED or status is InvoiceStatus.REMINDED
                 self.delete_btn.setVisible(is_draft)
                 self.emit_btn.setVisible(is_draft and not is_in_show_mode)
-                self.remind_btn.setVisible(is_emitted_or_reminded and not is_in_show_mode)
                 self.paid_btn.setVisible(is_emitted_or_reminded)
                 self.cancel_btn.setVisible(is_emitted_or_reminded)
                 self.basket_btn.setVisible(True)
@@ -261,7 +247,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         else:
             self.delete_btn.setVisible(False)
             self.emit_btn.setVisible(False)
-            self.remind_btn.setVisible(False)
             self.paid_btn.setVisible(False)
             self.cancel_btn.setVisible(False)
             self.basket_btn.setVisible(False)
