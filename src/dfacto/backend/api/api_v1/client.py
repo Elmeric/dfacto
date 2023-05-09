@@ -12,6 +12,7 @@ from typing import Optional, Type
 import jinja2 as jinja
 from babel.dates import format_date
 
+from dfacto import settings as Config
 from dfacto.backend import crud, schemas
 from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 from dfacto.backend.models import InvoiceStatus
@@ -727,17 +728,18 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         try:
             orm_client = self.crud_object.get(self.session, obj_id)
             orm_invoice = crud.invoice.get(self.session, invoice_id)
+            company = crud.company.get_current()
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
                 f"PREVIEW-INVOICE - SQL or database error: {exc}",
             )
         else:
-            if orm_client is None or orm_invoice is None:
+            if orm_client is None or orm_invoice is None or company is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
                     f"PREVIEW-INVOICE - Client {obj_id} or invoice {invoice_id} "
-                    f"not found.",
+                    f" or current company not found.",
                 )
             if orm_invoice.client_id != obj_id:
                 return CommandResponse(
@@ -747,9 +749,13 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
+                templates_dir = Config.dfacto_settings.templates
+                template_dir = templates_dir / company.home.name
+                if not template_dir.exists():
+                    template_dir = templates_dir / "default"
                 env = jinja.Environment(
                     loader=jinja.FileSystemLoader(
-                        "F:\\Users\\Documents\\Dfacto\\MyCompany\\templates"
+                        template_dir.as_posix()
                     )
                 )
                 # env = jinja.Environment(loader=jinja.PackageLoader("dfacto.backend"))

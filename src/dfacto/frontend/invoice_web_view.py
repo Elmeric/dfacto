@@ -11,12 +11,12 @@ import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtWebEngineWidgets as QtWeb
-import PyQt6.QtWebEngineCore as QtWebCore
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
 from dfacto.backend.models.invoice import InvoiceStatus
+from dfacto.util import qtutil as QtUtil
 
 logger = logging.getLogger(__name__)
 
@@ -138,18 +138,34 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         # https://stackoverflow.com/questions/73027846/pyqt5-reference-local-copy-of-mathjax-in-qwebengineview
         self._status = status
         self._mode = mode
-        base_url = QtCore.QUrl.fromLocalFile("F:\\Users\\Documents\\Dfacto\\MyCompany\\templates" + "/")
+
+        company = self._get_current_company()
+        templates_dir = Config.dfacto_settings.templates
+        template_dir = templates_dir / company.home.name
+        if not template_dir.exists():
+            template_dir = templates_dir / "default"
+
+        base_url = QtCore.QUrl.fromLocalFile(template_dir.as_posix() + "/")
         self.html_view.setHtml(html, base_url)
         self.html_view.show()
 
     @QtCore.pyqtSlot()
     def send(self) -> None:
         # https://stackoverflow.com/questions/59274653/how-to-print-from-qwebengineview
+        company = self._get_current_company()
+        file_path = company.home / "test.pdf"
+        self.html_view.printToPdf(file_path.as_posix())
+
+    def _get_current_company(self) -> schemas.Company:
         response = api.company.get_current()
         if response.status is CommandStatus.COMPLETED:
             company: schemas.Company = response.body
-            file_path = company.home / "test.pdf"
-            self.html_view.printToPdf(file_path.as_posix())
+            return company
+
+        # Should not happen as a selected company is mandatory to start the dfacto main window
+        QtUtil.raise_fatal_error(
+            f"No selected company - Reason is: {response.reason}"
+        )
 
     @QtCore.pyqtSlot()
     def paid(self) -> None:
