@@ -17,8 +17,6 @@ from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
 from dfacto.backend.models.invoice import InvoiceStatus
-from dfacto.backend.util import Period, PeriodFilter
-from dfacto.util import qtutil as QtUtil
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +48,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
             QtCore.Qt.WindowType.Dialog |
             QtCore.Qt.WindowType.WindowTitleHint
         )
-        # self.setWindowFlags(
-        #     QtCore.Qt.WindowType.Dialog |
-        #     QtCore.Qt.WindowType.WindowTitleHint | QtCore.Qt.WindowType.CustomizeWindowHint
-        # )
         self.setWindowTitle('Invoice preview')
         self.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
 
@@ -136,7 +130,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self._status = None
         self._mode = None
         self._enable_buttons(False)
-        # self.button_box.setEnabled(False)
         self.move(678, 287)
         self.resize(526, 850)
         self.html_view.setZoomFactor(0.7)
@@ -181,7 +174,6 @@ class InvoiceWebViewer(QtWidgets.QDialog):
     @QtCore.pyqtSlot(bool)
     def on_load_finished(self, success: bool) -> None:
         self._enable_buttons(success)
-        # self.button_box.setEnabled(success)
         self.setWindowTitle(self.html_view.title())
 
     @QtCore.pyqtSlot(str, bool)
@@ -252,29 +244,3 @@ class InvoiceWebViewer(QtWidgets.QDialog):
             self.basket_btn.setVisible(False)
             self.ok_btn.setVisible(False)
             self.quit_btn.setVisible(True)
-
-
-    def _load_css(self, path: str, name: str) -> None:
-        path = QtCore.QFile(path)
-        if not path.open(QtCore.QFile.OpenModeFlag.ReadOnly | QtCore.QFile.OpenModeFlag.Text):
-            return
-        css = path.readAll().data().decode("utf-8")
-        SCRIPT = """
-        (function() {
-        css = document.createElement('style');
-        css.type = 'text/css';
-        css.id = "%s";
-        document.head.appendChild(css);
-        css.innerText = `%s`;
-        })()
-        """ % (name, css)
-
-        script = QtWebCore.QWebEngineScript()
-        view = self.html_view
-        view.page().runJavaScript(SCRIPT, QtWebCore.QWebEngineScript.ScriptWorldId.ApplicationWorld)
-        script.setName(name)
-        script.setSourceCode(SCRIPT)
-        script.setInjectionPoint(QtWebCore.QWebEngineScript.InjectionPoint.DocumentReady)
-        script.setRunsOnSubFrames(True)
-        script.setWorldId(QtWebCore.QWebEngineScript.ScriptWorldId.ApplicationWorld)
-        view.page().scripts().insert(script)

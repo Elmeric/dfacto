@@ -21,7 +21,7 @@ from dfacto.backend.api import CommandStatus, CommandReport
 from dfacto.backend.models.invoice import InvoiceStatus
 from dfacto.backend.util import Period, PeriodFilter
 from dfacto.util import qtutil as QtUtil
-from .Invoice_web_view import InvoiceWebViewer
+from .invoice_web_view import InvoiceWebViewer
 
 logger = logging.getLogger(__name__)
 
