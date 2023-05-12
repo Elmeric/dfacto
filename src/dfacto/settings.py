@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 
 from win32com.shell import shell, shellcon  # noqa
 
+from dfacto.backend import naming
 from dfacto.util import settings
 from dfacto.util.settings import Setting
 
@@ -55,6 +56,12 @@ class DfactoSettings(settings.Settings):
 
     last_profile: Setting = settings.Setting(default_value=None)
     profiles: Setting = settings.Setting(default_value=None)
+    lastInvoiceNamingTemplate: Setting = settings.Setting(
+        default_value=naming.NamingTemplates.defaultInvoiceNamingTemplate
+    )
+    lastDestinationNamingTemplate: Setting = settings.Setting(
+        default_value=naming.NamingTemplates.defaultDestinationNamingTemplate
+    )
     # default_company_folder = settings.Setting(default_value="C:/Users/T0018179/MyApp/Git/home/portable/DFacto")
     default_company_folder = settings.Setting(default_value="F:/Users/Documents/Dfacto")
     log_level: Setting = settings.Setting(default_value=_DEFAULT_LOGLEVEL)

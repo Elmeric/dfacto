@@ -109,17 +109,28 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         )
 
     def mark_invoice_as(self, invoice_id: int, status: InvoiceStatus) -> CommandReport:
-        match status:
-            case InvoiceStatus.EMITTED:
-                action = api.client.mark_as_emitted
-            case InvoiceStatus.REMINDED:
-                action = api.client.mark_as_reminded
-            case InvoiceStatus.PAID:
-                action = api.client.mark_as_paid
-            case InvoiceStatus.CANCELLED:
-                action = api.client.mark_as_cancelled
-            case _:
-                raise ValueError(f"Cannot mark invoice as {status.name}")
+        if status is InvoiceStatus.EMITTED:
+            action = api.client.mark_as_emitted
+        elif status is InvoiceStatus.REMINDED:
+            action = api.client.mark_as_reminded
+        elif status is InvoiceStatus.PAID:
+            action = api.client.mark_as_paid
+        elif status is InvoiceStatus.CANCELLED:
+            action = api.client.mark_as_cancelled
+        else:
+            raise ValueError(f"Cannot mark invoice as {status.name}")
+
+        # match status:
+        #     case InvoiceStatus.EMITTED:
+        #         action = api.client.mark_as_emitted
+        #     case InvoiceStatus.REMINDED:
+        #         action = api.client.mark_as_reminded
+        #     case InvoiceStatus.PAID:
+        #         action = api.client.mark_as_paid
+        #     case InvoiceStatus.CANCELLED:
+        #         action = api.client.mark_as_cancelled
+        #     case _:
+        #         raise ValueError(f"Cannot mark invoice as {status.name}")
 
         response = action(
             self._get_client_of_invoice(invoice_id),
@@ -189,12 +200,17 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
     def update_invoice(self, invoice: schemas.Invoice) -> None:
         start_index = self.index_from_invoice_id(invoice.id)
         if start_index.isValid():
+            date_ = (
+                invoice.created_on
+                if invoice.status is InvoiceStatus.DRAFT
+                else invoice.issued_on
+            )
             self._invoices[invoice.id] = [
                 invoice.id,
                 invoice.client_id,
                 invoice.client.name,
                 invoice.code,
-                invoice.created_on,
+                date_,
                 invoice.amount.raw,
                 invoice.amount.vat,
                 invoice.amount.net,
@@ -625,22 +641,38 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
     @QtCore.pyqtSlot(int)
     def on_html_view_finished(self, result: int):
-        match result:
-            case InvoiceWebViewer.Action.DELETE:
-                self.delete_invoice()
-            case InvoiceWebViewer.Action.SEND:
-                self._mark_invoice_as(InvoiceStatus.EMITTED, confirm=False)
-            case InvoiceWebViewer.Action.REMIND:
-                self._mark_invoice_as(InvoiceStatus.REMINDED, confirm=False)
-            case InvoiceWebViewer.Action.PAID:
-                self._mark_invoice_as(InvoiceStatus.PAID, confirm=True)
-            case InvoiceWebViewer.Action.CANCEL:
-                self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
-            case InvoiceWebViewer.Action.TO_BASKET:
-                # TODO
-                pass
-            case _:
-                assert result == InvoiceWebViewer.Action.NO_ACTION
+        if result == InvoiceWebViewer.Action.DELETE:
+            self.delete_invoice()
+        elif result == InvoiceWebViewer.Action.SEND:
+            self._mark_invoice_as(InvoiceStatus.EMITTED, confirm=False)
+        elif result == InvoiceWebViewer.Action.REMIND:
+            self._mark_invoice_as(InvoiceStatus.REMINDED, confirm=False)
+        elif result == InvoiceWebViewer.Action.PAID:
+            self._mark_invoice_as(InvoiceStatus.PAID, confirm=True)
+        elif result == InvoiceWebViewer.Action.CANCEL:
+            self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
+        elif result == InvoiceWebViewer.Action.TO_BASKET:
+            # TODO
+            pass
+        else:
+            assert result == InvoiceWebViewer.Action.NO_ACTION
+
+        # match result:
+        #     case InvoiceWebViewer.Action.DELETE:
+        #         self.delete_invoice()
+        #     case InvoiceWebViewer.Action.SEND:
+        #         self._mark_invoice_as(InvoiceStatus.EMITTED, confirm=False)
+        #     case InvoiceWebViewer.Action.REMIND:
+        #         self._mark_invoice_as(InvoiceStatus.REMINDED, confirm=False)
+        #     case InvoiceWebViewer.Action.PAID:
+        #         self._mark_invoice_as(InvoiceStatus.PAID, confirm=True)
+        #     case InvoiceWebViewer.Action.CANCEL:
+        #         self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
+        #     case InvoiceWebViewer.Action.TO_BASKET:
+        #         # TODO
+        #         pass
+        #     case _:
+        #         assert result == InvoiceWebViewer.Action.NO_ACTION
 
     def _enable_buttons(
         self,
@@ -670,29 +702,41 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self.basket_btn.setEnabled(False)
 
     def _open_html_view(self, mode: api.client.HtmlMode) -> None:
-        match mode:
-            case api.client.HtmlMode.CREATE:
-                viewer_mode = InvoiceWebViewer.Mode.ISSUE
-            case api.client.HtmlMode.SHOW:
-                viewer_mode = InvoiceWebViewer.Mode.SHOW
-            case api.client.HtmlMode.ISSUE:
-                viewer_mode = InvoiceWebViewer.Mode.CONFIRM
-            case api.client.HtmlMode.REMIND:
-                viewer_mode = InvoiceWebViewer.Mode.CONFIRM
-            case _:
-                viewer_mode = InvoiceWebViewer.Mode.SHOW
+        if mode is api.client.HtmlMode.CREATE:
+            viewer_mode = InvoiceWebViewer.Mode.ISSUE
+        elif mode is api.client.HtmlMode.SHOW:
+            viewer_mode = InvoiceWebViewer.Mode.SHOW
+        elif mode is api.client.HtmlMode.ISSUE:
+            viewer_mode = InvoiceWebViewer.Mode.CONFIRM
+        elif mode is api.client.HtmlMode.REMIND:
+            viewer_mode = InvoiceWebViewer.Mode.CONFIRM
+        else:
+            viewer_mode = InvoiceWebViewer.Mode.SHOW
+
+        # match mode:
+        #     case api.client.HtmlMode.CREATE:
+        #         viewer_mode = InvoiceWebViewer.Mode.ISSUE
+        #     case api.client.HtmlMode.SHOW:
+        #         viewer_mode = InvoiceWebViewer.Mode.SHOW
+        #     case api.client.HtmlMode.ISSUE:
+        #         viewer_mode = InvoiceWebViewer.Mode.CONFIRM
+        #     case api.client.HtmlMode.REMIND:
+        #         viewer_mode = InvoiceWebViewer.Mode.CONFIRM
+        #     case _:
+        #         viewer_mode = InvoiceWebViewer.Mode.SHOW
 
         invoice_table = self._invoice_table
         invoice = invoice_table.selected_invoice()
+        invoice_id = invoice[ID]
 
         html, report = invoice_table.source_model().get_html_preview(
-            invoice[ID],
+            invoice_id,
             mode=mode
         )
 
         if html is not None:
             status = cast(InvoiceStatus, invoice[STATUS])
-            self.invoice_html_view.set_invoice(status, html, mode=viewer_mode)
+            self.invoice_html_view.set_invoice(invoice_id, status, html, mode=viewer_mode)
             self.invoice_html_view.open()
             return
 

@@ -6,6 +6,7 @@
 
 import logging
 from enum import Enum, IntEnum, auto
+from pathlib import Path
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
@@ -127,6 +128,7 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.html_view.loadFinished.connect(self.on_load_finished)
         self.html_view.pdfPrintingFinished.connect(self.on_pdf_print_finished)
 
+        self._invoice_id = None
         self._status = None
         self._mode = None
         self._enable_buttons(False)
@@ -134,8 +136,11 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.resize(526, 850)
         self.html_view.setZoomFactor(0.7)
 
-    def set_invoice(self, status: InvoiceStatus, html: str, mode: Mode = Mode.SHOW) -> None:
+    def set_invoice(
+        self, invoice_id: int, status: InvoiceStatus, html: str, mode: Mode = Mode.SHOW
+    ) -> None:
         # https://stackoverflow.com/questions/73027846/pyqt5-reference-local-copy-of-mathjax-in-qwebengineview
+        self._invoice_id = invoice_id
         self._status = status
         self._mode = mode
 
@@ -152,8 +157,8 @@ class InvoiceWebViewer(QtWidgets.QDialog):
     @QtCore.pyqtSlot()
     def send(self) -> None:
         # https://stackoverflow.com/questions/59274653/how-to-print-from-qwebengineview
-        company = self._get_current_company()
-        file_path = company.home / "test.pdf"
+        home = self._get_current_company().home
+        file_path = self._get_invoice_pathname(home)
         self.html_view.printToPdf(file_path.as_posix())
 
     def _get_current_company(self) -> schemas.Company:
@@ -165,6 +170,16 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         # Should not happen as a selected company is mandatory to start the dfacto main window
         QtUtil.raise_fatal_error(
             f"No selected company - Reason is: {response.reason}"
+        )
+
+    def _get_invoice_pathname(self, home: Path) -> Path:
+        response = api.client.get_invoice_pathname(invoice_id=self._invoice_id, home=home)
+        if response.status is CommandStatus.COMPLETED:
+            pathname: Path = response.body
+            return pathname
+
+        QtUtil.raise_fatal_error(
+            f"Cannot get invoice pathname - Reason is: {response.reason}"
         )
 
     @QtCore.pyqtSlot()

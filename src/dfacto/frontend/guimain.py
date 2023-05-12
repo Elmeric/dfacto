@@ -394,7 +394,7 @@ class QtMainView(QtWidgets.QMainWindow):
         #
         # self._downloader.selectDestination(Path(settings.lastDestination))
         # self._downloader.setNamingTemplate(
-        #     TemplateType.IMAGE, settings.lastImageNamingTemplate
+        #     TemplateType.INVOICE, settings.lastImageNamingTemplate
         # )
         # self._downloader.setNamingTemplate(
         #     TemplateType.DESTINATION, settings.lastDestinationNamingTemplate

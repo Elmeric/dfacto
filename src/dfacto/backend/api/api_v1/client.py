@@ -5,15 +5,16 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import timedelta, datetime
 from enum import Enum
+from pathlib import Path
 from typing import Optional, Type
 
 import jinja2 as jinja
 from babel.dates import format_date
 
 from dfacto import settings as Config
-from dfacto.backend import crud, schemas
+from dfacto.backend import crud, schemas, naming
 from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 from dfacto.backend.models import InvoiceStatus
 from dfacto.backend.util import Period, PeriodFilter
@@ -43,6 +44,16 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         SHOW = 1
         ISSUE = 2
         REMIND = 3
+
+    def __post_init__(self):
+        naming_templates = naming.NamingTemplates()
+
+        self.destination_naming_template = naming_templates.getDefault(
+            naming.TemplateType.DESTINATION
+        )
+        self.invoice_naming_template = naming_templates.getDefault(
+            naming.TemplateType.INVOICE
+        )
 
     @command
     def get_active(self) -> CommandResponse:
@@ -699,6 +710,37 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
+    def get_invoice_pathname(self, *, invoice_id: int, home: Path) -> CommandResponse:
+        try:
+            orm_invoice = crud.invoice.get(self.session, invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"INVOICE-PATHNAME - SQL or database error: {exc}",
+            )
+        else:
+            if orm_invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"INVOICE-PATHNAME - Invoice {invoice_id} not found.",
+                )
+            invoice = schemas.Invoice.from_orm(orm_invoice)
+            destination = self.destination_naming_template.format(
+                invoice,
+                kind=naming.TemplateType.DESTINATION
+            )
+            filename = self.invoice_naming_template.format(
+                invoice,
+                kind=naming.TemplateType.INVOICE
+            )
+            if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
+                filename += "-REMIND"
+            folder = home / destination
+            folder.mkdir(parents=True, exist_ok=True)
+            pathname = (folder / filename).with_suffix(".pdf")
+            return CommandResponse(CommandStatus.COMPLETED, body=pathname)
+
+    @command
     def preview_invoice(
         self, obj_id: int, *, invoice_id: int, mode: HtmlMode
     ) -> CommandResponse:
@@ -845,11 +887,18 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         )
         company_address = f"{company.address}\n{company.zip_code} {company.city}"
         client_address = f"{client_.address.address}\n{client_.address.zip_code} {client_.address.city}"
-        date_ = (
-            invoice.created_on
-            if invoice.status is InvoiceStatus.DRAFT
-            else invoice.issued_on
-        )
+        if mode is self.HtmlMode.SHOW:
+            date_ = (
+                invoice.created_on
+                if invoice.status is InvoiceStatus.DRAFT
+                else invoice.issued_on
+            )
+        else:
+            date_ = (
+                invoice.issued_on
+                if invoice.issued_on is not None
+                else datetime.now()
+            )
         due_date = (
             None
             if invoice.status is InvoiceStatus.DRAFT and mode is self.HtmlMode.SHOW
