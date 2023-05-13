@@ -144,17 +144,15 @@ class ServiceEditor(QtWidgets.QWidget):
 
     def _load_vat_rates(self):
         response = api.vat_rate.get_all()
+
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot retrieve the VAT rates - Reason is: %s", response.reason
+            QtUtil.raise_fatal_error(
+                f"Cannot retrieve the VAT rates"
+                f" - Reason is: {response.reason}"
             )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot retrieve the VAT rates: try to restart Dfacto.\n"
-                f"If the problem persists, contact your admin",
-                is_warning=True,
-            )
-            return
+
         vat_rates: list[schemas.VatRate] = response.body
+
         for vat_rate in vat_rates:
             self.vat_cmb.addItem(
                 f"{vat_rate.rate} % ({vat_rate.name})", userData=vat_rate.id

@@ -341,13 +341,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
         response = api.service.get_all()
 
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot load the services list - Reason is: %s", response.reason
+            QtUtil.raise_fatal_error(
+                f"Cannot load the services list - Reason is: {response.reason}"
             )
-            QtUtil.getMainWindow().show_status_message(
-                "Cannot load the services list", is_warning=True
-            )
-            return
 
         for service in response.body:
             self._add_item_from_service(service)
@@ -413,29 +409,39 @@ class ServiceSelector(QtUtil.QFramedWidget):
             return
 
         response = api.service.delete(service.id)
-        if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot delete service %s - Reason is: %s",
-                service.name,
-                response.reason,
-            )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot delete service {service.name}", is_warning=True
+
+        if response.status is CommandStatus.COMPLETED:
+            _deleted_item = self.services_lst.takeItem(row)
+            del _deleted_item
+
+            self._forbidden_names.remove(service.name)
+
+            if self.services_lst.count() == 0:
+                self._show_in_editor(None)
+                self._enable_buttons(False)
+                self.new_btn.setFocus()
+            else:
+                self.services_lst.setCurrentRow(row - 1)
+                self.services_lst.setFocus()
+            return
+
+        if response.status is CommandStatus.REJECTED:
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"Dfacto - Delete service",
+                f"""
+                <p>Cannot delete service {service.name}</p>
+                <p><strong>Reason is: {response.reason}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
 
-        _deleted_item = self.services_lst.takeItem(row)
-        del _deleted_item
-
-        self._forbidden_names.remove(service.name)
-
-        if self.services_lst.count() == 0:
-            self._show_in_editor(None)
-            self._enable_buttons(False)
-            self.new_btn.setFocus()
-        else:
-            self.services_lst.setCurrentRow(row - 1)
-            self.services_lst.setFocus()
+        if response.status is CommandStatus.FAILED:
+            QtUtil.raise_fatal_error(
+                f"Cannot delete service {service.name}"
+                f" - Reason is: {response.reason}"
+            )
 
     @QtCore.pyqtSlot(str)
     def select_service_by_name(self, name: str) -> None:
@@ -496,18 +502,10 @@ class ServiceSelector(QtUtil.QFramedWidget):
             origin_service.id, obj_in=schemas.ServiceUpdate(**updated_service)
         )
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot update the selected service %s - Reason is: %s",
-                old_name,
-                response.reason,
+            QtUtil.raise_fatal_error(
+                f"Cannot update the selected service {old_name}"
+                f" - Reason is: {response.reason}"
             )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot update the selected service {old_name}", is_warning=True
-            )
-            self._show_in_editor(origin_service)
-            return
-
-        QtUtil.getMainWindow().show_status_message(f"Service update success!")
 
         updated_service = response.body
 
@@ -530,18 +528,10 @@ class ServiceSelector(QtUtil.QFramedWidget):
         response = api.service.add(obj_in=schemas.ServiceCreate(*service))
 
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot create the new service %s - Reason is: %s",
-                service.name,
-                response.reason,
+            QtUtil.raise_fatal_error(
+                f"Cannot create the new service {service.name}"
+                f" - Reason is: {response.reason}"
             )
-            QtUtil.getMainWindow().show_status_message(
-                f"Cannot create the new service {service.name}", is_warning=True
-            )
-            self._show_in_editor(self.current_service)
-            return
-
-        QtUtil.getMainWindow().show_status_message(f"Service update success!")
 
         item = self._add_item_from_service(response.body)
 
