@@ -548,9 +548,21 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             )
 
     @QtCore.pyqtSlot(schemas.Client)
-    def set_current_client(self, client: schemas.Client) -> None:
+    def set_current_client(self, client: Optional[schemas.Client]) -> None:
         self._current_client = client
 
+        if client is None:
+            logger.info("No client exists, disable invoices interactions")
+            self.client_lbl.clear()
+            self.client_pix.clear()
+            self._invoice_table.model().sourceModel().clear_invoices()
+            self._enable_filters(False)
+            self._enable_buttons(enable=False)
+            return
+
+        # A client is selected
+        logger.info(f"Show invoices of client: %s", client.name)
+        self._enable_filters(True)
         self.client_lbl.setText(f"{client.name}")
         self.client_pix.setPixmap(
             self.active_pix if client.is_active else self.inactive_pix
@@ -673,6 +685,12 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         #         pass
         #     case _:
         #         assert result == InvoiceWebViewer.Action.NO_ACTION
+
+    def _enable_filters(self, enable: bool) -> None:
+        self.all_ckb.setEnabled(enable)
+        self.period_cmb.setEnabled(enable)
+        self.status_cmb.setEnabled(enable)
+        self.reset_btn.setEnabled(enable)
 
     def _enable_buttons(
         self,

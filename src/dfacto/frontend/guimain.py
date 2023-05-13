@@ -72,9 +72,6 @@ class QtMainView(QtWidgets.QMainWindow):
         self.basket_viewer = BasketViewer(basket_model)
         invoice_model = InvoiceTableModel()
         self.invoice_viewer = InvoiceViewer(invoice_model)
-        # invoice_selector = QtWidgets.QWidget()
-        # invoice_selector.setMinimumWidth(700)
-        invoice_editor = QtWidgets.QWidget()
         self.service_selector = ServiceSelector(basket_model)
         #         fsModel = FileSystemModel()
         #         fsDelegate = FileSystemDelegate()
@@ -614,20 +611,17 @@ class QtMainView(QtWidgets.QMainWindow):
         response = api.company.select(company.name, is_new=is_new)
 
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                "Cannot select the %s company profile - Reason is: %s",
-                company.name,
-                response.reason,
+            QtUtil.raise_fatal_error(
+                f"Cannot select the {company.name} company profile\n\nReason is:\n{response.reason}"
             )
-            QtWidgets.QMessageBox.warning(
-                None,  # type: ignore
-                f"Dfacto - Connection failed",
-                f"Cannot select the {company.name} company profile\n\nReason is:\n{response.reason}",
-                QtWidgets.QMessageBox.StandardButton.Close,
-            )
-            return
 
         self.company_btn.setText(company.name)
+
+        # Reload objects from the new company profile to update UI
+        # Basket is reloaded when on automatic client selection after client loading
+        self.service_selector.load_services()
+        self.invoice_viewer.load_invoices()
+        self.client_selector.load_clients()
 
         logger.info(f"Connected to {company.home / 'dfacto.db'}")
         logger.info(f"Company profile {company.name} is selected")

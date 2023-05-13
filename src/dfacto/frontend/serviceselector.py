@@ -168,7 +168,6 @@ class BasketController(QtWidgets.QWidget):
     def on_data_changed(
         self, top_left: QtCore.QModelIndex, _bottom_right: QtCore.QModelIndex
     ) -> None:
-        print(f"on_data_changed: {top_left.row()}, {top_left.column()}")
         self.reset(self.model().quantity_from_index(top_left))
 
     def current_service(self) -> int:
@@ -178,7 +177,6 @@ class BasketController(QtWidgets.QWidget):
         self._service_id = service_id
 
         quantity = self.model().quantity_in_basket(service_id)
-        print(f"set_current_service: {service_id}, {quantity}")
         self.reset(quantity)
 
         self._current_index = self.model().index_from_service_id(service_id)

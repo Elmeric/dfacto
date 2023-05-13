@@ -27,7 +27,7 @@ class ClientSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ClientRole = QtCore.Qt.ItemDataRole.UserRole + 1
 
-    client_selected = QtCore.pyqtSignal(schemas.Client)
+    client_selected = QtCore.pyqtSignal(object)
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
@@ -131,7 +131,7 @@ class ClientSelector(QtUtil.QFramedWidget):
         main_layout.addWidget(selector_widget)
         self.setLayout(main_layout)
 
-        self.clients_lst.itemSelectionChanged.connect(self.on_client_selection)
+        self.clients_lst.itemSelectionChanged.connect(self.select_current_client)
         self.clients_lst.itemActivated.connect(
             lambda: self.open_editor(mode=ClientEditor.Mode.EDIT)
         )
@@ -174,7 +174,9 @@ class ClientSelector(QtUtil.QFramedWidget):
 
     def load_clients(self) -> None:
         clients_lst = self.clients_lst
-        clients_lst.clear()
+        # Prevent emission of a client selection signal before the client list is loaded
+        with QtCore.QSignalBlocker(clients_lst):
+            clients_lst.clear()
         self.client_editor.clear()
 
         response = api.client.get_all()
@@ -209,10 +211,11 @@ class ClientSelector(QtUtil.QFramedWidget):
         self._enable_buttons(self.has_visible_client)
 
     @QtCore.pyqtSlot()
-    def on_client_selection(self) -> None:
+    def select_current_client(self) -> None:
         current_client = self.current_client
         if current_client is None:
             self.activate_btn.setChecked(False)
+            self.client_selected.emit(None)
             return
 
         self.activate_btn.setChecked(current_client.is_active)
@@ -394,11 +397,13 @@ class ClientSelector(QtUtil.QFramedWidget):
             start = before
             stop = -1
             step = -1
+        found = False
         for row in range(start, stop, step):
             if not clients_lst.item(row).isHidden():
-                print(f">>> Select row: {row}")
                 clients_lst.setCurrentRow(row)
                 break
+        if not found:
+            self.select_current_client()
 
     def _update_client(self, client: Client) -> None:
         origin_client = self.current_client

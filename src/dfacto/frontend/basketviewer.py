@@ -385,7 +385,6 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 item_id = self._item_ids[row]
 
                 if column == QUANTITY:
-                    print(f"setData: row: {row}, quantity: {value}")
                     if value == 0:
                         return self.remove_item_from_basket(item_id)
                     else:
@@ -405,7 +404,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         return None
 
     @staticmethod
-    def _get_basket_of_client(client_id: int) -> Optional[schemas.Basket]:
+    def _get_basket_of_client(client_id: int) -> schemas.Basket:
         response = api.client.get_basket(client_id)
 
         if response.status is CommandStatus.COMPLETED:
@@ -421,7 +420,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         basket = self._get_basket_of_client(client_id)
         self._basket = basket
         self.basket_updated.emit(basket)
-        return basket is not None
+        return True
 
 
 class BasketViewer(QtUtil.QFramedWidget):
@@ -525,22 +524,31 @@ class BasketViewer(QtUtil.QFramedWidget):
 
         self._current_client: Optional[schemas.Client] = None
 
-    @QtCore.pyqtSlot(schemas.Client)
-    def set_current_client(self, client: schemas.Client) -> None:
+    @QtCore.pyqtSlot(object)
+    def set_current_client(self, client: Optional[schemas.Client]) -> None:
         self._current_client = client
+
+        if client is None:
+            logger.info("No client exists, disable basket interactions")
+            self.client_lbl.clear()
+            self.client_pix.clear()
+            self._basket_table.model().sourceModel().clear_items()
+            self._enable_buttons(False)
+            return
+
+        # A client is selected
+        logger.info(f"Loading basket of client: %s", client.name)
         self.client_lbl.setText(f"{client.name}")
         self.client_pix.setPixmap(
             self.active_pix if client.is_active else self.inactive_pix
         )
 
-        print(f"Load basket of client: {client.id}")
         success = self._basket_table.load_basket(client.id)
         if not success or self._basket_table.model().rowCount() < 1:
             self._enable_buttons(False)
 
     @QtCore.pyqtSlot(schemas.Basket)
     def update_summary(self, basket: schemas.Basket) -> None:
-        print(f"update total")
         nbsp = "\u00A0"
         if basket is None or len(basket.items) == 0:
             item_count = "Basket is empty".replace(" ", nbsp)
@@ -653,9 +661,6 @@ class BasketTable(QtWidgets.QTableView):
             # quantity_pxy_index = proxy_index.sibling(proxy_index.row(), QUANTITY - 1)
             service_name = source_model.item_from_index(source_index)[SERVICE]
 
-            print(f"Edit qty - proxy ({proxy_index.row()}, {proxy_index.column()})")
-            print(f"Edit qty - source ({source_index.row()}, {source_index.column()})")
-            print()
             with QtCore.QSignalBlocker(self.selectionModel()):
                 self.setCurrentIndex(quantity_pxy_index)
             self.edit(quantity_pxy_index)
@@ -667,7 +672,6 @@ class BasketTable(QtWidgets.QTableView):
     def on_rows_inserted(
         self, _parent: QtCore.QModelIndex, first: int, last: int
     ) -> None:
-        print(f"Rows inserted: {first}, {last}")
         if last < 0:
             # No rows was inserted
             self.selection_changed.emit("")
@@ -682,7 +686,6 @@ class BasketTable(QtWidgets.QTableView):
     def on_rows_removed(
         self, _parent: QtCore.QModelIndex, first: int, last: int
     ) -> None:
-        print(f"Rows removed: {first}, {last}")
         if last < 0:
             # No rows was removed
             return
@@ -786,7 +789,6 @@ class BasketTableDelegate(QtWidgets.QStyledItemDelegate):
             editor: QtWidgets.QSpinBox
             value = editor.value()
             if value != self.previous_quantity:
-                print(f"setModelData: row: {source_index.row()}, quantity: {value}")
                 model.setData(index, value, QtCore.Qt.ItemDataRole.EditRole)
             return
 
