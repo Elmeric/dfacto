@@ -770,14 +770,14 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         try:
             orm_client = self.crud_object.get(self.session, obj_id)
             orm_invoice = crud.invoice.get(self.session, invoice_id)
-            company = crud.company.get_current()
+            orm_company = crud.company.get_current()
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
                 f"PREVIEW-INVOICE - SQL or database error: {exc}",
             )
         else:
-            if orm_client is None or orm_invoice is None or company is None:
+            if orm_client is None or orm_invoice is None or orm_company is None:
                 return CommandResponse(
                     CommandStatus.FAILED,
                     f"PREVIEW-INVOICE - Client {obj_id} or invoice {invoice_id} "
@@ -792,7 +792,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
             try:
                 templates_dir = Config.dfacto_settings.templates
-                template_dir = templates_dir / company.home.name
+                template_dir = templates_dir / orm_company.home.name
                 if not template_dir.exists():
                     template_dir = templates_dir / "default"
                 env = jinja.Environment(
@@ -822,6 +822,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             context = self._build_context(
                 client_=schemas.Client.from_orm(orm_client),
                 invoice=schemas.Invoice.from_orm(orm_invoice),
+                company=schemas.Company.from_orm(orm_company),
                 mode=mode,
             )
             try:
@@ -837,8 +838,6 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         status = invoice.status
 
         if mode in (self.HtmlMode.CREATE, self.HtmlMode.ISSUE):
-            # if status is InvoiceStatus.DRAFT:
-            #     return "", "is-empty"
             return "", "is-empty"
 
         if mode is self.HtmlMode.REMIND:
@@ -873,19 +872,13 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 return f"Annulée le {date_}", "is-bad"
 
     def _build_context(
-        self, client_: schemas.Client, invoice: schemas.Invoice, mode: HtmlMode
+        self,
+        client_: schemas.Client,
+        invoice: schemas.Invoice,
+        company: schemas.Company,
+        mode: HtmlMode
     ) -> dict:
-        company = Company(
-            name="Phone Service",
-            address="1, Main Street",
-            zip_code="12345",
-            city="London",
-            phone_number="+33 123 456 789",
-            email="phone.service@gmail.com",
-            siret="123 456 789 87654",
-            rcs="LONDON",
-        )
-        company_address = f"{company.address}\n{company.zip_code} {company.city}"
+        company_address = f"{company.address.address}\n{company.address.zip_code} {company.address.city}"
         client_address = f"{client_.address.address}\n{client_.address.zip_code} {client_.address.city}"
         if mode is self.HtmlMode.SHOW:
             date_ = (
