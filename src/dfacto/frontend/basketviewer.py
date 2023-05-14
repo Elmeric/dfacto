@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
@@ -46,7 +46,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         self._services_map: dict[int, int] = {}
 
     def set_basket(self, client_id: int) -> bool:
-        basket = self._get_basket_of_client(client_id)
+        basket = self.get_basket_of_client(client_id)
         self._basket = basket
         self.basket_updated.emit(basket)
         if basket is not None:
@@ -404,7 +404,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         return None
 
     @staticmethod
-    def _get_basket_of_client(client_id: int) -> schemas.Basket:
+    def get_basket_of_client(client_id: int) -> schemas.Basket:
         response = api.client.get_basket(client_id)
 
         if response.status is CommandStatus.COMPLETED:
@@ -417,7 +417,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         )
 
     def _update_basket(self, client_id: int) -> bool:
-        basket = self._get_basket_of_client(client_id)
+        basket = self.get_basket_of_client(client_id)
         self._basket = basket
         self.basket_updated.emit(basket)
         return True
@@ -570,7 +570,7 @@ class BasketViewer(QtUtil.QFramedWidget):
     def clear_basket(self) -> None:
         reply = QtWidgets.QMessageBox.warning(
             self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Delete service",
+            f"{QtWidgets.QApplication.applicationName()} - Clear basket",
             f"""
             <p>Do you really want to empty the basket for this client?</p>
             <p><strong>{self._current_client.name}</strong></p>
@@ -600,6 +600,31 @@ class BasketViewer(QtUtil.QFramedWidget):
             f"Cannot create invoice for {self._current_client.name}"
             f" - Reason is: {response.reason}"
         )
+
+    @QtCore.pyqtSlot(int)
+    def on_basket_update(self, client_id: int) -> None:
+        current_client = self._current_client
+        if current_client is None:
+            return
+
+        client = current_client
+        if current_client.id != client_id:
+            basket = self._basket_table.source_model().get_basket_of_client(client_id)
+            client = basket.client
+            reply = QtWidgets.QMessageBox.warning(
+                self,  # noqa
+                f"{QtWidgets.QApplication.applicationName()} - Basket update",
+                f"""
+                <p>Basket content of the following client has changed. Do you want to see it?</p>
+                <p><strong>{client.name}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Yes
+                | QtWidgets.QMessageBox.StandardButton.No,
+            )
+            if reply == QtWidgets.QMessageBox.StandardButton.No:
+                return
+
+        self.set_current_client(client)
 
     def _enable_buttons(self, enable: bool) -> None:
         self.clear_btn.setEnabled(enable)
@@ -649,6 +674,9 @@ class BasketTable(QtWidgets.QTableView):
                 self.horizontalHeader().setSectionResizeMode(
                     column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
                 )
+
+    def source_model(self) -> BasketTableModel:
+        return cast(BasketTableModel, self.model().sourceModel())
 
     @QtCore.pyqtSlot(QtCore.QModelIndex)
     def edit_quantity(self, proxy_index: QtCore.QModelIndex) -> None:

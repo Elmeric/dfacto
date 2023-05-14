@@ -112,6 +112,9 @@ class QtMainView(QtWidgets.QMainWindow):
         self.basket_viewer.invoice_created.connect(
             self.invoice_viewer.on_invoice_creation
         )
+        self.invoice_viewer.basket_updated.connect(
+            self.basket_viewer.on_basket_update
+        )
         #         self._sourceManager.sourceSelected.connect(timelineViewer.setTimeline)
         #         self._sourceManager.sourceSelected.connect(self._downloader.setSourceSelection)
         #

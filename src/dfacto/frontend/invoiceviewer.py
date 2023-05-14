@@ -149,6 +149,30 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             f"Cannot mark invoice as {status.name} - Reason is: {response.reason}"
         )
 
+    def move_in_basket(self, client_id: int, invoice_id: int) -> CommandReport:
+        response = api.client.move_in_basket(client_id, invoice_id=invoice_id)
+
+        if response.status is CommandStatus.COMPLETED:
+            self.remove_invoice(invoice_id)
+            return response.report
+
+        if response.status is CommandStatus.REJECTED:
+            return response.report
+
+        QtUtil.raise_fatal_error(
+            f"Cannot move invoice in basket - Reason is: {response.reason}"
+        )
+
+    def copy_in_basket(self, client_id: int, invoice_id: int) -> CommandReport:
+        response = api.client.copy_in_basket(client_id, invoice_id=invoice_id)
+
+        if response.status is not CommandStatus.FAILED:
+            return response.report
+
+        QtUtil.raise_fatal_error(
+            f"Cannot copy invoice in basket - Reason is: {response.reason}"
+        )
+
     def invoice_from_index(self, index: QtCore.QModelIndex) -> Optional[InvoiceItem]:
         invoice_id = self._invoice_id_from_index(index)
         if invoice_id is not None:
@@ -330,6 +354,8 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
 
 class InvoiceViewer(QtUtil.QFramedWidget):
+    basket_updated = QtCore.pyqtSignal(int)     # client id
+
     def __init__(self, invoice_model: InvoiceTableModel, parent=None) -> None:
         super().__init__(parent=parent)
 
@@ -489,6 +515,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         self._invoice_table.selectionModel().currentChanged.connect(self.show_buttons)
 
+        self.basket_btn.clicked.connect(self.basket_from_invoice)
         self.show_btn.clicked.connect(
             lambda: self._open_html_view(mode=api.client.HtmlMode.SHOW)
         )
@@ -546,6 +573,15 @@ class InvoiceViewer(QtUtil.QFramedWidget):
                 """,
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
+
+    def basket_from_invoice(self) -> None:
+        invoice_table = self._invoice_table
+        invoice = invoice_table.selected_invoice()
+
+        if invoice[STATUS] is InvoiceStatus.DRAFT:
+            self._move_in_basket(invoice)
+        else:
+            self._copy_in_basket(invoice)
 
     @QtCore.pyqtSlot(schemas.Client)
     def set_current_client(self, client: Optional[schemas.Client]) -> None:
@@ -664,8 +700,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         elif result == InvoiceWebViewer.Action.CANCEL:
             self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
         elif result == InvoiceWebViewer.Action.TO_BASKET:
-            # TODO
-            pass
+            self.basket_from_invoice()
         else:
             assert result == InvoiceWebViewer.Action.NO_ACTION
 
@@ -802,6 +837,44 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             """,
             QtWidgets.QMessageBox.StandardButton.Close,
         )
+
+    def _move_in_basket(self, invoice: InvoiceItem):
+        report = self._invoice_table.source_model().move_in_basket(
+            invoice[CLIENT_ID],
+            invoice[ID]
+        )
+
+        if report.status is CommandStatus.COMPLETED:
+            self.basket_updated.emit(invoice[CLIENT_ID])
+        else:
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"{QtWidgets.QApplication.applicationName()} - Move invoice in basket",
+                f"""
+                <p>Cannot move invoice {invoice[CODE]} in basket of client {invoice[CLIENT_NAME]}</p>
+                <p><strong>Reason is: {report.reason}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
+
+    def _copy_in_basket(self, invoice: InvoiceItem):
+        report = self._invoice_table.source_model().copy_in_basket(
+            invoice[CLIENT_ID],
+            invoice[ID]
+        )
+
+        if report.status is CommandStatus.COMPLETED:
+            self.basket_updated.emit(invoice[CLIENT_ID])
+        else:
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"{QtWidgets.QApplication.applicationName()} - Copy invoice in basket",
+                f"""
+                <p>Cannot copy invoice {invoice[CODE]} in basket of client {invoice[CLIENT_NAME]}</p>
+                <p><strong>Reason is: {report.reason}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
 
 
 class InvoiceTable(QtWidgets.QTableView):

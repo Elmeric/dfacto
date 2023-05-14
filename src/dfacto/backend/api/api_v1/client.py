@@ -940,5 +940,49 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             },
         }
 
+    @command
+    def move_in_basket(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._back_in_basket(obj_id, invoice_id, move=True)
+
+    @command
+    def copy_in_basket(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
+        return self._back_in_basket(obj_id, invoice_id, move=False)
+
+    def _back_in_basket(self, obj_id: int, invoice_id: int, move: bool) -> CommandResponse:
+        action = "move" if move else "copy"
+        try:
+            invoice = crud.invoice.get(self.session, invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"{action.upper()}_TO_BASKET-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            if invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"{action.upper()}_TO_BASKET-INVOICE - Invoice {invoice_id} not found.",
+                )
+            if invoice.client_id != obj_id:
+                return CommandResponse(
+                    CommandStatus.REJECTED,
+                    f"{action.upper()}_TO_BASKET-INVOICE - Invoice {invoice_id} is not "
+                    f"an invoice of client {obj_id}.",
+                )
+
+            try:
+                if move:
+                    crud.invoice.move_in_basket(self.session, invoice_=invoice)
+                else:
+                    crud.invoice.copy_in_basket(self.session, invoice_=invoice)
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"{action.upper()}_TO_BASKET-INVOICE - Cannot {action} "
+                    f"invoice {invoice_id} of client {obj_id}: {exc}",
+                )
+            else:
+                return CommandResponse(CommandStatus.COMPLETED)
+
 
 client = ClientModel()

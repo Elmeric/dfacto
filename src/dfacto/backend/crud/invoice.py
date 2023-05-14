@@ -79,6 +79,70 @@ class CRUDInvoice(
             dbsession.refresh(db_obj)
             return db_obj
 
+    def copy_in_basket(
+        self,
+        dbsession: Session,
+        invoice_: models.Invoice,
+        *,
+        clear_basket: bool = True,
+    ) -> None:
+        client: models.Client = invoice_.client
+        basket: models.Basket = client.basket
+
+        if clear_basket:
+            for item in basket.items:
+                if item.invoice_id is None:
+                    # Not used by an invoice: delete it.
+                    dbsession.delete(item)
+                else:
+                    # In use by an invoice, do not delete it, only dereferences the basket.
+                    item.basket_id = None
+
+        for item in invoice_.items:
+            item_copy = models.Item(
+                service_id=item.service_id,
+                quantity=item.quantity,
+            )
+            item_copy.basket_id = basket.id
+            dbsession.add(item_copy)
+
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            dbsession.rollback()
+            raise CrudError() from exc
+
+    def move_in_basket(
+        self,
+        dbsession: Session,
+        invoice_: models.Invoice,
+        *,
+        clear_basket: bool = True,
+    ) -> None:
+        client: models.Client = invoice_.client
+        basket: models.Basket = client.basket
+
+        if clear_basket:
+            for item in basket.items:
+                if item.invoice_id is None:
+                    # Not used by an invoice: delete it.
+                    dbsession.delete(item)
+                else:
+                    # In use by an invoice, do not delete it, only dereferences the basket.
+                    item.basket_id = None
+
+        for item in invoice_.items:
+            item.invoice_id = None
+            item.basket_id = basket.id
+
+        dbsession.delete(invoice_)
+
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            dbsession.rollback()
+            raise CrudError() from exc
+
     def add_item(
         self,
         dbsession: Session,
