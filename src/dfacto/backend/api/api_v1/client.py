@@ -790,24 +790,25 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     f"client {obj_id}.",
                 )
 
+            tpl_name = "invoice.html"
             try:
                 templates_dir = Config.dfacto_settings.templates
                 template_dir = templates_dir / orm_company.home.name
                 if not template_dir.exists():
                     template_dir = templates_dir / "default"
+                    tpl_name = "invoice_no_vat.html" if orm_company.no_vat else "invoice.html"
                 env = jinja.Environment(
                     loader=jinja.FileSystemLoader(
                         template_dir.as_posix()
                     )
                 )
-                # env = jinja.Environment(loader=jinja.PackageLoader("dfacto.backend"))
             except ValueError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
                     f"PREVIEW-INVOICE - HTML templates location not available: {exc}",
                 )
             try:
-                template = env.get_template("invoice.html")
+                template = env.get_template(tpl_name)
             except jinja.TemplateNotFound as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,

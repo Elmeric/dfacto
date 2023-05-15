@@ -15,6 +15,7 @@ from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
 from dfacto.util import qtutil as QtUtil
+from . import get_current_company
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ BasketItem = list[int, str, float, int, float, float, float, float]
 
 ID, SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT_RATE, VAT, NET_AMOUNT = range(8)
 VAT_COLUMNS = (SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT_RATE, VAT, NET_AMOUNT)
-NOVAT_COLUMNS = (SERVICE, UNIT_PRICE, QUANTITY, NET_AMOUNT)
+NOVAT_COLUMNS = (SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT)
 
 
 class BasketTableModel(QtCore.QAbstractTableModel):
@@ -35,7 +36,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             "Service",
             "Unit price",
             "Quantity",
-            "Raw amount",
+            "Amount",
             "VAT rate",
             "VAT",
             "Net amount",
@@ -526,6 +527,9 @@ class BasketViewer(QtUtil.QFramedWidget):
 
     @QtCore.pyqtSlot(object)
     def set_current_client(self, client: Optional[schemas.Client]) -> None:
+        proxy = cast(BasketFilterProxyModel, self._basket_table.model())
+        proxy.set_is_vat_visible(not get_current_company().no_vat)
+
         self._current_client = client
 
         if client is None:
@@ -560,7 +564,8 @@ class BasketViewer(QtUtil.QFramedWidget):
                 item_count = f"<strong>1</strong>{nbsp}item{nbsp}in{nbsp}basket\n"
             else:
                 item_count = f"<strong>{count}</strong>{nbsp}items{nbsp}in{nbsp}basket"
-            total = basket.amount.net
+            company = get_current_company()
+            total = basket.amount.raw if company.no_vat else basket.amount.net
             total_str = f"\nTotal{nbsp}to{nbsp}invoice:{nbsp}<strong>{total}</strong>"
 
         self.summary_lbl.setText(f"{item_count}{total_str}")
@@ -842,26 +847,31 @@ class BasketTableDelegate(QtWidgets.QStyledItemDelegate):
 
 
 class BasketFilterProxyModel(QtCore.QSortFilterProxyModel):
-    _isVatVisible = True
+    _is_vat_visible = True
+
+    def __init__(self):
+        super().__init__()
+        company = get_current_company()
+        self.set_is_vat_visible(not company.no_vat)
 
     @classmethod
-    def isVatVisible(cls) -> bool:
-        return cls._isVatVisible
+    def is_vat_visible(cls) -> bool:
+        return cls._is_vat_visible
 
-    def setIsVatVisible(self, value: bool) -> None:
-        BasketFilterProxyModel._isVatVisible = value
+    def set_is_vat_visible(self, value: bool) -> None:
+        BasketFilterProxyModel._is_vat_visible = value
         self.invalidateFilter()
 
     def filterAcceptsColumn(
-        self, sourceColumn: int, sourceParent: QtCore.QModelIndex
+        self, source_column: int, source_parent: QtCore.QModelIndex
     ) -> bool:
-        if sourceColumn == ID:
+        if source_column == ID:
             return False
-        if self._isVatVisible:
-            if sourceColumn in VAT_COLUMNS:
+        if self._is_vat_visible:
+            if source_column in VAT_COLUMNS:
                 return True
             return False
         else:
-            if sourceColumn in NOVAT_COLUMNS:
+            if source_column in NOVAT_COLUMNS:
                 return True
             return False

@@ -321,7 +321,6 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         self.basket_controller.set_model(basket_model)
         self._forbidden_names: list[str] = []
-        self._current_client: Optional[schemas.Client] = None
 
     @property
     def current_service(self) -> Optional[schemas.Service]:
@@ -337,6 +336,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
     def load_services(self) -> None:
         self.services_lst.clear()
         self.service_editor.clear()
+        self._forbidden_names = []
 
         response = api.service.get_all()
 
@@ -373,8 +373,10 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
             self.service_editor.edit_service(forbidden_names)
 
-        if mode is ServiceEditor.Mode.ADD:
-            self.service_editor.add_service(self._forbidden_names)
+            return
+
+        # mode is ServiceEditor.Mode.ADD:
+        self.service_editor.add_service(self._forbidden_names)
 
     @QtCore.pyqtSlot(QtWidgets.QDialog.DialogCode)
     def apply(self, result: QtWidgets.QDialog.DialogCode) -> None:
@@ -446,6 +448,8 @@ class ServiceSelector(QtUtil.QFramedWidget):
     @QtCore.pyqtSlot(str)
     def select_service_by_name(self, name: str) -> None:
         if name == "":
+            with QtCore.QSignalBlocker(self.services_lst.selectionModel()):
+                self.services_lst.clearSelection()
             self.services_lst.setCurrentRow(0)
             return
 

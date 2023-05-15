@@ -21,6 +21,7 @@ from dfacto.backend.api import CommandStatus, CommandReport
 from dfacto.backend.models.invoice import InvoiceStatus
 from dfacto.backend.util import Period, PeriodFilter
 from dfacto.util import qtutil as QtUtil
+from . import get_current_company
 from .invoice_web_view import InvoiceWebViewer
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,8 @@ logger = logging.getLogger(__name__)
 InvoiceItem = list[int, int, str, str, datetime, float, float, float, InvoiceStatus]
 
 ID, CLIENT_ID, CLIENT_NAME, CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS = range(9)
+VAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS)
+NOVAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, STATUS)
 
 
 class InvoiceTableModel(QtCore.QAbstractTableModel):
@@ -52,7 +55,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             "Client name",
             "Code",
             "Date",
-            "Raw amount",
+            "Amount",
             "VAT",
             "Net amount",
             "Status",
@@ -539,6 +542,8 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.all_ckb.setChecked(False)
 
     def load_invoices(self) -> None:
+        proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
+        proxy.set_is_vat_visible(not get_current_company().no_vat)
         self._invoice_table.source_model().load_invoices()
         self._invoice_table.sort_invoices()
         self.set_default_filters()
@@ -994,10 +999,24 @@ class InvoiceTable(QtWidgets.QTableView):
 
 
 class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
+    _is_vat_visible = True
     _client_filter = -1
     _period_filter = PeriodFilter.CURRENT_QUARTER.as_period()
     _status_filter = "Not Cancelled"
     _are_all_invoices_visible = False
+
+    def __init__(self):
+        super().__init__()
+        company = get_current_company()
+        self.set_is_vat_visible(not company.no_vat)
+
+    @classmethod
+    def is_vat_visible(cls) -> bool:
+        return cls._is_vat_visible
+
+    def set_is_vat_visible(self, value: bool) -> None:
+        InvoiceFilterProxyModel._is_vat_visible = value
+        self.invalidateFilter()
 
     @classmethod
     def client_filter(cls) -> int:
@@ -1060,7 +1079,14 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
             return False
         if source_column == CLIENT_NAME:
             return self.are_all_invoices_visible()
-        return True
+        if self._is_vat_visible:
+            if source_column in VAT_COLUMNS:
+                return True
+            return False
+        else:
+            if source_column in NOVAT_COLUMNS:
+                return True
+            return False
 
     def filterAcceptsRow(self, source_row: int, source_parent: QtCore.QModelIndex) -> bool:
         source_model = self.sourceModel()

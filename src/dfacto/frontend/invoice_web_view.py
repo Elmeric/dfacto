@@ -18,6 +18,7 @@ from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
 from dfacto.backend.models.invoice import InvoiceStatus
 from dfacto.util import qtutil as QtUtil
+from dfacto.frontend import get_current_company
 
 logger = logging.getLogger(__name__)
 
@@ -144,7 +145,7 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self._status = status
         self._mode = mode
 
-        company = self._get_current_company()
+        company = get_current_company()
         templates_dir = Config.dfacto_settings.templates
         template_dir = templates_dir / company.home.name
         if not template_dir.exists():
@@ -157,20 +158,9 @@ class InvoiceWebViewer(QtWidgets.QDialog):
     @QtCore.pyqtSlot()
     def send(self) -> None:
         # https://stackoverflow.com/questions/59274653/how-to-print-from-qwebengineview
-        home = self._get_current_company().home
+        home = get_current_company().home
         file_path = self._get_invoice_pathname(home)
         self.html_view.printToPdf(file_path.as_posix())
-
-    def _get_current_company(self) -> schemas.Company:
-        response = api.company.get_current()
-        if response.status is CommandStatus.COMPLETED:
-            company: schemas.Company = response.body
-            return company
-
-        # Should not happen as a selected company is mandatory to start the dfacto main window
-        QtUtil.raise_fatal_error(
-            f"No selected company - Reason is: {response.reason}"
-        )
 
     def _get_invoice_pathname(self, home: Path) -> Path:
         response = api.client.get_invoice_pathname(invoice_id=self._invoice_id, home=home)

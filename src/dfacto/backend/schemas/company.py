@@ -21,6 +21,7 @@ class _CompanyBase:
     email: str
     siret: str
     rcs: str
+    no_vat: bool
 
 
 @dataclass
@@ -31,6 +32,7 @@ class _CompanyDefaultsBase:
     email: Optional[str] = None
     siret: Optional[str] = None
     rcs: Optional[str] = None
+    no_vat: bool = False
 
 
 @dataclass
@@ -40,6 +42,7 @@ class CompanyCreate(_CompanyBase):
     email: Optional[str] = None
     siret: Optional[str] = None
     rcs: Optional[str] = None
+    no_vat: Optional[bool] = None
 
     def flatten(self) -> dict[str, Any]:
         return dict(
@@ -52,6 +55,7 @@ class CompanyCreate(_CompanyBase):
             email=self.email,
             siret=self.siret,
             rcs=self.rcs,
+            no_vat=self.no_vat,
         )
 
 
@@ -73,6 +77,7 @@ class CompanyUpdate(_CompanyDefaultsBase):
             email=self.email,
             siret=self.siret,
             rcs=self.rcs,
+            no_vat=self.no_vat
         )
 
 
@@ -99,6 +104,7 @@ class Company(_CompanyInDBBase):
             email=orm_obj.email,
             siret=orm_obj.siret,
             rcs=orm_obj.rcs,
+            no_vat=orm_obj.no_vat
         )
 
 

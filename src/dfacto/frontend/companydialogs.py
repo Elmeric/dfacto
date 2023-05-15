@@ -87,6 +87,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
         )
         self.home_dir_selector.pathSelected.connect(self.check_home)
 
+        self.vat_ckb = QtWidgets.QCheckBox("No VAT obligation")
+
         self.extension_widget = QtWidgets.QWidget()
 
         self.address_text = QtUtil.FittedLineEdit()
@@ -148,6 +150,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         main_layout.addSpacing(20)
         main_layout.addLayout(name_layout)
         main_layout.addWidget(self.home_dir_selector)
+        main_layout.addWidget(self.vat_ckb)
         main_layout.addSpacing(20)
         main_layout.addLayout(details_layout)
         main_layout.addWidget(self.extension_widget)
@@ -157,6 +160,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.setLayout(main_layout)
 
         self.set_mode(mode)
+        self.vat_ckb.setChecked(True)
         self.extension_widget.hide()
         self._enable_buttons(self.is_valid)
         self.name_text.setFocus()
@@ -175,6 +179,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
             email=self.email_text.text(),
             siret=self.siret_text.text(),
             rcs=self.rcs_text.text(),
+            no_vat=self.vat_ckb.isChecked()
         )
 
     @property
@@ -205,6 +210,10 @@ class AddCompanyDialog(QtWidgets.QDialog):
         ):
             if (text := widget.text()) != getattr(self.origin_profile, field):
                 updated_profile[field] = text
+
+        no_vat = self.vat_ckb.isChecked()
+        if no_vat != self.origin_profile.no_vat:
+            updated_profile["no_vat"] = no_vat
 
         return schemas.CompanyUpdate(**updated_profile)
 
@@ -241,6 +250,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.email_text.clear()
         self.siret_text.clear()
         self.rcs_text.clear()
+        self.vat_ckb.setChecked(False)
         self.set_mode(AddCompanyDialog.Mode.ADD)
         self._enable_buttons(self.is_valid)
 
@@ -259,6 +269,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
                 <p>Before starting, we need some information about you...</p>
                 """
             )
+            self.vat_ckb.setEnabled(True)
             self.details_lbl.setText(
                 """
                 <p><small>(Detailed information is not mandatory,
@@ -273,6 +284,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
                 <p>Before starting, we need some information about you...</p>
                 """
             )
+            self.vat_ckb.setEnabled(True)
             self.details_lbl.setText(
                 """
                 <p><small>(Detailed information is not mandatory,
@@ -286,6 +298,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
                 <p>The world is changing: update your company profile here...</p>
                 """
             )
+            self.vat_ckb.setEnabled(False)
             self.details_lbl.clear()
             self.setWindowTitle("Edit your company profile")
 
@@ -302,6 +315,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.email_text.setText(profile.email)
         self.siret_text.setText(profile.siret)
         self.rcs_text.setText(profile.rcs)
+        self.vat_ckb.setChecked(profile.no_vat)
         self.set_mode(AddCompanyDialog.Mode.EDIT)
         self.details_btn.setChecked(True)
         self._enable_buttons(self.is_valid)

@@ -19,3 +19,4 @@ class Company:
     email: str = ""
     siret: str = ""
     rcs: str = ""
+    no_vat: bool = False

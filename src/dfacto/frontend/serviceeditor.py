@@ -17,6 +17,7 @@ from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
 from dfacto.util import qtutil as QtUtil
+from . import get_current_company
 
 logger = logging.getLogger(__name__)
 
@@ -108,12 +109,12 @@ class ServiceEditor(QtWidgets.QWidget):
         tool_layout.addWidget(self.cancel_btn)
         tool_layout.addStretch()
 
-        service_layout = QtWidgets.QFormLayout()
-        service_layout.setContentsMargins(5, 5, 5, 5)
-        service_layout.setSpacing(5)
-        service_layout.addRow("Service:", self.name_text)
-        service_layout.addRow("Unit price:", self.price_spin)
-        service_layout.addRow("VAT rate:", self.vat_cmb)
+        self.service_layout = QtWidgets.QFormLayout()
+        self.service_layout.setContentsMargins(5, 5, 5, 5)
+        self.service_layout.setSpacing(5)
+        self.service_layout.addRow("Service:", self.name_text)
+        self.service_layout.addRow("Unit price:", self.price_spin)
+        self.service_layout.addRow("VAT rate:", self.vat_cmb)
 
         editor_widget = QtWidgets.QWidget()
         editor_widget.setSizePolicy(
@@ -123,7 +124,7 @@ class ServiceEditor(QtWidgets.QWidget):
         editor_layout.setContentsMargins(0, 0, 0, 0)
         editor_layout.setSpacing(0)
         editor_layout.addLayout(tool_layout)
-        editor_layout.addLayout(service_layout)
+        editor_layout.addLayout(self.service_layout)
         editor_widget.setLayout(editor_layout)
 
         main_layout = QtWidgets.QVBoxLayout()
@@ -179,7 +180,9 @@ class ServiceEditor(QtWidgets.QWidget):
 
         self.name_text.setDisabled(read_only)
         self.price_spin.setDisabled(read_only)
-        self.vat_cmb.setDisabled(read_only)
+        no_vat = get_current_company().no_vat
+        self.vat_cmb.setDisabled(read_only or no_vat)
+        self.service_layout.setRowVisible(self.vat_cmb, not no_vat)
 
         self._enable_buttons(self.is_valid)
 
