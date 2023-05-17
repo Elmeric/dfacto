@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Optional
 
 from dfacto.backend import models
@@ -15,7 +16,7 @@ from .base import BaseSchema
 @dataclass
 class _VatRateBase(BaseSchema[models.VatRate]):
     name: str
-    rate: float
+    rate: Decimal
     is_default: bool
     is_preset: bool
 
@@ -23,7 +24,7 @@ class _VatRateBase(BaseSchema[models.VatRate]):
 @dataclass
 class _VatRateDefaultsBase(BaseSchema[models.VatRate]):
     name: Optional[str] = None
-    rate: Optional[float] = None
+    rate: Optional[Decimal] = None
 
 
 @dataclass
@@ -50,7 +51,7 @@ class VatRate(_VatRateInDBBase):
         return cls(
             id=orm_obj.id,
             name=orm_obj.name,
-            rate=orm_obj.rate,
+            rate=orm_obj.rate.quantize(Decimal('0.1')),
             is_default=orm_obj.is_default,
             is_preset=orm_obj.is_preset,
         )

@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
+from decimal import Decimal
 from typing import Optional
 
 from dfacto.backend import models
@@ -16,13 +17,13 @@ from .vat_rate import VatRate
 @dataclass
 class _ServiceBase(BaseSchema[models.Service]):
     name: str
-    unit_price: float
+    unit_price: Decimal
 
 
 @dataclass
 class _ServiceDefaultsBase(BaseSchema[models.Service]):
     name: Optional[str] = None
-    unit_price: Optional[float] = None
+    unit_price: Optional[Decimal] = None
     vat_rate_id: Optional[int] = None
 
 
@@ -51,7 +52,7 @@ class Service(_ServiceInDBBase):
         return cls(
             id=orm_obj.id,
             name=orm_obj.name,
-            unit_price=orm_obj.unit_price,
+            unit_price=orm_obj.unit_price.quantize(Decimal('0.01')),
             vat_rate=VatRate.from_orm(orm_obj.vat_rate),
         )
 

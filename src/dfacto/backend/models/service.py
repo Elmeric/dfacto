@@ -4,6 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
@@ -20,7 +21,7 @@ class Service(BaseModel):
 
     id: Mapped[intpk] = mapped_column(init=False)
     name: Mapped[str] = mapped_column(unique=True)
-    unit_price: Mapped[float]
+    unit_price: Mapped[decimal.Decimal]
     vat_rate_id: Mapped[int] = mapped_column(ForeignKey("vat_rate.id"))
 
     vat_rate: Mapped["VatRate"] = relationship(init=False, back_populates="services")

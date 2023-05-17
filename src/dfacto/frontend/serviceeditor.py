@@ -7,6 +7,7 @@
 import logging
 from collections import namedtuple
 from enum import Enum, auto
+from decimal import Decimal
 from typing import Optional
 
 import PyQt6.QtCore as QtCore
@@ -190,7 +191,7 @@ class ServiceEditor(QtWidgets.QWidget):
     def service(self):
         return Service(
             name=self.name_text.text(),
-            unit_price=self.price_spin.value(),
+            unit_price=Decimal(str(self.price_spin.value())),
             vat_rate_id=self.vat_cmb.currentData(),
         )
 
@@ -225,7 +226,7 @@ class ServiceEditor(QtWidgets.QWidget):
             vat_rate = service.vat_rate
 
             self.name_text.setText(service.name)
-            self.price_spin.setValue(service.unit_price)
+            self.price_spin.setValue(float(service.unit_price))
             self.vat_cmb.setCurrentText(f"{vat_rate.rate} % ({vat_rate.name})")
 
         self.mode = ServiceEditor.Mode.SHOW

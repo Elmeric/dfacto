@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import asdict, dataclass
+from decimal import Decimal
 from typing import Any, Generic, NamedTuple
 
 from dfacto.backend.models import ModelType
@@ -21,6 +22,6 @@ class BaseSchema(Generic[ModelType]):
 
 
 class Amount(NamedTuple):
-    raw: float
-    vat: float
-    net: float
+    raw: Decimal
+    vat: Decimal
+    net: Decimal

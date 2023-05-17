@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from dfacto.backend import models
 
@@ -47,7 +48,7 @@ class Item(_ItemInDBBase):
     def amount(self) -> Amount:
         service = self.service
         raw_amount = service.unit_price * self.quantity
-        vat_amount = raw_amount * service.vat_rate.rate / 100
+        vat_amount = (raw_amount * service.vat_rate.rate / 100).quantize(Decimal('0.01'))
         net_amount = raw_amount + vat_amount
         return Amount(raw=raw_amount, vat=vat_amount, net=net_amount)
 

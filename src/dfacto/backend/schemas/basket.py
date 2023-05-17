@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
+from decimal import Decimal
 
 from dfacto.backend import models
 
@@ -48,7 +49,7 @@ class Basket(_BasketInDBBase):
 
     @property
     def amount(self) -> Amount:
-        raw_amount = vat_amount = net_amount = 0.0
+        raw_amount = vat_amount = net_amount = Decimal(0)
         for item in self.items:
             amount = item.amount
             raw_amount += amount.raw

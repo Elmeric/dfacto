@@ -4,6 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+import decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -19,7 +20,7 @@ class VatRate(BaseModel):
 
     id: Mapped[intpk] = mapped_column(init=False)
     name: Mapped[str] = mapped_column(unique=True)
-    rate: Mapped[float]
+    rate: Mapped[decimal.Decimal]
     is_default: Mapped[bool] = mapped_column(default=False)
     is_preset: Mapped[bool] = mapped_column(default=False)
 

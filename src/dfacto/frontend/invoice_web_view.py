@@ -14,7 +14,7 @@ import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtWebEngineWidgets as QtWeb
 
 from dfacto import settings as Config
-from dfacto.backend import api, schemas
+from dfacto.backend import api
 from dfacto.backend.api import CommandStatus
 from dfacto.backend.models.invoice import InvoiceStatus
 from dfacto.util import qtutil as QtUtil

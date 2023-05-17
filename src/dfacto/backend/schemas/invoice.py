@@ -6,6 +6,7 @@
 
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Optional, cast
 
 from dfacto.backend import models
@@ -73,7 +74,7 @@ class Invoice(_InvoiceInDBBase):
 
     @property
     def amount(self) -> Amount:
-        raw_amount = vat_amount = net_amount = 0.0
+        raw_amount = vat_amount = net_amount = Decimal(0)
         for item in self.items:
             amount = item.amount
             raw_amount += amount.raw
