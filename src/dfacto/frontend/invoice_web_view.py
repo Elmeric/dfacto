@@ -6,6 +6,7 @@
 
 import logging
 import os
+# import urllib.parse
 from enum import Enum, IntEnum, auto
 from pathlib import Path
 
@@ -234,6 +235,12 @@ class InvoiceWebViewer(QtWidgets.QDialog):
             mail_btn = msg_box.addButton("Send by email", QtWidgets.QMessageBox.ButtonRole.ActionRole)
             mail_btn.setEnabled(False)
             mail_btn.setToolTip("Send by email is not yet implemented")
+            # mail_lbl = QtWidgets.QLabel(msg_box)
+            # mail_lbl.setText(
+            #     f"<a href='mailto:erik.lemoine@gmail.com?subject=Facture du ...&body=Please, receive your invoice'>"
+            #     f"Send by email</a>"
+            # )
+            # mail_lbl.setOpenExternalLinks(True)
             msg_box.setDefaultButton(explore_btn)
 
             msg_box.exec()
@@ -243,6 +250,12 @@ class InvoiceWebViewer(QtWidgets.QDialog):
             elif msg_box.clickedButton() is explore_btn:
                 os.startfile(Path(file_path).parent)
             elif msg_box.clickedButton() is mail_btn:
+                # attachment = f"file:///{urllib.parse.quote(Path(file_path).as_posix())}"
+                # os.startfile(
+                #     f"mailto:erik.lemoine@gmail.com?subject=Facture du ...&"
+                #     f"body=Please, receive your invoice&"
+                #     f"attach={attachment}"
+                # )
                 pass
 
             if self._status is InvoiceStatus.DRAFT:
