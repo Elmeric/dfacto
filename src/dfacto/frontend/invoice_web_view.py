@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+import os
 from enum import Enum, IntEnum, auto
 from pathlib import Path
 
@@ -54,6 +55,7 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
 
         self.html_view = QtWeb.QWebEngineView()
+        self.html_view.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
 
         icon_size = QtCore.QSize(32, 32)
 
@@ -99,10 +101,12 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.quit_btn.setIcon(QtGui.QIcon(f"{resources}/cancel.png"))
         self.quit_btn.setToolTip("Close invoice viewer (Esc)")
         self.quit_btn.setStatusTip("Close invoice viewer (Esc)")
+        self.progress_bar = QtWidgets.QProgressBar()
 
         tool_layout = QtWidgets.QHBoxLayout()
         tool_layout.setContentsMargins(0, 0, 0, 0)
         tool_layout.setSpacing(0)
+        tool_layout.addWidget(self.progress_bar)
         tool_layout.addWidget(self.basket_btn)
         tool_layout.addStretch()
         tool_layout.addWidget(self.emit_btn)
@@ -126,6 +130,8 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.basket_btn.clicked.connect(self.to_basket)
         self.ok_btn.clicked.connect(self.send)
         self.quit_btn.clicked.connect(self.quit)
+        self.html_view.loadStarted.connect(self.on_load_started)
+        self.html_view.loadProgress.connect(self.on_load_progress)
         self.html_view.loadFinished.connect(self.on_load_finished)
         self.html_view.pdfPrintingFinished.connect(self.on_pdf_print_finished)
 
@@ -136,6 +142,8 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.move(678, 287)
         self.resize(526, 850)
         self.html_view.setZoomFactor(0.7)
+        self.html_view.setEnabled(False)    # To let focus on the toolbar buttons
+        self.progress_bar.hide()
 
     def set_invoice(
         self, invoice_id: int, status: InvoiceStatus, html: str, mode: Mode = Mode.SHOW
@@ -192,27 +200,57 @@ class InvoiceWebViewer(QtWidgets.QDialog):
     def quit(self) -> None:
         self.done(InvoiceWebViewer.Action.NO_ACTION)
 
+    @QtCore.pyqtSlot()
+    def on_load_started(self) -> None:
+        self.progress_bar.reset()
+        self.progress_bar.show()
+
+    @QtCore.pyqtSlot(int)
+    def on_load_progress(self, progress: int) -> None:
+        self.progress_bar.setValue(progress)
+
     @QtCore.pyqtSlot(bool)
     def on_load_finished(self, success: bool) -> None:
+        self.progress_bar.hide()
         self._enable_buttons(success)
         self.setWindowTitle(self.html_view.title())
 
     @QtCore.pyqtSlot(str, bool)
     def on_pdf_print_finished(self, file_path: str, success: bool) -> None:
         if success:
-            QtWidgets.QMessageBox.information(
-                None,  # type: ignore
-                f"Dfacto - Save invoice to PDF",
+            msg_box = QtWidgets.QMessageBox()
+            msg_box.setWindowTitle("Dfacto - Save invoice to PDF")
+            msg_box.setText(
                 f"""
-                <p>Get your invoice in {file_path} to send it to your client</p>
-                """,
-                QtWidgets.QMessageBox.StandardButton.Close,
+                <p>Your invoice is saved in:</p>
+                <p><strong>{file_path}</strong></p>
+                """
             )
+            msg_box.setInformativeText("You can open it in a PDF viewer or in the Explorer")
+            msg_box.setIcon(QtWidgets.QMessageBox.Icon.Information)
+            msg_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Close)
+            open_btn = msg_box.addButton("Open", QtWidgets.QMessageBox.ButtonRole.ActionRole)
+            explore_btn = msg_box.addButton("Show in Explorer", QtWidgets.QMessageBox.ButtonRole.ActionRole)
+            mail_btn = msg_box.addButton("Send by email", QtWidgets.QMessageBox.ButtonRole.ActionRole)
+            mail_btn.setEnabled(False)
+            mail_btn.setToolTip("Send by email is not yet implemented")
+            msg_box.setDefaultButton(explore_btn)
+
+            msg_box.exec()
+
+            if msg_box.clickedButton() is open_btn:
+                os.startfile(file_path)
+            elif msg_box.clickedButton() is explore_btn:
+                os.startfile(Path(file_path).parent)
+            elif msg_box.clickedButton() is mail_btn:
+                pass
+
             if self._status is InvoiceStatus.DRAFT:
                 self.done(InvoiceWebViewer.Action.SEND)
             else:
                 self.done(InvoiceWebViewer.Action.REMIND)
             return
+
         QtWidgets.QMessageBox.warning(
             None,  # type: ignore
             f"Dfacto - Save invoice to PDF",
