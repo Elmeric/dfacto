@@ -16,6 +16,7 @@ class SqliteDecimal(TypeDecorator):
     # This TypeDecorator use Sqlalchemy Integer as impl. It converts Decimals
     # from Python to Integers which is later stored in Sqlite database.
     impl = Integer
+    cache_ok = True
 
     def __init__(self, scale):
         # It takes a 'scale' parameter, which specifies the number of digits

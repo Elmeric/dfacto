@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from datetime import date
+from decimal import Decimal
 from typing import cast
 
 import pytest
@@ -44,10 +45,18 @@ def init_clients(dbsession: Session) -> list[models.Client]:
 @pytest.fixture
 def init_services(dbsession: Session) -> list[models.Service]:
     for i in range(5):
-        service = models.Service(
-            name=f"Service_{i + 1}", unit_price=100 + 10 * i, vat_rate_id=(i % 3) + 1
-        )
+        service = models.Service()
         dbsession.add(service)
+        dbsession.flush([service])
+        service_revision = models.ServiceRevision(
+            name=f"Service_{i + 1}",
+            unit_price=Decimal(100 + 10 * i),
+            vat_rate_id=(i % 3) + 1,
+            service_id=service.id
+        )
+        dbsession.add(service_revision)
+        dbsession.flush([service_revision])
+        service.rev_id = service_revision.id
         dbsession.commit()
 
     services = cast(
@@ -61,12 +70,14 @@ def init_items(
     init_clients, init_services, dbsession: sa.orm.Session
 ) -> list[models.Item]:
     clients = init_clients
-    rates = (0.0, 2.1, 5.5)
+    services = init_services
 
     for i in range(10):
+        service = services[i % 5]
         quantity = i + 1
         item = models.Item(
-            service_id=(i % 5) + 1,
+            service_id=service.id,
+            service_rev_id=service.rev_id,
             quantity=quantity,
         )
         basket = clients[i % 5].basket
@@ -541,6 +552,7 @@ def test_crud_add_to_basket(dbsession, init_clients, init_services):
     )
 
     assert item.service_id == service.id
+    assert item.service_rev_id == service.rev_id
     assert item.quantity == 2
     assert item.basket_id == client.basket.id
     assert len(client.basket.items) == 1
@@ -554,6 +566,7 @@ def test_crud_add_to_basket_default_qty(dbsession, init_clients, init_services):
     item = crud.client.add_to_basket(dbsession, basket=client.basket, service=service)
 
     assert item.service_id == service.id
+    assert item.service_rev_id == service.rev_id
     assert item.quantity == 1
     assert item.basket_id == client.basket.id
     assert len(client.basket.items) == 1
@@ -596,7 +609,6 @@ def test_crud_update_item_quantity_commit_error(dbsession, init_items, mock_comm
 
     item = init_items[0]
     assert item.quantity == 1
-    basket = item.basket
 
     with pytest.raises(crud.CrudError):
         crud.client.update_item_quantity(dbsession, item=item, quantity=2)
@@ -768,5 +780,6 @@ def test_item_from_orm(dbsession, init_data):
 
     assert from_db.id == item.id
     assert from_db.service_id == item.service_id
+    assert from_db.service_rev_id == item.service_rev_id
     assert from_db.quantity == item.quantity
-    assert from_db.service == schemas.Service.from_orm(item.service)
+    assert from_db.service == schemas.Service.from_revision(item.service, item.service_rev_id)

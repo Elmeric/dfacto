@@ -16,6 +16,7 @@ from .service import Service
 @dataclass
 class _ItemBase(BaseSchema[models.Item]):
     service_id: int
+    service_rev_id: int
     quantity: int
 
 
@@ -54,11 +55,13 @@ class Item(_ItemInDBBase):
 
     @classmethod
     def from_orm(cls, orm_obj: models.Item) -> "Item":
+        service_rev_id = orm_obj.service_rev_id
         return cls(
             id=orm_obj.id,
-            service_id=orm_obj.service.id,
+            service_id=orm_obj.service_id,
+            service_rev_id=service_rev_id,
             quantity=orm_obj.quantity,
-            service=Service.from_orm(orm_obj.service),
+            service=Service.from_revision(orm_obj.service, service_rev_id),
         )
 
 

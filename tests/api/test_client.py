@@ -4,6 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+from decimal import Decimal
 from datetime import date
 
 import pytest
@@ -18,6 +19,7 @@ from tests.conftest import (
     FakeORMInvoice,
     FakeORMItem,
     FakeORMService,
+    FakeORMServiceRevision,
     FakeORMVatRate,
 )
 
@@ -709,8 +711,7 @@ def test_cmd_change_email(mock_client_model, mock_schema_from_orm):
     assert response.body is not None
 
 
-@pytest.mark.parametrize("activate", (True, False))
-def test_cmd_set_active(activate, mock_client_model, mock_schema_from_orm):
+def test_cmd_set_active(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "UPDATE": False}
     state["read_value"] = FakeORMClient(
@@ -720,15 +721,42 @@ def test_cmd_set_active(activate, mock_client_model, mock_schema_from_orm):
         zip_code="1",
         city="CITY 1",
         email="client_1@domain.com",
-        is_active=not activate,
+        is_active=False,
     )
-    if activate:
-        response = api.client.set_active(obj_id=1)
-    else:
-        response = api.client.set_inactive(obj_id=1)
+
+    response = api.client.set_active(obj_id=1)
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
+    assert "UPDATE" in methods_called
+    assert response.status is CommandStatus.COMPLETED
+    assert response.body is not None
+
+
+def test_cmd_set_inactive(mock_client_model, mock_schema_from_orm):
+    state, methods_called = mock_client_model
+    state["raises"] = {
+        "READ": False,
+        "GET_BASKET": False,
+        "CLEAR_BASKET": False,
+        "UPDATE": False
+    }
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
+        email="client_1@domain.com",
+        is_active=True,
+    )
+
+    response = api.client.set_inactive(obj_id=1)
+
+    assert len(methods_called) == 4
+    assert "GET" in methods_called
+    assert "GET_BASKET" in methods_called
+    assert "CLEAR_BASKET" in methods_called
     assert "UPDATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.body is not None
@@ -843,25 +871,36 @@ def test_cmd_delete_error(mock_client_model, mock_schema_from_orm):
 def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "ADD_TO_BASKET": False}
-    state["read_value"] = ("basket", "service")
+    state["read_value"] = (
+        FakeORMClient(
+            id=1,
+            name="Client 1",
+            address="Address 1",
+            zip_code="1",
+            city="CITY 1",
+            email="client_1@domain.com",
+            is_active=True,
+        )
+    )
     return_value = FakeORMItem(
         id=1,
         service_id=1,
+        service_rev_id=1,
         quantity=2,
-        service=FakeORMService(
+        service=FakeORMServiceRevision(
             id=1,
-            unit_price=50.0,
             name="Service 1",
+            unit_price=Decimal('50.00'),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=10.0),
-        ),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        )
     )
     state["return_value"] = return_value
 
     response = api.client.add_to_basket(1, service_id=1, quantity=2)
 
     assert len(methods_called) == 3
-    assert "GET_BASKET" in methods_called
+    assert "GET" in methods_called
     assert "GET" in methods_called
     assert "ADD_TO_BASKET" in methods_called
     assert response.status is CommandStatus.COMPLETED
@@ -872,13 +911,23 @@ def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
 def test_cmd_add_to_basket_get_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": True, "ADD_TO_BASKET": False}
-    state["read_value"] = None
+    state["read_value"] = (
+        FakeORMClient(
+            id=1,
+            name="Client 1",
+            address="Address 1",
+            zip_code="1",
+            city="CITY 1",
+            email="client_1@domain.com",
+            is_active=True,
+        )
+    )
     state["return_value"] = None
 
     response = api.client.add_to_basket(1, service_id=1, quantity=2)
 
     assert len(methods_called) == 1
-    assert "GET_BASKET" in methods_called
+    assert "GET" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith("ADD-TO-BASKET - SQL or database error")
     assert response.body is None
@@ -893,7 +942,7 @@ def test_cmd_add_to_basket_unknown(mock_client_model, mock_schema_from_orm):
     response = api.client.add_to_basket(1, service_id=1, quantity=2)
 
     assert len(methods_called) == 2
-    assert "GET_BASKET" in methods_called
+    assert "GET" in methods_called
     assert "GET" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason == "ADD-TO-BASKET - Client 1 or service 1 not found."
@@ -903,13 +952,23 @@ def test_cmd_add_to_basket_unknown(mock_client_model, mock_schema_from_orm):
 def test_cmd_add_to_basket_add_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "ADD_TO_BASKET": True}
-    state["read_value"] = ("basket", "service")
+    state["read_value"] = (
+        FakeORMClient(
+            id=1,
+            name="Client 1",
+            address="Address 1",
+            zip_code="1",
+            city="CITY 1",
+            email="client_1@domain.com",
+            is_active=True,
+        )
+    )
     state["return_value"] = None
 
     response = api.client.add_to_basket(1, service_id=1, quantity=2)
 
     assert len(methods_called) == 3
-    assert "GET_BASKET" in methods_called
+    assert "GET" in methods_called
     assert "GET" in methods_called
     assert "ADD_TO_BASKET" in methods_called
     assert response.status is CommandStatus.FAILED
@@ -922,12 +981,21 @@ def test_cmd_add_to_basket_add_error(mock_client_model, mock_schema_from_orm):
 def test_cmd_update_item_quantity(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "UPDATE_ITEM_QUANTITY": False}
-    state["read_value"] = FakeORMItem(
+    item = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
+    state["read_value"] = item
     state["return_value"] = None
 
     response = api.client.update_item_quantity(1, item_id=1, quantity=2)
@@ -937,7 +1005,7 @@ def test_cmd_update_item_quantity(mock_client_model, mock_schema_from_orm):
     assert "UPDATE_ITEM_QUANTITY" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.reason is None
-    assert response.body is None
+    assert response.body is item
 
 
 def test_cmd_update_item_quantity_bad_quantity(mock_client_model, mock_schema_from_orm):
@@ -946,7 +1014,15 @@ def test_cmd_update_item_quantity_bad_quantity(mock_client_model, mock_schema_fr
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
@@ -995,7 +1071,15 @@ def test_cmd_update_item_quantity_bad_basket(mock_client_model, mock_schema_from
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         basket=FakeORMBasket(
             id=1,
             client_id=2,
@@ -1021,7 +1105,15 @@ def test_cmd_update_item_quantity_bad_invoice(mock_client_model, mock_schema_fro
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
@@ -1044,7 +1136,15 @@ def test_cmd_update_item_quantity_non_draft(mock_client_model, mock_schema_from_
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.EMITTED),
     )
     state["return_value"] = None
@@ -1066,7 +1166,15 @@ def test_cmd_update_item_quantity_update_error(mock_client_model, mock_schema_fr
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
@@ -1087,7 +1195,15 @@ def test_cmd_remove_item(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
@@ -1138,7 +1254,15 @@ def test_cmd_remove_item_bad_basket(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         basket=FakeORMBasket(
             id=1,
             client_id=2,
@@ -1164,7 +1288,15 @@ def test_cmd_remove_item_bad_invoice(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
@@ -1187,7 +1319,15 @@ def test_cmd_remove_item_non_draft(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID),
     )
     state["return_value"] = None
@@ -1209,7 +1349,15 @@ def test_cmd_remove_item_remove_error(mock_client_model, mock_schema_from_orm):
     state["read_value"] = FakeORMItem(
         id=1,
         service_id=1,
-        quantity=1,
+        service_rev_id=1,
+        quantity=2,
+        service=FakeORMServiceRevision(
+            id=1,
+            name="Service 1",
+            unit_price=Decimal('50.00'),
+            vat_rate_id=1,
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+        ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
     state["return_value"] = None
@@ -1448,13 +1596,14 @@ def test_cmd_add_to_invoice(
     return_value = FakeORMItem(
         id=1,
         service_id=1,
+        service_rev_id=1,
         quantity=2,
-        service=FakeORMService(
+        service=FakeORMServiceRevision(
             id=1,
-            unit_price=50.0,
             name="Service 1",
+            unit_price=Decimal('50.00'),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=10.0),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
         ),
     )
     state["return_value"] = return_value
@@ -1556,9 +1705,16 @@ def test_cmd_clear_invoice(mock_client_model, mock_invoice_model, mock_schema_fr
     invoice.items = [
         FakeORMItem(
             id=1,
-            basket_id=1,
             service_id=1,
-            quantity=1,
+            service_rev_id=1,
+            quantity=2,
+            service=FakeORMServiceRevision(
+                id=1,
+                name="Service 1",
+                unit_price=Decimal('50.00'),
+                vat_rate_id=1,
+                vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            ),
             basket=FakeORMBasket(
                 id=1,
                 client_id=2,
@@ -1681,9 +1837,16 @@ def test_cmd_delete_invoice(
     invoice.items = [
         FakeORMItem(
             id=1,
-            basket_id=1,
             service_id=1,
-            quantity=1,
+            service_rev_id=1,
+            quantity=2,
+            service=FakeORMServiceRevision(
+                id=1,
+                name="Service 1",
+                unit_price=Decimal('50.00'),
+                vat_rate_id=1,
+                vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            ),
             basket=FakeORMBasket(
                 id=1,
                 client_id=2,
@@ -1824,7 +1987,7 @@ def test_cmd_mark_as(
     assert "MARK_AS" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.reason is None
-    assert response.body is None
+    assert response.body is not None
 
 
 def test_cmd_mark_as_get_error(

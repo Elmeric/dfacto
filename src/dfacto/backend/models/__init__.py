@@ -14,7 +14,7 @@ from .client import Client
 from .company import Company
 from .invoice import Invoice, InvoiceStatus, StatusLog
 from .item import Item
-from .service import Service
+from .service import Service, ServiceRevision
 from .vat_rate import VatRate
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "BaseModel",
     "VatRate",
     "Service",
+    "ServiceRevision",
     "Client",
     "Basket",
     "Item",

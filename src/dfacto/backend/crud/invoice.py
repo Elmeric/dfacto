@@ -157,6 +157,7 @@ class CRUDInvoice(
 
         item_ = models.Item(
             service_id=service.id,
+            service_rev_id=service.rev_id,
             quantity=quantity,
         )
         item_.invoice_id = invoice_.id

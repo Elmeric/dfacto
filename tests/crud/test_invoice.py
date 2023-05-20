@@ -227,6 +227,7 @@ def test_crud_add_item(dbsession, init_data):
     )
 
     assert item.service_id == service.id
+    assert item.service_rev_id == service.rev_id
     assert item.quantity == 2
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1
@@ -243,6 +244,7 @@ def test_crud_add_item_default_qty(dbsession, init_data):
     item = crud.invoice.add_item(dbsession, invoice_=invoice, service=service)
 
     assert item.service_id == service.id
+    assert item.service_rev_id == service.rev_id
     assert item.quantity == 1
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1

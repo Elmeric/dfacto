@@ -15,7 +15,7 @@ from .base_model import BaseModel, intpk
 if TYPE_CHECKING:  # pragma: no cover
     from .basket import Basket
     from .invoice import Invoice
-    from .service import Service
+    from .service import ServiceRevision
 
 
 class Item(BaseModel):
@@ -30,6 +30,7 @@ class Item(BaseModel):
 
     id: Mapped[intpk] = mapped_column(init=False)
     service_id: Mapped[int] = mapped_column(ForeignKey("service.id"))
+    service_rev_id: Mapped[int] = mapped_column(ForeignKey("service_revision.id"))
     quantity: Mapped[int] = mapped_column(default=1)
     invoice_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("invoice.id"), init=False

@@ -125,6 +125,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
                 # No item found: create it
                 item_ = models.Item(
                     service_id=service.id,
+                    service_rev_id=service.rev_id,
                     quantity=quantity,
                 )
                 item_.basket_id = basket.id

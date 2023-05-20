@@ -8,6 +8,7 @@
 
 import dataclasses
 import sys
+from decimal import Decimal
 from datetime import datetime, timedelta
 from sqlite3 import Connection as SQLite3Connection
 from typing import Any, Optional, Union, cast
@@ -295,7 +296,7 @@ def init_data(dbsession: Session) -> TestData:
     init_db_data(dbsession)
     for i in range(3):
         vat_rate = models.VatRate(
-            name=f"Rate {i + 1}", rate=12.5 + 2.5 * i  # Rate_1 to _3  # 12.5, 15, 17.5
+            name=f"Rate {i + 1}", rate=Decimal(str(12.5 + 2.5 * i))  # Rate_1 to _3  # 12.5, 15, 17.5
         )
         dbsession.add(vat_rate)
     dbsession.commit()
@@ -304,12 +305,18 @@ def init_data(dbsession: Session) -> TestData:
     )
     # Services
     for i in range(5):
-        service = models.Service(
-            name=f"Service_{i + 1}",  # Service_1 to _5
-            unit_price=100 + 10 * i,  # 100, 110, 120, 130, 140
-            vat_rate_id=i + 1,  # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
-        )
+        service = models.Service()
         dbsession.add(service)
+        dbsession.flush([service])
+        service_revision = models.ServiceRevision(
+            name=f"Service_{i + 1}",    # Service_1 to _5
+            unit_price=Decimal(100 + 10 * i),   # 100, 110, 120, 130, 140
+            vat_rate_id=i + 1,    # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
+            service_id=service.id
+        )
+        dbsession.add(service_revision)
+        dbsession.flush([service_revision])
+        service.rev_id = service_revision.id
     dbsession.commit()
     services = cast(
         list[models.Service], dbsession.scalars(select(models.Service)).all()
@@ -358,6 +365,7 @@ def init_data(dbsession: Session) -> TestData:
         quantity = i + 1
         item = models.Item(
             service_id=service.id,
+            service_rev_id=service.rev_id,
             quantity=quantity,
         )
         if i < 10:
@@ -425,8 +433,9 @@ class FakeORMInvoice(FakeORMModel):
 @dataclasses.dataclass
 class FakeORMItem(FakeORMModel):
     service_id: int
+    service_rev_id: int
     quantity: int = 1
-    service: "FakeORMService" = None
+    service: "FakeORMServiceRevision" = None
     basket_id: Optional[int] = 1
     invoice_id: Optional[int] = None
     basket: "FakeORMBasket" = None
@@ -435,16 +444,25 @@ class FakeORMItem(FakeORMModel):
 
 @dataclasses.dataclass
 class FakeORMService(FakeORMModel):
-    unit_price: float
+    rev_id: int
+    vat_rate: "FakeORMVatRate" = None
+    revisions: dict[int, "FakeORMServiceRevision"] = dataclasses.field(default_factory=dict)
+
+
+@dataclasses.dataclass
+class FakeORMServiceRevision(FakeORMModel):
+    unit_price: Decimal
     name: str = "Service"
     vat_rate_id: int = 1
+    service_id: int = 1
     vat_rate: "FakeORMVatRate" = None
+    service: "FakeORMService" = None
 
 
 @dataclasses.dataclass
 class FakeORMVatRate(FakeORMModel):
-    rate: float
+    rate: Decimal
     name: str = "Rate"
     is_default: bool = False
     is_preset: bool = False
-    services: list["FakeORMService"] = dataclasses.field(default_factory=list)
+    services: list["FakeORMServiceRevision"] = dataclasses.field(default_factory=list)

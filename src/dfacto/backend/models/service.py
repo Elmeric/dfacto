@@ -8,7 +8,7 @@ import decimal
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, attribute_keyed_dict
 
 from .base_model import BaseModel, intpk
 
@@ -20,8 +20,24 @@ class Service(BaseModel):
     __tablename__ = "service"
 
     id: Mapped[intpk] = mapped_column(init=False)
-    name: Mapped[str] = mapped_column(unique=True)
+    rev_id: Mapped[int] = mapped_column(init=False, nullable=True)
+
+    revisions: Mapped[dict[int, "ServiceRevision"]] = relationship(
+        init=False,
+        collection_class=attribute_keyed_dict("id"),
+        back_populates="service",
+        cascade="all, delete-orphan"
+    )
+
+
+class ServiceRevision(BaseModel):
+    __tablename__ = "service_revision"
+
+    id: Mapped[intpk] = mapped_column(init=False)
+    name: Mapped[str] = mapped_column()
     unit_price: Mapped[decimal.Decimal]
     vat_rate_id: Mapped[int] = mapped_column(ForeignKey("vat_rate.id"))
+    service_id: Mapped[int] = mapped_column(ForeignKey("service.id"))
 
+    service: Mapped["Service"] = relationship(init=False, back_populates="revisions")
     vat_rate: Mapped["VatRate"] = relationship(init=False, back_populates="services")

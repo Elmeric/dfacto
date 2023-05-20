@@ -12,7 +12,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base_model import BaseModel, intpk
 
 if TYPE_CHECKING:  # pragma: no cover
-    from .service import Service
+    from .service import ServiceRevision
 
 
 class VatRate(BaseModel):
@@ -24,7 +24,7 @@ class VatRate(BaseModel):
     is_default: Mapped[bool] = mapped_column(default=False)
     is_preset: Mapped[bool] = mapped_column(default=False)
 
-    services: Mapped[list["Service"]] = relationship(
+    services: Mapped[list["ServiceRevision"]] = relationship(
         init=False,
         back_populates="vat_rate",
     )

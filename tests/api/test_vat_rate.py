@@ -3,13 +3,14 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
+from decimal import Decimal
 
 import pytest
 
 from dfacto.backend import api, crud, schemas
 from dfacto.backend.api.command import CommandStatus
 from tests.api.test_service import FakeORMService
-from tests.conftest import FakeORMVatRate
+from tests.conftest import FakeORMVatRate, FakeORMServiceRevision
 
 pytestmark = pytest.mark.api
 
@@ -47,7 +48,7 @@ def mock_vat_rate_model(mock_dfacto_model, monkeypatch):
 def test_cmd_get(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False}
-    state["read_value"] = FakeORMVatRate(id=1, rate=30.0)
+    state["read_value"] = FakeORMVatRate(id=1, rate=Decimal('30.00'))
 
     response = api.vat_rate.get(obj_id=1)
 
@@ -55,7 +56,7 @@ def test_cmd_get(mock_vat_rate_model, mock_schema_from_orm):
     assert "GET" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.body.id == 1
-    assert response.body.rate == 30.0
+    assert response.body.rate == Decimal('30.00')
 
 
 def test_cmd_get_unknown(mock_vat_rate_model, mock_schema_from_orm):
@@ -87,7 +88,7 @@ def test_cmd_get_default(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"GET_DEFAULT": False}
     state["default_value"] = FakeORMVatRate(
-        id=1, name="Rate 1", rate=0.0, is_default=True
+        id=1, name="Rate 1", rate=Decimal('0.00'), is_default=True
     )
 
     response = api.vat_rate.get_default()
@@ -103,10 +104,10 @@ def test_cmd_set_default(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"GET_DEFAULT": False, "READ": False, "SET_DEFAULT": False}
     state["default_value"] = FakeORMVatRate(
-        id=1, name="Rate 1", rate=0.0, is_default=True
+        id=1, name="Rate 1", rate=Decimal('0.00'), is_default=True
     )
     state["read_value"] = FakeORMVatRate(
-        id=6, name="Rate 1", rate=0.0, is_default=False
+        id=6, name="Rate 1", rate=Decimal('0.00'), is_default=False
     )
 
     response = api.vat_rate.set_default(6)
@@ -124,10 +125,10 @@ def test_cmd_set_default_error(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"GET_DEFAULT": False, "READ": False, "SET_DEFAULT": True}
     state["default_value"] = FakeORMVatRate(
-        id=1, name="Rate 1", rate=0.0, is_default=True
+        id=1, name="Rate 1", rate=Decimal('0.00'), is_default=True
     )
     state["read_value"] = FakeORMVatRate(
-        id=6, name="Rate 1", rate=0.0, is_default=False
+        id=6, name="Rate 1", rate=Decimal('0.00'), is_default=False
     )
 
     response = api.vat_rate.set_default(6)
@@ -145,10 +146,10 @@ def test_cmd_get_multi(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False}
     state["read_value"] = [
-        FakeORMVatRate(id=1, name="Rate 1", rate=10.0),
-        FakeORMVatRate(id=2, name="Rate 2", rate=20.0),
-        FakeORMVatRate(id=3, name="Rate 3", rate=30.0),
-        FakeORMVatRate(id=4, name="Rate 4", rate=40.0),
+        FakeORMVatRate(id=1, name="Rate 1", rate=Decimal('10.00')),
+        FakeORMVatRate(id=2, name="Rate 2", rate=Decimal('20.00')),
+        FakeORMVatRate(id=3, name="Rate 3", rate=Decimal('30.00')),
+        FakeORMVatRate(id=4, name="Rate 4", rate=Decimal('40.00')),
     ]
 
     response = api.vat_rate.get_multi(skip=1, limit=2)
@@ -159,10 +160,10 @@ def test_cmd_get_multi(mock_vat_rate_model, mock_schema_from_orm):
     assert len(response.body) == 2
     assert response.body[0].id == 2
     assert response.body[0].name == "Rate 2"
-    assert response.body[0].rate == 20.0
+    assert response.body[0].rate == Decimal('20.00')
     assert response.body[1].id == 3
     assert response.body[1].name == "Rate 3"
-    assert response.body[1].rate == 30.0
+    assert response.body[1].rate == Decimal('30.00')
 
 
 def test_cmd_get_multi_error(mock_vat_rate_model, mock_schema_from_orm):
@@ -181,8 +182,8 @@ def test_cmd_get_all(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False}
     state["read_value"] = [
-        FakeORMVatRate(id=2, name="Rate 2", rate=20.0),
-        FakeORMVatRate(id=3, name="Rate 3", rate=30.0),
+        FakeORMVatRate(id=2, name="Rate 2", rate=Decimal('20.00')),
+        FakeORMVatRate(id=3, name="Rate 3", rate=Decimal('30.00')),
     ]
 
     response = api.vat_rate.get_all()
@@ -193,10 +194,10 @@ def test_cmd_get_all(mock_vat_rate_model, mock_schema_from_orm):
     assert len(response.body) == 2
     assert response.body[0].id == 2
     assert response.body[0].name == "Rate 2"
-    assert response.body[0].rate == 20.0
+    assert response.body[0].rate == Decimal('20.00')
     assert response.body[1].id == 3
     assert response.body[1].name == "Rate 3"
-    assert response.body[1].rate == 30.0
+    assert response.body[1].rate == Decimal('30.00')
 
 
 def test_cmd_get_all_error(mock_vat_rate_model, mock_schema_from_orm):
@@ -215,14 +216,14 @@ def test_cmd_add(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"CREATE": False}
 
-    response = api.vat_rate.add(schemas.VatRateCreate(name="A new rate", rate=20.0))
+    response = api.vat_rate.add(schemas.VatRateCreate(name="A new rate", rate=Decimal('20.00')))
 
     assert len(methods_called) == 1
     assert "CREATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.body.id == 1
     assert response.body.name == "A new rate"
-    assert response.body.rate == 20.0
+    assert response.body.rate == Decimal('20.00')
     assert not response.body.is_default
     assert not response.body.is_preset
 
@@ -231,7 +232,7 @@ def test_cmd_add_error(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"CREATE": True}
 
-    response = api.vat_rate.add(schemas.VatRateCreate(name="A new rate", rate=20.0))
+    response = api.vat_rate.add(schemas.VatRateCreate(name="A new rate", rate=Decimal('20.00')))
 
     assert len(methods_called) == 1
     assert "CREATE" in methods_called
@@ -243,17 +244,17 @@ def test_cmd_update(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "UPDATE": False}
     state["read_value"] = FakeORMVatRate(
-        id=1, name="Rate", rate=100.0, is_default=False, is_preset=False, services=[]
+        id=1, name="Rate", rate=Decimal('100.00'), is_default=False, is_preset=False, services=[]
     )
 
-    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=20.0))
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=Decimal('20.00')))
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
     assert "UPDATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.body.id == 1
-    assert response.body.rate == 20.0
+    assert response.body.rate == Decimal('20.00')
 
 
 def test_cmd_update_unknown(mock_vat_rate_model, mock_schema_from_orm):
@@ -261,7 +262,7 @@ def test_cmd_update_unknown(mock_vat_rate_model, mock_schema_from_orm):
     state["raises"] = {"READ": False, "UPDATE": False}
     state["read_value"] = None
 
-    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=20.0))
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=Decimal('20.00')))
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
@@ -273,10 +274,10 @@ def test_cmd_update_preset(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "UPDATE": False}
     state["read_value"] = FakeORMVatRate(
-        id=1, name="Rate", rate=10.0, is_default=False, is_preset=True, services=[]
+        id=1, name="Rate", rate=Decimal('10.00'), is_default=False, is_preset=True, services=[]
     )
 
-    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=20.0))
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=Decimal('20.00')))
 
     assert len(methods_called) == 1
     assert "GET" in methods_called
@@ -288,10 +289,10 @@ def test_cmd_update_error(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "UPDATE": True}
     state["read_value"] = FakeORMVatRate(
-        id=1, name="Rate", rate=100.0, is_default=False, is_preset=False, services=[]
+        id=1, name="Rate", rate=Decimal('100.00'), is_default=False, is_preset=False, services=[]
     )
 
-    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=200.0))
+    response = api.vat_rate.update(obj_id=1, obj_in=schemas.VatRateUpdate(rate=Decimal('200.00')))
 
     assert len(methods_called) == 2
     assert "GET" in methods_called
@@ -304,7 +305,7 @@ def test_cmd_delete(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "DELETE": False}
     state["read_value"] = FakeORMVatRate(
-        id=4, name="Rate", rate=10.0, is_default=False, is_preset=False, services=[]
+        id=4, name="Rate", rate=Decimal('10.00'), is_default=False, is_preset=False, services=[]
     )
 
     response = api.vat_rate.delete(obj_id=4)
@@ -320,7 +321,7 @@ def test_cmd_delete_preset(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "DELETE": False}
     state["read_value"] = FakeORMVatRate(
-        id=4, name="Rate", rate=10.0, is_default=False, is_preset=True, services=[]
+        id=4, name="Rate", rate=Decimal('10.00'), is_default=False, is_preset=True, services=[]
     )
 
     response = api.vat_rate.delete(obj_id=4)
@@ -345,14 +346,15 @@ def test_cmd_delete_unknown(mock_vat_rate_model, mock_schema_from_orm):
 
 
 def test_cmd_delete_in_use(mock_vat_rate_model, mock_schema_from_orm):
-    service = FakeORMService(id=1, name="Service 1", unit_price=100.0)
+    service_revision = FakeORMServiceRevision(id=1, name="Service 1", unit_price=Decimal('100.00'))
+    service = FakeORMService(id=1, rev_id=1, revisions={1: service_revision})
     vat_rate = FakeORMVatRate(
         id=4,
         name="Rate",
-        rate=10.0,
+        rate=Decimal('10.00'),
         is_default=False,
         is_preset=False,
-        services=[service],
+        services=[service_revision],
     )
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "DELETE": False}
@@ -374,7 +376,7 @@ def test_cmd_delete_error(mock_vat_rate_model, mock_schema_from_orm):
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "DELETE": crud.CrudError}
     state["read_value"] = FakeORMVatRate(
-        id=4, name="Rate", rate=10.0, is_default=False, is_preset=False, services=[]
+        id=4, name="Rate", rate=Decimal('10.00'), is_default=False, is_preset=False, services=[]
     )
 
     response = api.vat_rate.delete(obj_id=4)

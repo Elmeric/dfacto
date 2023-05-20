@@ -49,11 +49,30 @@ class Service(_ServiceInDBBase):
 
     @classmethod
     def from_orm(cls, orm_obj: models.Service) -> "Service":
+        rev_id = orm_obj.rev_id
+        revision = orm_obj.revisions[rev_id]
+        # revision = None
+        # for rev in orm_obj.revisions:
+        #     rev: models.ServiceRevision
+        #     if rev.id == rev_id:
+        #         revision = rev
+        #         break
+        # assert revision is not None
         return cls(
             id=orm_obj.id,
-            name=orm_obj.name,
-            unit_price=orm_obj.unit_price.quantize(Decimal('0.01')),
-            vat_rate=VatRate.from_orm(orm_obj.vat_rate),
+            name=revision.name,
+            unit_price=revision.unit_price.quantize(Decimal('0.01')),
+            vat_rate=VatRate.from_orm(revision.vat_rate),
+        )
+
+    @classmethod
+    def from_revision(cls, orm_obj: models.Service, rev_id: int) -> "Service":
+        revision = orm_obj.revisions[rev_id]
+        return cls(
+            id=orm_obj.id,
+            name=revision.name,
+            unit_price=revision.unit_price.quantize(Decimal('0.01')),
+            vat_rate=VatRate.from_orm(revision.vat_rate),
         )
 
 
