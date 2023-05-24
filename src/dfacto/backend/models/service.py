@@ -5,39 +5,29 @@
 # LICENSE file in the root directory of this source tree.
 
 import decimal
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship, attribute_keyed_dict
 
-from .base_model import BaseModel, intpk
+from .base_model import BaseModel
 
 if TYPE_CHECKING:  # pragma: no cover
     from .vat_rate import VatRate
 
 
+# https://hub.packtpub.com/slowly-changing-dimension-scd-type-6/
 class Service(BaseModel):
     __tablename__ = "service"
 
-    id: Mapped[intpk] = mapped_column(init=False)
-    rev_id: Mapped[int] = mapped_column(init=False, nullable=True)
-
-    revisions: Mapped[dict[int, "ServiceRevision"]] = relationship(
-        init=False,
-        collection_class=attribute_keyed_dict("id"),
-        back_populates="service",
-        cascade="all, delete-orphan"
-    )
-
-
-class ServiceRevision(BaseModel):
-    __tablename__ = "service_revision"
-
-    id: Mapped[intpk] = mapped_column(init=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    version: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column()
     unit_price: Mapped[decimal.Decimal]
     vat_rate_id: Mapped[int] = mapped_column(ForeignKey("vat_rate.id"))
-    service_id: Mapped[int] = mapped_column(ForeignKey("service.id"))
+    from_: Mapped[datetime] = mapped_column(default=datetime(1900, 1, 1, 0, 0, 0))
+    to_: Mapped[datetime] = mapped_column(default=datetime(9999, 12, 31, 23, 59, 59))
+    is_current: Mapped[bool] = mapped_column(default=True)
 
-    service: Mapped["Service"] = relationship(init=False, back_populates="revisions")
     vat_rate: Mapped["VatRate"] = relationship(init=False, back_populates="services")

@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from typing import Generic, Optional, Type, TypeVar
+from typing import Generic, Optional, Type, TypeVar, Any
 
 from sqlalchemy.orm import Session
 
@@ -81,7 +81,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
-    def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
+    def update(self, obj_id: Any, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
         try:
             db_obj = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:

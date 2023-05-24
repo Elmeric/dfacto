@@ -12,7 +12,7 @@ from .client import Address, Client, ClientCreate, ClientInDB, ClientUpdate
 from .company import Company, CompanyCreate, CompanyInDB, CompanyUpdate
 from .invoice import Invoice, InvoiceCreate, InvoiceInDB, InvoiceUpdate, StatusLog
 from .item import Item, ItemCreate, ItemInDB, ItemUpdate
-from .service import Service, ServiceCreate, ServiceInDB, ServiceUpdate
+from .service import Service, ServiceCreate, ServiceInDB, ServiceUpdate, ServiceKey
 from .vat_rate import VatRate, VatRateCreate, VatRateInDB, VatRateUpdate
 
 __all__ = [
@@ -23,6 +23,7 @@ __all__ = [
     "Service",
     "ServiceCreate",
     "ServiceUpdate",
+    "ServiceKey",
     "Client",
     "ClientCreate",
     "ClientUpdate",

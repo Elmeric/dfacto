@@ -265,7 +265,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             )
         try:
             client_ = self.crud_object.get(self.session, obj_id)
-            service = crud.service.get(self.session, service_id)
+            service = crud.service.get_current(self.session, service_id)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,

@@ -51,7 +51,7 @@ class Basket(_BasketInDBBase):
     def amount(self) -> Amount:
         raw_amount = vat_amount = net_amount = Decimal(0)
         for item in self.items:
-            amount = item.amount
+            amount = item.current_amount
             raw_amount += amount.raw
             vat_amount += amount.vat
             net_amount += amount.net

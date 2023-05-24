@@ -338,7 +338,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
         self.service_editor.clear()
         self._forbidden_names = []
 
-        response = api.service.get_all()
+        response = api.service.get_all(current_only=True)
 
         if response.status is not CommandStatus.COMPLETED:
             QtUtil.raise_fatal_error(
@@ -493,17 +493,17 @@ class ServiceSelector(QtUtil.QFramedWidget):
         assert origin_service is not None
         old_name = origin_service.name
 
-        updated_service = {}
+        updated_data = {}
 
         if (name := service.name) != old_name:
-            updated_service["name"] = name
+            updated_data["name"] = name
         if (price := service.unit_price) != origin_service.unit_price:
-            updated_service["unit_price"] = price
+            updated_data["unit_price"] = price
         if (value := service.vat_rate_id) != origin_service.vat_rate.id:
-            updated_service["vat_rate_id"] = value
+            updated_data["vat_rate_id"] = value
 
         response = api.service.update(
-            origin_service.id, obj_in=schemas.ServiceUpdate(**updated_service)
+            origin_service.id, obj_in=schemas.ServiceUpdate(**updated_data)
         )
         if response.status is not CommandStatus.COMPLETED:
             QtUtil.raise_fatal_error(
@@ -511,7 +511,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
                 f" - Reason is: {response.reason}"
             )
 
-        updated_service = response.body
+        updated_service: schemas.Service = response.body
 
         current_item = self.services_lst.currentItem()
         current_item.setData(ServiceSelector.UserRoles.ServiceRole, updated_service)

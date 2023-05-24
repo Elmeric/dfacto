@@ -16,7 +16,6 @@ from .service import Service
 @dataclass
 class _ItemBase(BaseSchema[models.Item]):
     service_id: int
-    service_rev_id: int
     quantity: int
 
 
@@ -44,6 +43,7 @@ class _ItemInDBBase(_ItemBase):
 @dataclass
 class Item(_ItemInDBBase):
     service: Service
+    current_service: Service
 
     @property
     def amount(self) -> Amount:
@@ -53,19 +53,28 @@ class Item(_ItemInDBBase):
         net_amount = raw_amount + vat_amount
         return Amount(raw=raw_amount, vat=vat_amount, net=net_amount)
 
+    @property
+    def current_amount(self) -> Amount:
+        service = self.current_service
+        raw_amount = service.unit_price * self.quantity
+        vat_amount = (raw_amount * service.vat_rate.rate / 100).quantize(Decimal('0.01'))
+        net_amount = raw_amount + vat_amount
+        return Amount(raw=raw_amount, vat=vat_amount, net=net_amount)
+
     @classmethod
     def from_orm(cls, orm_obj: models.Item) -> "Item":
-        service_rev_id = orm_obj.service_rev_id
         return cls(
             id=orm_obj.id,
             service_id=orm_obj.service_id,
-            service_rev_id=service_rev_id,
             quantity=orm_obj.quantity,
-            service=Service.from_revision(orm_obj.service, service_rev_id),
+            service=Service.from_orm(orm_obj.service),
+            current_service=Service.from_orm(orm_obj.current_service),
         )
 
 
 # Additional properties stored in DB
 @dataclass
 class ItemInDB(_ItemInDBBase):
-    pass
+    service_version: int
+    invoice_id: int
+    basket_id: int

@@ -246,14 +246,14 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         for item in items:
             self._item_ids.append(item.id)
             self._items[item.id] = [
-                item.service.id,
-                item.service.name,
-                item.service.unit_price,
+                item.service_id,
+                item.current_service.name,
+                item.current_service.unit_price,
                 item.quantity,
-                item.amount.raw,
-                item.service.vat_rate.rate,
-                item.amount.vat,
-                item.amount.net,
+                item.current_amount.raw,
+                item.current_service.vat_rate.rate,
+                item.current_amount.vat,
+                item.current_amount.net,
             ]
             self._services_map[item.service.id] = item.id
 
@@ -266,14 +266,14 @@ class BasketTableModel(QtCore.QAbstractTableModel):
         start_index = self.index_from_item_id(item.id)
         if start_index.isValid():
             self._items[item.id] = [
-                item.service.id,
-                item.service.name,
-                item.service.unit_price,
+                item.service_id,
+                item.current_service.name,
+                item.current_service.unit_price,
                 item.quantity,
-                item.amount.raw,
-                item.service.vat_rate.rate,
-                item.amount.vat,
-                item.amount.net,
+                item.current_amount.raw,
+                item.current_service.vat_rate.rate,
+                item.current_amount.vat,
+                item.current_amount.net,
             ]
             end_index = start_index.sibling(start_index.row(), NET_AMOUNT)
             self.dataChanged.emit(

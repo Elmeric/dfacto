@@ -57,10 +57,14 @@ class CRUDInvoice(
             client_id=basket.client_id,
             status=models.InvoiceStatus.DRAFT,
         )
-        for item in basket.items:
-            db_obj.items.append(item)
-            if clear_basket:
-                item.basket_id = None
+        item: models.Item
+        with dbsession.no_autoflush:
+            for item in basket.items:
+                current_service: models.Service = item.current_service
+                item.service_version = current_service.version
+                db_obj.items.append(item)
+                if clear_basket:
+                    item.basket_id = None
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
 
