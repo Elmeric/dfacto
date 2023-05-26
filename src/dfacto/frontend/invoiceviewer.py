@@ -391,9 +391,11 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.period_cmb = QtWidgets.QComboBox()
         self.period_cmb.setToolTip("Filter on emitted date")
         self.period_cmb.setStatusTip("Filter on emitted date")
-        self.status_cmb = QtWidgets.QComboBox()
-        self.status_cmb.setToolTip("Filter on status")
-        self.status_cmb.setStatusTip("Filter on status")
+        self.status_btn = QtWidgets.QToolButton()
+        self.status_btn.setText('Status filter ')
+        self.status_btn.setToolTip("Filter on status")
+        self.status_btn.setStatusTip("Filter on status")
+        self.status_btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
         self.reset_btn = QtWidgets.QPushButton()
         self.reset_btn.setFlat(True)
         self.reset_btn.setIconSize(small_icon_size)
@@ -478,7 +480,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         tool_layout.setSpacing(0)
         tool_layout.addWidget(self.all_ckb)
         tool_layout.addWidget(self.period_cmb)
-        tool_layout.addWidget(self.status_cmb)
+        tool_layout.addWidget(self.status_btn)
         tool_layout.addWidget(self.reset_btn)
         tool_layout.addStretch()
         tool_layout.addWidget(self.show_btn)
@@ -506,14 +508,30 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.period_cmb.addItem("All Dates", userData=Period())
         self.period_cmb.model().sort(0)
 
+        self.status_menu = QtWidgets.QMenu(self)
+        self.status_actions: dict[str, QtWidgets.QCheckBox] = dict()
+        action_ckb = QtWidgets.QCheckBox("All", self.status_menu)
+        ckb_action = QtWidgets.QWidgetAction(self.status_menu)
+        ckb_action.setDefaultWidget(action_ckb)
+        self.status_menu.addAction(ckb_action)
+        action_ckb.setChecked(False)
+        action_ckb.stateChanged.connect(self.on_all_selected)
+        self.status_actions["all"] = action_ckb
         for status in InvoiceStatus:
-            self.status_cmb.addItem(status.name.title(), userData=status)
-        self.status_cmb.addItem("Not Cancelled", userData="")
-        self.status_cmb.model().sort(0)
+            action_ckb = QtWidgets.QCheckBox(status.name.title(), self.status_menu)
+            ckb_action = QtWidgets.QWidgetAction(self.status_menu)
+            ckb_action.setDefaultWidget(action_ckb)
+            self.status_menu.addAction(ckb_action)
+            if status is not InvoiceStatus.CANCELLED:
+                action_ckb.setChecked(True)
+            action_ckb.stateChanged.connect(
+                lambda state, s=status: self.on_status_changed(s.name.lower(), state)
+            )
+            self.status_actions[status.name.lower()] = action_ckb
+        self.status_btn.setMenu(self.status_menu)
 
         self.all_ckb.toggled.connect(self.on_all_selection)
         self.period_cmb.activated.connect(self.on_period_selection)
-        self.status_cmb.activated.connect(self.on_status_selection)
         self.reset_btn.clicked.connect(self.set_default_filters)
 
         self._invoice_table.selectionModel().currentChanged.connect(self.show_buttons)
@@ -637,8 +655,10 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         with QtCore.QSignalBlocker(self.period_cmb):
             self.period_cmb.setCurrentText("Current Quarter")
 
-        with QtCore.QSignalBlocker(self.status_cmb):
-            self.status_cmb.setCurrentText("Not Cancelled")
+        for ckb in self.status_actions.values():
+            status = ckb.text().lower()
+            with QtCore.QSignalBlocker(ckb):
+                ckb.setChecked(status != "all" and status != "cancelled")
 
         self._invoice_table.select_and_show_row(proxy.rowCount() - 1)
 
@@ -667,10 +687,33 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self._invoice_table.select_and_show_row(proxy.rowCount() - 1)
 
     @QtCore.pyqtSlot(int)
-    def on_status_selection(self, index: int) -> None:
+    def on_all_selected(self, state: int) -> None:
+        if state == QtCore.Qt.CheckState.Checked.value:
+            selection = ["draft", "emitted", "reminded", "paid", "cancelled"]
+            for ckb in self.status_actions.values():
+                with QtCore.QSignalBlocker(ckb):
+                    ckb.setChecked(True)
+        else:
+            selection = []
+            for ckb in self.status_actions.values():
+                with QtCore.QSignalBlocker(ckb):
+                    ckb.setChecked(False)
         proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
-        status = self.status_cmb.itemText(index)
-        proxy.set_status_filter(status)
+        proxy.set_statuses_filter(selection)
+        self._invoice_table.select_and_show_row(proxy.rowCount() - 1)
+
+    def on_status_changed(self, status: str, state: int) -> None:
+        ckb = self.status_actions["all"]
+        if state == QtCore.Qt.CheckState.Checked.value:
+            with QtCore.QSignalBlocker(ckb):
+                ckb.setChecked(
+                    all([c.isChecked() for s, c in self.status_actions.items() if s != "all"])
+                )
+        else:
+            with QtCore.QSignalBlocker(ckb):
+                ckb.setChecked(False)
+        proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
+        proxy.toggle_status(status)
         self._invoice_table.select_and_show_row(proxy.rowCount() - 1)
 
     @QtCore.pyqtSlot(QtCore.QModelIndex)
@@ -729,7 +772,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
     def _enable_filters(self, enable: bool) -> None:
         self.all_ckb.setEnabled(enable)
         self.period_cmb.setEnabled(enable)
-        self.status_cmb.setEnabled(enable)
+        self.status_btn.setEnabled(enable)
         self.reset_btn.setEnabled(enable)
 
     def _enable_buttons(
@@ -1003,6 +1046,7 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
     _client_filter = -1
     _period_filter = PeriodFilter.CURRENT_QUARTER.as_period()
     _status_filter = "Not Cancelled"
+    _statuses_filter = ["draft", "emitted", "reminded", "paid"]
     _are_all_invoices_visible = False
 
     def __init__(self):
@@ -1044,6 +1088,22 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
         self.invalidateFilter()
 
     @classmethod
+    def statuses_filter(cls) -> list[str]:
+        return cls._statuses_filter
+
+    def set_statuses_filter(self, values: list[str]) -> None:
+        InvoiceFilterProxyModel._statuses_filter = values
+        self.invalidateFilter()
+
+    def toggle_status(self, value: str) -> None:
+        current_filter = InvoiceFilterProxyModel._statuses_filter
+        if value in current_filter:
+            current_filter.remove(value)
+        else:
+            current_filter.append(value)
+        self.invalidateFilter()
+
+    @classmethod
     def are_all_invoices_visible(cls) -> bool:
         return cls._are_all_invoices_visible
 
@@ -1055,6 +1115,7 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
         InvoiceFilterProxyModel._are_all_invoices_visible = False
         InvoiceFilterProxyModel._period_filter = PeriodFilter.CURRENT_QUARTER.as_period()
         InvoiceFilterProxyModel._status_filter = "Not Cancelled"
+        InvoiceFilterProxyModel._statuses_filter = ["draft", "emitted", "reminded", "paid"]
         self.invalidateFilter()
 
     def lessThan(self, left: QtCore.QModelIndex, right: QtCore.QModelIndex) -> bool:
@@ -1108,10 +1169,7 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
 
         index = source_model.index(source_row, STATUS, source_parent)
         status = source_model.data(index, QtCore.Qt.ItemDataRole.DisplayRole)
-        if self._status_filter == "Not Cancelled":
-            ok_status = status.lower() != InvoiceStatus.CANCELLED.name.lower()
-        else:
-            ok_status = status.lower() == self.status_filter().lower()
+        ok_status = status.lower() in self.statuses_filter()
 
         return ok_client and ok_period and ok_status
 
