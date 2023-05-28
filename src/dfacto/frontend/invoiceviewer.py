@@ -606,20 +606,21 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         else:
             self._copy_in_basket(invoice)
 
-    @QtCore.pyqtSlot(schemas.Client)
+    @QtCore.pyqtSlot(object)
     def set_current_client(self, client: Optional[schemas.Client]) -> None:
         self._current_client = client
+        proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
 
         if client is None:
-            logger.info("No client exists, disable invoices interactions")
+            logger.info("No client exists or all clients are hidden, disable invoices interactions")
             self.client_lbl.clear()
             self.client_pix.clear()
-            self._invoice_table.model().sourceModel().clear_invoices()
             self._enable_filters(False)
             self._enable_buttons(enable=False)
+            proxy.set_client_filter(-1)
             return
 
-        # A client is selected
+        # A client is selected and it is visible
         logger.info(f"Show invoices of client: %s", client.name)
         self._enable_filters(True)
         self.client_lbl.setText(f"{client.name}")
@@ -627,7 +628,6 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self.active_pix if client.is_active else self.inactive_pix
         )
 
-        proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
         proxy.set_client_filter(client.id)
 
         with QtCore.QSignalBlocker(self.all_ckb):

@@ -27,7 +27,7 @@ class ClientSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ClientRole = QtCore.Qt.ItemDataRole.UserRole + 1
 
-    client_selected = QtCore.pyqtSignal(object)
+    client_selected = QtCore.pyqtSignal(object)   # client or None
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
@@ -156,7 +156,7 @@ class ClientSelector(QtUtil.QFramedWidget):
     @property
     def current_client(self) -> Optional[schemas.Client]:
         current_item = self.clients_lst.currentItem()
-        if current_item is None:
+        if current_item is None or current_item.isHidden():
             return
         return current_item.data(ClientSelector.UserRoles.ClientRole)
 
