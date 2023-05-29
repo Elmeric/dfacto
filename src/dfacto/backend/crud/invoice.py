@@ -261,17 +261,27 @@ class CRUDInvoice(
         )
 
         now = datetime.now()
-        invoice_.status = status
-        dbsession.execute(
-            update(models.StatusLog)
-            .where(models.StatusLog.invoice_id == invoice_.id)
-            .where(models.StatusLog.to == None)
-            .values(to=now)
-        )
-        log = models.StatusLog(
-            invoice_id=invoice_.id, from_=now, to=None, status=status
-        )
-        dbsession.add(log)
+        current_status = invoice_.status
+        if status is models.InvoiceStatus.REMINDED and current_status == status:
+            # It is a new reminder, only changes from_ date of the last status log
+            dbsession.execute(
+                update(models.StatusLog)
+                .where(models.StatusLog.invoice_id == invoice_.id)
+                .where(models.StatusLog.to == None)
+                .values(from_=now)
+            )
+        else:
+            invoice_.status = status
+            dbsession.execute(
+                update(models.StatusLog)
+                .where(models.StatusLog.invoice_id == invoice_.id)
+                .where(models.StatusLog.to == None)
+                .values(to=now)
+            )
+            log = models.StatusLog(
+                invoice_id=invoice_.id, from_=now, to=None, status=status
+            )
+            dbsession.add(log)
 
         try:
             dbsession.commit()
