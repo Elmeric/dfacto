@@ -5,8 +5,9 @@
 # LICENSE file in the root directory of this source tree.
 
 from datetime import datetime
+from typing import cast
 
-from sqlalchemy import update
+from sqlalchemy import update, select, delete
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -288,6 +289,53 @@ class CRUDInvoice(
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
+
+    def get_status_history(
+        self, dbsession: Session, *, invoice_id: int
+    ) -> list[models.StatusLog]:
+        try:
+            status_log = cast(
+                list[models.StatusLog],
+                dbsession.scalars(
+                    select(models.StatusLog)
+                    .where(models.StatusLog.invoice_id == invoice_id)
+                    .order_by(models.StatusLog.from_)
+                ).all()
+            )
+        except SQLAlchemyError as exc:
+            raise CrudError() from exc
+        else:
+            return status_log
+
+    def revert_status(
+        self,
+        dbsession: Session,
+        *,
+        invoice_: models.Invoice,
+        status: models.InvoiceStatus,
+    ) -> models.Invoice:
+        current_status = invoice_.status
+        invoice_.status = status
+        dbsession.execute(
+            delete(models.StatusLog)
+            .where(models.StatusLog.invoice_id == invoice_.id)
+            .where(models.StatusLog.status == current_status)
+        )
+        dbsession.execute(
+            update(models.StatusLog)
+            .where(models.StatusLog.invoice_id == invoice_.id)
+            .where(models.StatusLog.status == status)
+            .values(to=None)
+        )
+
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            dbsession.rollback()
+            raise CrudError() from exc
+        else:
+            dbsession.refresh(invoice_)
+            return invoice_
 
 
 invoice = CRUDInvoice(models.Invoice)

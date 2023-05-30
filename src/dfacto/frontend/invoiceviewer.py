@@ -176,6 +176,20 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             f"Cannot copy invoice in basket - Reason is: {response.reason}"
         )
 
+    def revert_to_previous_status(
+        self, invoice_id: int
+    ) -> tuple[CommandReport, InvoiceStatus]:
+        response = api.client.revert_invoice_status(invoice_id=invoice_id)
+
+        if response.status is not CommandStatus.FAILED:
+            invoice: schemas.Invoice = response.body
+            self.update_invoice(invoice)
+            return response.report, invoice.status
+
+        QtUtil.raise_fatal_error(
+            f"Cannot revert invoice to its previous status - Reason is: {response.reason}"
+        )
+
     def invoice_from_index(self, index: QtCore.QModelIndex) -> Optional[InvoiceItem]:
         invoice_id = self._invoice_id_from_index(index)
         if invoice_id is not None:
@@ -445,6 +459,12 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.cancel_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-cancel.png"))
         self.cancel_btn.setToolTip("Mark the selected invoice as cancelled")
         self.cancel_btn.setStatusTip("Mark the selected invoice as cancelled")
+        self.undo_btn = QtWidgets.QPushButton()
+        self.undo_btn.setFlat(True)
+        self.undo_btn.setIconSize(icon_size)
+        self.undo_btn.setIcon(QtGui.QIcon(f"{resources}/undo.png"))
+        self.undo_btn.setToolTip("Revert invoice to its previous status")
+        self.undo_btn.setStatusTip("Revert invoice to its previous status")
 
         self._invoice_table = InvoiceTable(invoice_model)
 
@@ -484,6 +504,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         tool_layout.addWidget(self.reset_btn)
         tool_layout.addStretch()
         tool_layout.addWidget(self.show_btn)
+        tool_layout.addWidget(self.undo_btn)
         tool_layout.addWidget(self.emit_btn)
         tool_layout.addWidget(self.remind_btn)
         tool_layout.addWidget(self.paid_btn)
@@ -553,6 +574,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.cancel_btn.clicked.connect(
             lambda: self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
         )
+        self.undo_btn.clicked.connect(self.undo)
 
         self.invoice_html_view.finished.connect(self.on_html_view_finished)
 
@@ -597,6 +619,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
 
+    @QtCore.pyqtSlot()
     def basket_from_invoice(self) -> None:
         invoice_table = self._invoice_table
         invoice = invoice_table.selected_invoice()
@@ -605,6 +628,28 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self._move_in_basket(invoice)
         else:
             self._copy_in_basket(invoice)
+
+    @QtCore.pyqtSlot()
+    def undo(self) -> None:
+        invoice_table = self._invoice_table
+        invoice = invoice_table.selected_invoice()
+
+        report, status = self._invoice_table.source_model().revert_to_previous_status(
+            invoice[ID]
+        )
+
+        if report.status is CommandStatus.COMPLETED:
+            self._enable_buttons(status=status)
+        else:
+            QtWidgets.QMessageBox.warning(
+                None,  # type: ignore
+                f"{QtWidgets.QApplication.applicationName()} - Revert invoice status",
+                f"""
+                <p>Cannot revert invoice {invoice[CODE]} to its previous status</p>
+                <p><strong>Reason is: {report.reason}</strong></p>
+                """,
+                QtWidgets.QMessageBox.StandardButton.Close,
+            )
 
     @QtCore.pyqtSlot(object)
     def set_current_client(self, client: Optional[schemas.Client]) -> None:
@@ -785,7 +830,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             assert status is not None
             is_draft = status is InvoiceStatus.DRAFT
             is_emitted_or_reminded = status is InvoiceStatus.EMITTED or status is InvoiceStatus.REMINDED
+            is_undoable = not is_draft
             self.show_btn.setEnabled(True)
+            self.undo_btn.setVisible(is_undoable)
             self.emit_btn.setVisible(is_draft)
             self.remind_btn.setVisible(is_emitted_or_reminded)
             self.paid_btn.setVisible(is_emitted_or_reminded)
@@ -795,6 +842,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         else:
             assert status is None
             self.show_btn.setEnabled(False)
+            self.undo_btn.setVisible(False)
             self.emit_btn.setVisible(False)
             self.remind_btn.setVisible(False)
             self.paid_btn.setVisible(False)
@@ -935,6 +983,7 @@ class InvoiceTable(QtWidgets.QTableView):
         )
         self.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
         self.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.setContextMenuPolicy(QtCore.Qt.ContextMenuPolicy.NoContextMenu)
         self.verticalHeader().hide()
         self.horizontalHeader().setStretchLastSection(True)
         self.setStyleSheet(

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import timedelta, datetime
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Type
+from typing import Optional, Type, cast
 
 import jinja2 as jinja
 from babel.dates import format_date
@@ -984,6 +984,42 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
             else:
                 return CommandResponse(CommandStatus.COMPLETED)
+
+    @command
+    def revert_invoice_status(self, *, invoice_id: int) -> CommandResponse:
+        try:
+            invoice = crud.invoice.get(self.session, invoice_id)
+            status_log = crud.invoice.get_status_history(self.session, invoice_id=invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REVERT-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            if invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"REVERT-INVOICE - Invoice {invoice_id} not found.",
+                )
+            if len(status_log) < 2:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"REVERT-INVOICE - Invoice {invoice_id} is in DRAFT status.",
+                )
+
+            current_status = cast(InvoiceStatus, invoice.status)
+            previous_status = cast(InvoiceStatus, status_log[-2].status)
+            try:
+                crud.invoice.revert_status(self.session, invoice_=invoice, status=previous_status)
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"REVERT-INVOICE - Cannot revert invoice {invoice_id} from "
+                    f"status {current_status.name} to {previous_status.name}: {exc}",
+                )
+            else:
+                body = schemas.Invoice.from_orm(invoice)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
 
 
 client = ClientModel()
