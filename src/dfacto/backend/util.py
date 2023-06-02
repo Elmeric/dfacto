@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from typing import NamedTuple, cast
 
@@ -18,6 +19,12 @@ from typing import NamedTuple, cast
 #     if quarter == 1:
 #         return Period.from_quarter(year - 1, 4)
 #     return Period.from_quarter(year, quarter - 1)
+
+
+@dataclass
+class DatetimeRange:
+    from_: datetime
+    to: datetime
 
 
 class Period(NamedTuple):

@@ -668,6 +668,14 @@ class BasketTable(QtWidgets.QTableView):
         proxy_model.setSourceModel(basket_model)
         self.setModel(proxy_model)
 
+        # Prevent deselection: one row is always selected and a current index exists
+        old_selection_model = self.selectionModel()
+        new_selection_model = QtUtil.UndeselectableSelectionModel(
+            self.model(), old_selection_model.parent()
+        )
+        self.setSelectionModel(new_selection_model)
+        old_selection_model.deleteLater()
+
         self.clicked.connect(self.edit_quantity)
         self.selectionModel().currentChanged.connect(self.edit_quantity)
         basket_model.rowsInserted.connect(self.on_rows_inserted)

@@ -17,7 +17,7 @@ from dfacto import settings as Config
 from dfacto.backend import crud, schemas, naming
 from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 from dfacto.backend.models import InvoiceStatus
-from dfacto.backend.util import Period, PeriodFilter
+from dfacto.backend.util import Period, PeriodFilter, DatetimeRange
 
 from .base import DFactoModel
 
@@ -188,6 +188,19 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             )
         else:
             body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
+            return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    @command
+    def get_invoice(self, *, invoice_id: int) -> CommandResponse:
+        try:
+            invoice = crud.invoice.get(self.session, invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            body = schemas.Invoice.from_orm(invoice)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
@@ -1016,6 +1029,38 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     CommandStatus.FAILED,
                     f"REVERT-INVOICE - Cannot revert invoice {invoice_id} from "
                     f"status {current_status.name} to {previous_status.name}: {exc}",
+                )
+            else:
+                body = schemas.Invoice.from_orm(invoice)
+                return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    @command
+    def update_invoice_history(
+        self, *, invoice_id: int, log: dict[InvoiceStatus, DatetimeRange]
+    ) -> CommandResponse:
+        try:
+            invoice = crud.invoice.get(self.session, invoice_id)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE_HISTORY-INVOICE - SQL or database error: {exc}",
+            )
+        else:
+            if invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"UPDATE_HISTORY-INVOICE - Invoice {invoice_id} not found.",
+                )
+
+            try:
+                crud.invoice.set_status_history(
+                    self.session, invoice_=invoice, log=log
+                )
+            except crud.CrudError as exc:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"UPDATE_HISTORY-INVOICE - Cannot update history "
+                    f"of invoice {invoice_id} : {exc}",
                 )
             else:
                 body = schemas.Invoice.from_orm(invoice)

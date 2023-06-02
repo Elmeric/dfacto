@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from datetime import datetime
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 from sqlalchemy import update, select, delete
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,6 +14,9 @@ from sqlalchemy.orm import Session
 from dfacto.backend import models, schemas
 
 from .base import CRUDBase, CrudError
+
+if TYPE_CHECKING:
+    from dfacto.backend.util import DatetimeRange
 
 
 class CRUDInvoice(
@@ -27,12 +30,7 @@ class CRUDInvoice(
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
 
-        now = datetime.now()
-        # dbsession.execute(
-        #     update(models.StatusLog)
-        #         .where(models.StatusLog.to == None)
-        #         .values(to=now)
-        # )
+        now = datetime.now().date()
         log = models.StatusLog(
             invoice_id=db_obj.id, from_=now, to=None, status=models.InvoiceStatus.DRAFT
         )
@@ -54,7 +52,7 @@ class CRUDInvoice(
         *,
         clear_basket: bool = True,
     ) -> models.Invoice:
-        db_obj = models.Invoice(
+        db_obj = self.model(
             client_id=basket.client_id,
             status=models.InvoiceStatus.DRAFT,
         )
@@ -69,7 +67,7 @@ class CRUDInvoice(
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
 
-        now = datetime.now()
+        now = datetime.now().date()
         log = models.StatusLog(
             invoice_id=db_obj.id, from_=now, to=None, status=models.InvoiceStatus.DRAFT
         )
@@ -162,7 +160,7 @@ class CRUDInvoice(
 
         item_ = models.Item(
             service_id=service.id,
-            service_rev_id=service.rev_id,
+            service_version=service.version,
             quantity=quantity,
         )
         item_.invoice_id = invoice_.id
@@ -225,7 +223,7 @@ class CRUDInvoice(
             models.InvoiceStatus.REMINDED,
         ), "Only emitted invoices may be cancelled."
 
-        now = datetime.now()
+        now = datetime.now().date()
         invoice_.status = models.InvoiceStatus.CANCELLED
         dbsession.execute(
             update(models.StatusLog)
@@ -261,7 +259,7 @@ class CRUDInvoice(
             models.InvoiceStatus.CANCELLED,
         )
 
-        now = datetime.now()
+        now = datetime.now().date()
         current_status = invoice_.status
         if status is models.InvoiceStatus.REMINDED and current_status == status:
             # It is a new reminder, only changes from_ date of the last status log
@@ -307,13 +305,32 @@ class CRUDInvoice(
         else:
             return status_log
 
+    def set_status_history(
+        self,
+        dbsession: Session,
+        *,
+        invoice_: models.Invoice,
+        log: dict[models.InvoiceStatus, "DatetimeRange"]
+    ) -> None:
+        for status, from_to in log.items():
+            dbsession.execute(
+                update(models.StatusLog)
+                .where(models.StatusLog.invoice_id == invoice_.id)
+                .where(models.StatusLog.status == status)
+                .values(from_=from_to.from_, to=from_to.to)
+            )
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            raise CrudError() from exc
+
     def revert_status(
         self,
         dbsession: Session,
         *,
         invoice_: models.Invoice,
         status: models.InvoiceStatus,
-    ) -> models.Invoice:
+    ) -> None:
         current_status = invoice_.status
         invoice_.status = status
         dbsession.execute(
@@ -333,9 +350,6 @@ class CRUDInvoice(
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
-        else:
-            dbsession.refresh(invoice_)
-            return invoice_
 
 
 invoice = CRUDInvoice(models.Invoice)

@@ -19,10 +19,11 @@ from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus, CommandReport
 from dfacto.backend.models.invoice import InvoiceStatus
-from dfacto.backend.util import Period, PeriodFilter
+from dfacto.backend.util import Period, PeriodFilter, DatetimeRange
 from dfacto.util import qtutil as QtUtil
 from . import get_current_company
 from .invoice_web_view import InvoiceWebViewer
+from .invoice_log_view import StatusLogEditor
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
     class UserRoles(IntEnum):
         DateRole = QtCore.Qt.ItemDataRole.UserRole + 1
         StatusRole = QtCore.Qt.ItemDataRole.UserRole + 2
+        ClientRole = QtCore.Qt.ItemDataRole.UserRole + 3
 
     def __init__(self) -> None:
         super().__init__()
@@ -77,11 +79,23 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             f"Cannot retrieve invoices - Reason is: {response.reason}"
         )
 
+    def get_invoice(self, invoice_id: int) -> schemas.Invoice:
+        response = api.client.get_invoice(invoice_id=invoice_id)
+
+        if response.status is not CommandStatus.FAILED:
+            invoice = cast(schemas.Invoice, response.body)
+            return invoice
+
+        QtUtil.raise_fatal_error(
+            f"Cannot get invoice {invoice_id}"
+            f" - Reason is: {response.reason}"
+        )
+
     def get_html_preview(
         self, invoice_id: int, mode: api.client.HtmlMode
     ) -> tuple[Optional[str], CommandReport]:
         response = api.client.preview_invoice(
-            self._get_client_of_invoice(invoice_id),
+            self._get_client_id_of_invoice(invoice_id),
             invoice_id=invoice_id,
             mode=mode
         )
@@ -96,7 +110,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
     def delete_invoice(self, invoice_id: int) -> CommandReport:
         response = api.client.delete_invoice(
-            self._get_client_of_invoice(invoice_id),
+            self._get_client_id_of_invoice(invoice_id),
             invoice_id=invoice_id
         )
 
@@ -136,7 +150,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         #         raise ValueError(f"Cannot mark invoice as {status.name}")
 
         response = action(
-            self._get_client_of_invoice(invoice_id),
+            self._get_client_id_of_invoice(invoice_id),
             invoice_id=invoice_id
         )
 
@@ -164,6 +178,23 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
         QtUtil.raise_fatal_error(
             f"Cannot move invoice in basket - Reason is: {response.reason}"
+        )
+
+    def update_invoice_history(
+        self,
+        invoice_id: int,
+        log: dict[InvoiceStatus, DatetimeRange]
+    ) -> CommandReport:
+        response = api.client.update_invoice_history(invoice_id=invoice_id, log=log)
+
+        if response.status is not CommandStatus.FAILED:
+            invoice = cast(schemas.Invoice, response.body)
+            self.update_invoice(invoice)
+            return response.report
+
+        QtUtil.raise_fatal_error(
+            f"Cannot update history of invoice {invoice_id}"
+            f" - Reason is: {response.reason}"
         )
 
     def copy_in_basket(self, client_id: int, invoice_id: int) -> CommandReport:
@@ -353,6 +384,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 if role == InvoiceTableModel.UserRoles.StatusRole:
                     return cast(InvoiceStatus, item[STATUS])
 
+                if role == InvoiceTableModel.UserRoles.ClientRole:
+                    return self._get_client_of_invoice(item[ID])
+
         return None
 
     def _invoice_id_from_index(self, index: QtCore.QModelIndex) -> Optional[int]:
@@ -362,12 +396,23 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 return self._invoice_ids[row]
         return None
 
-    def _get_client_of_invoice(self, invoice_id: int) -> int:
+    def _get_client_id_of_invoice(self, invoice_id: int) -> int:
         try:
             invoice = self._invoices[invoice_id]
         except KeyError:
             return -1
         return invoice[CLIENT_ID]
+
+    def _get_client_of_invoice(self, invoice_id: int) -> schemas.Client:
+        response = api.client.get(self._get_client_id_of_invoice(invoice_id))
+
+        if response.status is not CommandStatus.FAILED:
+            client: schemas.Client = response.body
+            return client
+
+        QtUtil.raise_fatal_error(
+            f"Cannot get client of invoice {invoice_id} - Reason is: {response.reason}"
+        )
 
 
 class InvoiceViewer(QtUtil.QFramedWidget):
@@ -465,6 +510,12 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.undo_btn.setIcon(QtGui.QIcon(f"{resources}/undo.png"))
         self.undo_btn.setToolTip("Revert invoice to its previous status")
         self.undo_btn.setStatusTip("Revert invoice to its previous status")
+        self.history_btn = QtWidgets.QPushButton()
+        self.history_btn.setFlat(True)
+        self.history_btn.setIconSize(icon_size)
+        self.history_btn.setIcon(QtGui.QIcon(f"{resources}/history.png"))
+        self.history_btn.setToolTip("Show invoice history")
+        self.history_btn.setStatusTip("Show invoice history")
 
         self._invoice_table = InvoiceTable(invoice_model)
 
@@ -504,6 +555,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         tool_layout.addWidget(self.reset_btn)
         tool_layout.addStretch()
         tool_layout.addWidget(self.show_btn)
+        tool_layout.addWidget(self.history_btn)
         tool_layout.addWidget(self.undo_btn)
         tool_layout.addWidget(self.emit_btn)
         tool_layout.addWidget(self.remind_btn)
@@ -574,6 +626,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.cancel_btn.clicked.connect(
             lambda: self._mark_invoice_as(InvoiceStatus.CANCELLED, confirm=True)
         )
+        self.history_btn.clicked.connect(self.show_history)
         self.undo_btn.clicked.connect(self.undo)
 
         self.invoice_html_view.finished.connect(self.on_html_view_finished)
@@ -628,6 +681,22 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self._move_in_basket(invoice)
         else:
             self._copy_in_basket(invoice)
+
+    @QtCore.pyqtSlot()
+    def show_history(self) -> None:
+        invoice_table = self._invoice_table
+        model = invoice_table.source_model()
+
+        invoice_id = invoice_table.selected_invoice()[ID]
+        invoice = model.get_invoice(invoice_id)
+
+        a_dialog = StatusLogEditor(invoice)
+
+        if a_dialog.exec():
+            model.update_invoice_history(
+                invoice_id=invoice_id,
+                log=a_dialog.status_log
+            )
 
     @QtCore.pyqtSlot()
     def undo(self) -> None:
@@ -765,8 +834,12 @@ class InvoiceViewer(QtUtil.QFramedWidget):
     def show_buttons(self, index: QtCore.QModelIndex) -> None:
         if index.isValid():
             proxy_model = cast(InvoiceFilterProxyModel, self._invoice_table.model())
-            status = proxy_model.invoice_status_from_index(index)
-            self._enable_buttons(status=status)
+            client = proxy_model.client_from_index(index)
+            if not client.is_active:
+                self._enable_buttons(enable=False)
+            else:
+                status = proxy_model.invoice_status_from_index(index)
+                self._enable_buttons(status=status)
         else:
             self._enable_buttons(enable=False)
 
@@ -832,22 +905,24 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             is_emitted_or_reminded = status is InvoiceStatus.EMITTED or status is InvoiceStatus.REMINDED
             is_undoable = not is_draft
             self.show_btn.setEnabled(True)
-            self.undo_btn.setVisible(is_undoable)
-            self.emit_btn.setVisible(is_draft)
-            self.remind_btn.setVisible(is_emitted_or_reminded)
-            self.paid_btn.setVisible(is_emitted_or_reminded)
-            self.delete_btn.setVisible(is_draft)
-            self.cancel_btn.setVisible(is_emitted_or_reminded)
+            self.history_btn.setEnabled(True)
+            self.undo_btn.setEnabled(is_undoable)
+            self.emit_btn.setEnabled(is_draft)
+            self.remind_btn.setEnabled(is_emitted_or_reminded)
+            self.paid_btn.setEnabled(is_emitted_or_reminded)
+            self.delete_btn.setEnabled(is_draft)
+            self.cancel_btn.setEnabled(is_emitted_or_reminded)
             self.basket_btn.setEnabled(True)
         else:
             assert status is None
             self.show_btn.setEnabled(False)
-            self.undo_btn.setVisible(False)
-            self.emit_btn.setVisible(False)
-            self.remind_btn.setVisible(False)
-            self.paid_btn.setVisible(False)
-            self.delete_btn.setVisible(False)
-            self.cancel_btn.setVisible(False)
+            self.history_btn.setEnabled(False)
+            self.undo_btn.setEnabled(False)
+            self.emit_btn.setEnabled(False)
+            self.remind_btn.setEnabled(False)
+            self.paid_btn.setEnabled(False)
+            self.delete_btn.setEnabled(False)
+            self.cancel_btn.setEnabled(False)
             self.basket_btn.setEnabled(False)
 
     def _open_html_view(self, mode: api.client.HtmlMode) -> None:
@@ -1231,3 +1306,8 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
         source_model = cast(InvoiceTableModel, self.sourceModel())
         source_index = self.mapToSource(index)
         return source_model.data(source_index, InvoiceTableModel.UserRoles.StatusRole)
+
+    def client_from_index(self, index: QtCore.QModelIndex) -> schemas.Client:
+        source_model = cast(InvoiceTableModel, self.sourceModel())
+        source_index = self.mapToSource(index)
+        return source_model.data(source_index, InvoiceTableModel.UserRoles.ClientRole)

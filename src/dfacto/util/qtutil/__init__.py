@@ -400,6 +400,11 @@ class UndeselectableSelectionModel(QtCore.QItemSelectionModel):
     def select(self, index, command):
         if command & QtCore.QItemSelectionModel.SelectionFlag.Deselect:
             return
+        if command & QtCore.QItemSelectionModel.SelectionFlag.Select:
+            if isinstance(index, QtCore.QModelIndex) and not index.isValid():
+                return
+            if isinstance(index, QtCore.QItemSelection) and len(index.indexes()) <= 0:
+                return
         super().select(index, command)
 
 
