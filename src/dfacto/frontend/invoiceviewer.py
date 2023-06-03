@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import IntEnum
 from typing import Any, Optional, cast
 
@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 
 InvoiceItem = list[int, int, str, str, datetime, float, float, float, InvoiceStatus]
 
-ID, CLIENT_ID, CLIENT_NAME, CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS = range(9)
-VAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS)
-NOVAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, STATUS)
+ID, CLIENT_ID, CLIENT_NAME, CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS, IS_LATE = range(10)
+VAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS, IS_LATE)
+NOVAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, STATUS, IS_LATE)
 
 
 class InvoiceTableModel(QtCore.QAbstractTableModel):
@@ -48,6 +48,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         DateRole = QtCore.Qt.ItemDataRole.UserRole + 1
         StatusRole = QtCore.Qt.ItemDataRole.UserRole + 2
         ClientRole = QtCore.Qt.ItemDataRole.UserRole + 3
+        IsLateRole = QtCore.Qt.ItemDataRole.UserRole + 4
+
+    some_payment_needed = QtCore.pyqtSignal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -61,10 +64,13 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             "VAT",
             "Net amount",
             "Status",
+            "Late ?",
         ]
         self._client_id: int = -1
         self._invoices: dict[int, InvoiceItem] = {}
         self._invoice_ids: list[int] = []
+        resources = Config.dfacto_settings.resources
+        self._is_late_icon = QtGui.QIcon(f"{resources}/alarm.png")
 
     def load_invoices(self) -> None:
         response = api.client.get_all_invoices()
@@ -245,6 +251,8 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         row = self.rowCount()
         self.beginInsertRows(QtCore.QModelIndex(), row, row + len(invoices) - 1)
 
+        delta = Config.dfacto_settings.due_date_delta
+        one_late = False
         for invoice in invoices:
             self._invoice_ids.append(invoice.id)
             date_ = (
@@ -252,6 +260,10 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 if invoice.status is InvoiceStatus.DRAFT
                 else invoice.issued_on
             )
+            is_late = False
+            if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
+                is_late = date_ + timedelta(days=delta) < datetime.now()
+                one_late = is_late
             self._invoices[invoice.id] = [
                 invoice.id,
                 invoice.client_id,
@@ -262,9 +274,15 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 invoice.amount.vat,
                 invoice.amount.net,
                 invoice.status,
+                is_late,
             ]
 
         self.endInsertRows()
+        if one_late:
+            QtCore.QTimer.singleShot(
+                0,
+                lambda: self.some_payment_needed.emit()
+            )
 
     def add_invoice(self, invoice: schemas.Invoice) -> None:
         self.add_invoices([invoice])
@@ -277,6 +295,10 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 if invoice.status is InvoiceStatus.DRAFT
                 else invoice.issued_on
             )
+            is_late = False
+            if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
+                delta = Config.dfacto_settings.due_date_delta
+                is_late = date_ + timedelta(days=delta) < datetime.now()
             self._invoices[invoice.id] = [
                 invoice.id,
                 invoice.client_id,
@@ -287,12 +309,13 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 invoice.amount.vat,
                 invoice.amount.net,
                 invoice.status,
+                is_late,
             ]
-            end_index = start_index.sibling(start_index.row(), STATUS)
+            end_index = start_index.sibling(start_index.row(), IS_LATE)
             self.dataChanged.emit(
                 start_index,
                 end_index,
-                (QtCore.Qt.ItemDataRole.DisplayRole,),
+                (QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.DecorationRole),
             )
 
     def remove_invoice(self, invoice_id: int) -> None:
@@ -362,6 +385,8 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                     if column == STATUS:
                         status = cast(InvoiceStatus, item[column])
                         return status.name
+                    if column == IS_LATE:
+                        return None
                     if 0 <= column < len(item):
                         return str(item[column])
 
@@ -378,6 +403,10 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                         font.setItalic(True)
                     return font
 
+                if role == QtCore.Qt.ItemDataRole.DecorationRole:
+                    if column == IS_LATE and item[IS_LATE]:
+                        return self._is_late_icon
+
                 if role == InvoiceTableModel.UserRoles.DateRole:
                     return cast(datetime, item[CREATED_ON]).date()
 
@@ -386,6 +415,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
                 if role == InvoiceTableModel.UserRoles.ClientRole:
                     return self._get_client_of_invoice(item[ID])
+
+                if role == InvoiceTableModel.UserRoles.IsLateRole:
+                    return cast(bool, item[IS_LATE])
 
         return None
 
@@ -442,11 +474,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         icon_size = QtCore.QSize(32, 32)
         small_icon_size = QtCore.QSize(24, 24)
 
-        self.all_ckb = QtWidgets.QCheckBox("")
-        self.all_ckb.setToolTip("Show invoices of all clients")
-        self.all_ckb.setStatusTip("Show invoices of all clients")
-        self.all_ckb.setIconSize(icon_size)
-        self.all_ckb.setIcon(QtGui.QIcon(f"{resources}/client-all.png"))
+        self.all_btn = QtWidgets.QPushButton()
+        self.all_btn.setCheckable(True)
+        self.all_btn.setFlat(True)
+        self.all_btn.setIconSize(small_icon_size)
+        self.all_btn.setIcon(QtGui.QIcon(f"{resources}/client-all.png"))
+        self.all_btn.setToolTip("Show invoices of all clients")
+        self.all_btn.setStatusTip("Show invoices of all clients")
         self.period_cmb = QtWidgets.QComboBox()
         self.period_cmb.setToolTip("Filter on emitted date")
         self.period_cmb.setStatusTip("Filter on emitted date")
@@ -455,6 +489,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.status_btn.setToolTip("Filter on status")
         self.status_btn.setStatusTip("Filter on status")
         self.status_btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.late_btn = QtWidgets.QPushButton()
+        self.late_btn.setCheckable(True)
+        self.late_btn.setFlat(True)
+        self.late_btn.setIconSize(small_icon_size)
+        self.late_btn.setIcon(QtGui.QIcon(f"{resources}/alarm.png"))
+        self.late_btn.setToolTip("Show only invoice to be checked for payment")
+        self.late_btn.setStatusTip("Show only invoice to be checked for payment")
         self.reset_btn = QtWidgets.QPushButton()
         self.reset_btn.setFlat(True)
         self.reset_btn.setIconSize(small_icon_size)
@@ -546,14 +587,18 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         header_layout.addWidget(self.client_lbl)
         header.setLayout(header_layout)
 
+        filter_layout = QtWidgets.QHBoxLayout()
+        filter_layout.setContentsMargins(5, 0, 0, 0)
+        filter_layout.setSpacing(5)
+        filter_layout.addWidget(self.all_btn)
+        filter_layout.addWidget(self.period_cmb)
+        filter_layout.addWidget(self.status_btn)
+        filter_layout.addWidget(self.late_btn)
+        filter_layout.addWidget(self.reset_btn)
+
         tool_layout = QtWidgets.QHBoxLayout()
-        tool_layout.setContentsMargins(5, 0, 0, 0)
+        tool_layout.setContentsMargins(0, 0, 0, 0)
         tool_layout.setSpacing(0)
-        tool_layout.addWidget(self.all_ckb)
-        tool_layout.addWidget(self.period_cmb)
-        tool_layout.addWidget(self.status_btn)
-        tool_layout.addWidget(self.reset_btn)
-        tool_layout.addStretch()
         tool_layout.addWidget(self.show_btn)
         tool_layout.addWidget(self.history_btn)
         tool_layout.addWidget(self.undo_btn)
@@ -565,11 +610,18 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         tool_layout.addSpacing(32)
         tool_layout.addWidget(self.basket_btn)
 
+        h_layout = QtWidgets.QHBoxLayout()
+        h_layout.setContentsMargins(0, 0, 0, 0)
+        h_layout.setSpacing(0)
+        h_layout.addLayout(filter_layout)
+        h_layout.addStretch()
+        h_layout.addLayout(tool_layout)
+
         main_layout = QtWidgets.QVBoxLayout()
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
         main_layout.addWidget(header)
-        main_layout.addLayout(tool_layout)
+        main_layout.addLayout(h_layout)
         main_layout.addWidget(self._invoice_table)
         self.setLayout(main_layout)
 
@@ -603,8 +655,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self.status_actions[status.name.lower()] = action_ckb
         self.status_btn.setMenu(self.status_menu)
 
-        self.all_ckb.toggled.connect(self.on_all_selection)
+        self.all_btn.toggled.connect(self.on_all_selection)
         self.period_cmb.activated.connect(self.on_period_selection)
+        self.late_btn.toggled.connect(self.on_late_selection)
         self.reset_btn.clicked.connect(self.set_default_filters)
 
         self._invoice_table.selectionModel().currentChanged.connect(self.show_buttons)
@@ -631,8 +684,11 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         self.invoice_html_view.finished.connect(self.on_html_view_finished)
 
+        invoice_model.some_payment_needed.connect(self.check_if_paid)
+
         self._current_client: Optional[schemas.Client] = None
-        self.all_ckb.setChecked(False)
+        self.all_btn.setChecked(False)
+        self.late_btn.setChecked(False)
 
     def load_invoices(self) -> None:
         proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
@@ -744,20 +800,21 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         proxy.set_client_filter(client.id)
 
-        with QtCore.QSignalBlocker(self.all_ckb):
-            self.all_ckb.setChecked(False)
+        with QtCore.QSignalBlocker(self.all_btn):
+            self.all_btn.setChecked(False)
 
         row_count = proxy.rowCount()
         self._invoice_table.select_and_show_row(row_count - 1)
         if row_count < 1:
             self._enable_buttons(enable=False)
 
+    @QtCore.pyqtSlot()
     def set_default_filters(self) -> None:
         proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
         proxy.reset_to_defaults()
 
-        with QtCore.QSignalBlocker(self.all_ckb):
-            self.all_ckb.setChecked(False)
+        with QtCore.QSignalBlocker(self.all_btn):
+            self.all_btn.setChecked(False)
 
         client = self._current_client
         if client is not None:
@@ -773,6 +830,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             status = ckb.text().lower()
             with QtCore.QSignalBlocker(ckb):
                 ckb.setChecked(status != "all" and status != "cancelled")
+
+        with QtCore.QSignalBlocker(self.late_btn):
+            self.late_btn.setChecked(False)
 
         self._invoice_table.select_and_show_row(proxy.rowCount() - 1)
 
@@ -828,6 +888,29 @@ class InvoiceViewer(QtUtil.QFramedWidget):
                 ckb.setChecked(False)
         proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
         proxy.toggle_status(status)
+        self._invoice_table.select_and_show_row(proxy.rowCount() - 1)
+
+    @QtCore.pyqtSlot(bool)
+    def on_late_selection(self, state: bool) -> None:
+        proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
+
+        proxy.set_late_filter(state)
+
+        if state:
+            with QtCore.QSignalBlocker(self.all_btn):
+                self.all_btn.setChecked(True)
+
+            self.client_lbl.setText("All")
+            self.client_pix.setPixmap(self.all_pix)
+
+            with QtCore.QSignalBlocker(self.period_cmb):
+                self.period_cmb.setCurrentText("All Dates")
+
+            for ckb in self.status_actions.values():
+                status = ckb.text().lower()
+                with QtCore.QSignalBlocker(ckb):
+                    ckb.setChecked(status == "emitted" or status == "reminded")
+
         self._invoice_table.select_and_show_row(proxy.rowCount() - 1)
 
     @QtCore.pyqtSlot(QtCore.QModelIndex)
@@ -887,8 +970,24 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         #     case _:
         #         assert result == InvoiceWebViewer.Action.NO_ACTION
 
+    @QtCore.pyqtSlot()
+    def check_if_paid(self, ):
+        reply = QtWidgets.QMessageBox.question(
+            self,  # noqa
+            f"{QtWidgets.QApplication.applicationName()} - Payment reminder",
+            f"""
+            <p>Some invoices should be paid: do you want to ckeck them?</p>
+            """,
+            QtWidgets.QMessageBox.StandardButton.Yes
+            | QtWidgets.QMessageBox.StandardButton.No,
+        )
+        if reply == QtWidgets.QMessageBox.StandardButton.No:
+            return
+
+        self.late_btn.setChecked(True)
+
     def _enable_filters(self, enable: bool) -> None:
-        self.all_ckb.setEnabled(enable)
+        self.all_btn.setEnabled(enable)
         self.period_cmb.setEnabled(enable)
         self.status_btn.setEnabled(enable)
         self.reset_btn.setEnabled(enable)
@@ -996,7 +1095,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         report = invoice_table.source_model().mark_invoice_as(invoice[ID], status)
 
         if report.status is CommandStatus.COMPLETED:
-            self._enable_buttons(status=status)
+            invoice_table.select_invoice(invoice[ID])
             return
 
         QtWidgets.QMessageBox.warning(
@@ -1172,6 +1271,7 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
     _status_filter = "Not Cancelled"
     _statuses_filter = ["draft", "emitted", "reminded", "paid"]
     _are_all_invoices_visible = False
+    _late_filter = False
 
     def __init__(self):
         super().__init__()
@@ -1235,11 +1335,26 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
         InvoiceFilterProxyModel._are_all_invoices_visible = value
         self.invalidateFilter()
 
+    @classmethod
+    def late_filter(cls) -> bool:
+        return cls._late_filter
+
+    def set_late_filter(self, value: bool) -> None:
+        if value:
+            InvoiceFilterProxyModel._are_all_invoices_visible = True
+            InvoiceFilterProxyModel._period_filter = Period()
+            InvoiceFilterProxyModel._statuses_filter = ["emitted", "reminded"]
+            InvoiceFilterProxyModel._late_filter = True
+        else:
+            InvoiceFilterProxyModel._late_filter = False
+        self.invalidateFilter()
+
     def reset_to_defaults(self) -> None:
         InvoiceFilterProxyModel._are_all_invoices_visible = False
         InvoiceFilterProxyModel._period_filter = PeriodFilter.CURRENT_QUARTER.as_period()
         InvoiceFilterProxyModel._status_filter = "Not Cancelled"
         InvoiceFilterProxyModel._statuses_filter = ["draft", "emitted", "reminded", "paid"]
+        InvoiceFilterProxyModel._late_filter = False
         self.invalidateFilter()
 
     def lessThan(self, left: QtCore.QModelIndex, right: QtCore.QModelIndex) -> bool:
@@ -1295,7 +1410,13 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
         status = source_model.data(index, QtCore.Qt.ItemDataRole.DisplayRole)
         ok_status = status.lower() in self.statuses_filter()
 
-        return ok_client and ok_period and ok_status
+        if self._late_filter:
+            index = source_model.index(source_row, IS_LATE, source_parent)
+            ok_late = source_model.data(index, InvoiceTableModel.UserRoles.IsLateRole)
+        else:
+            ok_late = True
+
+        return ok_client and ok_period and ok_status and ok_late
 
     def invoice_from_index(self, index: QtCore.QModelIndex) -> InvoiceItem:
         source_model = cast(InvoiceTableModel, self.sourceModel())
