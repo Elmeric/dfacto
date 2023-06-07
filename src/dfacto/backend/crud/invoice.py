@@ -101,9 +101,11 @@ class CRUDInvoice(
                     # In use by an invoice, do not delete it, only dereferences the basket.
                     item.basket_id = None
 
+        item: models.Item
         for item in invoice_.items:
             item_copy = models.Item(
                 service_id=item.service_id,
+                service_version=item.current_service.version,
                 quantity=item.quantity,
             )
             item_copy.basket_id = basket.id

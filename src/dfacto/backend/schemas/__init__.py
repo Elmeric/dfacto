@@ -6,7 +6,7 @@
 
 from dataclasses import dataclass
 
-from .base import BaseSchema
+from .base import Amount, BaseSchema
 from .basket import Basket, BasketCreate, BasketInDB, BasketUpdate
 from .client import Address, Client, ClientCreate, ClientInDB, ClientUpdate
 from .company import Company, CompanyCreate, CompanyInDB, CompanyUpdate
@@ -16,6 +16,7 @@ from .service import Service, ServiceCreate, ServiceInDB, ServiceUpdate, Service
 from .vat_rate import VatRate, VatRateCreate, VatRateInDB, VatRateUpdate
 
 __all__ = [
+    "Amount",
     "BaseSchema",
     "VatRate",
     "VatRateCreate",

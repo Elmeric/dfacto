@@ -119,6 +119,13 @@ class Invoice(_InvoiceInDBBase):
             return None
         return creation_log.from_
 
+    def changed_to_on(self, status: models.InvoiceStatus) -> Optional[datetime]:
+        try:
+            change_log = self.status_log[status]
+        except KeyError:
+            return None
+        return change_log.from_
+
     @classmethod
     def from_orm(cls, orm_obj: models.Invoice) -> "Invoice":
         return cls(

@@ -22,6 +22,25 @@ class BaseSchema(Generic[ModelType]):
 
 
 class Amount(NamedTuple):
-    raw: Decimal
-    vat: Decimal
-    net: Decimal
+    raw: Decimal = Decimal(0)
+    vat: Decimal = Decimal(0)
+    net: Decimal = Decimal(0)
+
+    def __add__(self, other: "Amount") -> "Amount":
+        if not isinstance(other, Amount):
+            raise ValueError(f"{other} shall be an Amount instance!")
+        return Amount(
+            raw=self.raw + other.raw,
+            vat=self.vat + other.vat,
+            net=self.net + other.net
+        )
+
+    def __iadd__(self, other: "Amount") -> "Amount":
+        return self.__add__(other)
+
+    def __neg__(self) -> "Amount":
+        return Amount(
+            raw=-self.raw,
+            vat=-self.vat,
+            net=-self.net
+        )

@@ -3,7 +3,10 @@
 import logging
 import os
 import sys
+from decimal import Decimal
 from typing import Optional
+
+from babel.numbers import format_currency
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
@@ -66,6 +69,10 @@ class QtMainView(QtWidgets.QMainWindow):
 
         resources = Config.dfacto_settings.resources
 
+        self._pending_payments: schemas.Amount = schemas.Amount()
+        self._last_quarter_sales: schemas.Amount = schemas.Amount()
+        self._current_quarter_sales: schemas.Amount = schemas.Amount()
+
         # Initialize the app's views. Init order fixed to comply with the editors' dependencies.
         self.client_selector = ClientSelector()
         basket_model = BasketTableModel()
@@ -73,6 +80,21 @@ class QtMainView(QtWidgets.QMainWindow):
         invoice_model = InvoiceTableModel()
         self.invoice_viewer = InvoiceViewer(invoice_model)
         self.service_selector = ServiceSelector(basket_model)
+        self.pending_payments_lbl = QtWidgets.QLabel()
+        self.pending_payments_lbl.setMargin(5)
+        self.pending_payments_lbl.setFrameStyle(
+            QtWidgets.QFrame.Shape.StyledPanel | QtWidgets.QFrame.Shadow.Raised
+        )
+        self.pending_payments_lbl.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        self.sales_summary_lbl = QtWidgets.QLabel()
+        self.sales_summary_lbl.setMargin(5)
+        self.sales_summary_lbl.setFrameStyle(
+            QtWidgets.QFrame.Shape.StyledPanel | QtWidgets.QFrame.Shadow.Raised
+        )
+        self.sales_summary_lbl.setWordWrap(True)
+        self.sales_summary_lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
         #         fsModel = FileSystemModel()
         #         fsDelegate = FileSystemDelegate()
         #         fsFilter = FileSystemFilter()
@@ -115,6 +137,10 @@ class QtMainView(QtWidgets.QMainWindow):
         self.invoice_viewer.basket_updated.connect(
             self.basket_viewer.on_basket_update
         )
+        invoice_model.pending_payment_created.connect(self.do_set_pending_pmt)
+        invoice_model.pending_payment_changed.connect(self.do_update_pending_pmt)
+        invoice_model.sales_summary_created.connect(self.do_set_sales_summary)
+        invoice_model.sales_summary_changed.connect(self.do_update_sales_summary)
         #         self._sourceManager.sourceSelected.connect(timelineViewer.setTimeline)
         #         self._sourceManager.sourceSelected.connect(self._downloader.setSourceSelection)
         #
@@ -323,7 +349,9 @@ class QtMainView(QtWidgets.QMainWindow):
         self.top_bar.setFloatable(False)
         self.top_bar.setMovable(False)
         self.top_bar.setStyleSheet("QPushButton{margin-right: 20 px;}")
-        # self.top_bar.addWidget(sourceWidget)
+        self.top_bar.setStyleSheet("QLabel{margin-right: 20 px;}")
+        self.top_bar.addWidget(self.pending_payments_lbl)
+        self.top_bar.addWidget(self.sales_summary_lbl)
         self.top_bar.addWidget(spacer)
         self.top_bar.addWidget(self.company_btn)
         self.top_bar.addWidget(self.menu_btn)
@@ -628,6 +656,55 @@ class QtMainView(QtWidgets.QMainWindow):
 
         logger.info(f"Connected to {company.home / 'dfacto.db'}")
         logger.info(f"Company profile {company.name} is selected")
+
+    @QtCore.pyqtSlot(schemas.Amount)
+    def do_set_pending_pmt(self, pmt: schemas.Amount):
+        nbsp = "\u00A0"
+        self._pending_payments = pmt
+        if pmt == Decimal(0):
+            self.pending_payments_lbl.setText("No pending payments".replace(" ", nbsp))
+            return
+        pending_str = format_currency(pmt.net, 'EUR', locale='fr_FR').replace(" ", nbsp)
+        self.pending_payments_lbl.setText(
+            f"Pending{nbsp}payments:{nbsp}<strong>{pending_str}</strong>"
+        )
+
+    @QtCore.pyqtSlot(schemas.Amount)
+    def do_update_pending_pmt(self, pmt: schemas.Amount):
+        nbsp = "\u00A0"
+        self._pending_payments += pmt
+        new = self._pending_payments
+        if new == Decimal(0):
+            self.pending_payments_lbl.setText("No pending payments".replace(" ", nbsp))
+            return
+        pending_str = format_currency(new.net, 'EUR', locale='fr_FR').replace(" ", nbsp)
+        self.pending_payments_lbl.setText(
+            f"Pending{nbsp}payments:{nbsp}<strong>{pending_str}</strong>"
+        )
+
+    @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
+    def do_set_sales_summary(self, last: schemas.Amount, current: schemas.Amount):
+        nbsp = "\u00A0"
+        self._last_quarter_sales = last
+        self._current_quarter_sales = current
+        last_str = format_currency(last.net, 'EUR', locale='fr_FR')
+        current_str = format_currency(current.net, 'EUR', locale='fr_FR')
+        self.sales_summary_lbl.setText(
+            f"Last{nbsp}quarter{nbsp}sales:{nbsp}<strong>{last_str}</strong>\n"
+            f"Current{nbsp}quarter{nbsp}sales:{nbsp}<strong>{current_str}</strong>"
+        )
+
+    @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
+    def do_update_sales_summary(self, last: schemas.Amount, current: schemas.Amount):
+        nbsp = "\u00A0"
+        self._last_quarter_sales += last
+        self._current_quarter_sales += current
+        last_str = format_currency(self._last_quarter_sales.net, 'EUR', locale='fr_FR')
+        current_str = format_currency(self._current_quarter_sales.net, 'EUR', locale='fr_FR')
+        self.sales_summary_lbl.setText(
+            f"Last{nbsp}quarter{nbsp}sales:{nbsp}<strong>{last_str}</strong>\n"
+            f"Current{nbsp}quarter{nbsp}sales:{nbsp}<strong>{current_str}</strong>"
+        )
 
     @QtCore.pyqtSlot()
     def do_preferences_action(self):

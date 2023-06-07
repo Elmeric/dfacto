@@ -21,5 +21,5 @@ __version__ = "0.0.1"
 __author__ = "Eric Lemoine"
 __email__ = "erik.lemoine@gmail.com"
 
-__license__ = "MIT"
+__license__ = "BSD 3-Clause"
 __copyright__ = f"Copyright 2023 {__author__}"

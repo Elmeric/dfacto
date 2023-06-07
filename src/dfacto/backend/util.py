@@ -41,7 +41,11 @@ class Period(NamedTuple):
 
     @classmethod
     def from_quarter(cls, year: int, quarter: int) -> "Period":
-        return cls(date(year, 1 + (quarter - 1) * 3, 1), date(year, quarter * 3, 31))
+        last_day = 31 if quarter in (1, 4) else 30
+        return cls(
+            date(year, 1 + (quarter - 1) * 3, 1),
+            date(year, quarter * 3, last_day)
+        )
 
     @classmethod
     def from_current_month(cls) -> "Period":
@@ -86,6 +90,13 @@ class Period(NamedTuple):
         start = end.replace(day=1, month=1)
         return cls(start, end)
 
+    def __contains__(self, item) -> bool:
+        if isinstance(item, datetime):
+            return self.start_time <= item <= self.end_time
+        if isinstance(item, date):
+            return self.start <= item <= self.end
+        raise ValueError("Item shall be a date or datetime instance")
+
 
 class PeriodFilter(enum.Enum):
     CURRENT_MONTH = enum.auto()
@@ -103,3 +114,8 @@ class PeriodFilter(enum.Enum):
 if __name__ == "__main__":
     for f in PeriodFilter:
         print(f.name, f.as_period())
+    for q in range(4):
+        print(Period.from_quarter(2023, q+1))
+    print(date(2023, 2, 11) in Period.from_last_quarter())
+    print(datetime(2023, 6, 11, 0, 0) in Period.from_current_quarter())
+    print((2023, 2, 11) in Period.from_last_quarter())

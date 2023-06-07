@@ -87,6 +87,8 @@ class StatusLogEditor(QtWidgets.QDialog):
             self._date_editors[status] = date_edit
             self._previous_status[status] = prev_status
             prev_status = status
+            if status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
+                date_edit.setEnabled(False)
             date_edit.dateChanged.connect(self.check_date)
             log_layout.addRow(f"<strong>{labels[status]}:</strong>", date_edit)
 

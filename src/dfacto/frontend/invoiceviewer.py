@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+from decimal import Decimal
 from datetime import datetime, timedelta
 from enum import IntEnum
 from typing import Any, Optional, cast
@@ -27,9 +28,14 @@ from .invoice_log_view import StatusLogEditor
 
 logger = logging.getLogger(__name__)
 
-InvoiceItem = list[int, int, str, str, datetime, float, float, float, InvoiceStatus]
+InvoiceItem = list[
+    int, int, str, str, datetime, Decimal, Decimal, Decimal, InvoiceStatus, bool, datetime
+]
 
-ID, CLIENT_ID, CLIENT_NAME, CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS, IS_LATE = range(10)
+(
+    ID, CLIENT_ID, CLIENT_NAME, CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT,
+    STATUS, IS_LATE, CHANGED_ON
+) = range(11)
 VAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS, IS_LATE)
 NOVAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, STATUS, IS_LATE)
 
@@ -51,6 +57,10 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         IsLateRole = QtCore.Qt.ItemDataRole.UserRole + 4
 
     some_payment_needed = QtCore.pyqtSignal()
+    pending_payment_created = QtCore.pyqtSignal(schemas.Amount)
+    pending_payment_changed = QtCore.pyqtSignal(schemas.Amount)
+    sales_summary_created = QtCore.pyqtSignal(schemas.Amount, schemas.Amount)   # last and current quarter sales
+    sales_summary_changed = QtCore.pyqtSignal(schemas.Amount, schemas.Amount)   # relative last and current quarter sales
 
     def __init__(self) -> None:
         super().__init__()
@@ -65,6 +75,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             "Net amount",
             "Status",
             "Late ?",
+            "Changed on",
         ]
         self._client_id: int = -1
         self._invoices: dict[int, InvoiceItem] = {}
@@ -163,6 +174,19 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         if response.status is CommandStatus.COMPLETED:
             invoice: schemas.Invoice = response.body
             self.update_invoice(invoice)
+            if status is InvoiceStatus.EMITTED:
+                self.pending_payment_changed.emit(invoice.amount)
+            elif status is InvoiceStatus.REMINDED:
+                pass
+            else:
+                # status is PAID or CANCELLED
+                self.pending_payment_changed.emit(-invoice.amount)
+            if status is InvoiceStatus.PAID:
+                pay_date = invoice.paid_on
+                if pay_date in Period.from_last_quarter():
+                    self.sales_summary_changed.emit(invoice.amount, schemas.Amount())
+                elif pay_date in Period.from_current_quarter():
+                    self.sales_summary_changed.emit(schemas.Amount(), invoice.amount)
             return response.report
 
         if response.status is CommandStatus.REJECTED:
@@ -191,11 +215,41 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         invoice_id: int,
         log: dict[InvoiceStatus, DatetimeRange]
     ) -> CommandReport:
+        status = self._invoices[invoice_id][STATUS]
+        prev_pay_date = None
+        if status is InvoiceStatus.PAID:
+            prev_pay_date = self._invoices[invoice_id][CHANGED_ON]
+
         response = api.client.update_invoice_history(invoice_id=invoice_id, log=log)
 
         if response.status is not CommandStatus.FAILED:
             invoice = cast(schemas.Invoice, response.body)
             self.update_invoice(invoice)
+            if invoice.status is InvoiceStatus.PAID:
+                pay_date = invoice.paid_on
+                amount = invoice.amount
+                null_amount = schemas.Amount()
+                if prev_pay_date in Period.from_current_quarter():
+                    if pay_date in Period.from_current_quarter():
+                        pass
+                    elif pay_date in Period.from_last_quarter():
+                        self.sales_summary_changed.emit(amount, -amount)
+                    else:
+                        self.sales_summary_changed.emit(null_amount, -amount)
+                elif prev_pay_date in Period.from_last_quarter():
+                    if pay_date in Period.from_current_quarter():
+                        self.sales_summary_changed.emit(-amount, amount)
+                    elif pay_date in Period.from_last_quarter():
+                        pass
+                    else:
+                        self.sales_summary_changed.emit(-amount, null_amount)
+                else:
+                    if pay_date in Period.from_current_quarter():
+                        self.sales_summary_changed.emit(null_amount, amount)
+                    elif pay_date in Period.from_last_quarter():
+                        self.sales_summary_changed.emit(amount, null_amount)
+                    else:
+                        pass
             return response.report
 
         QtUtil.raise_fatal_error(
@@ -216,12 +270,25 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
     def revert_to_previous_status(
         self, invoice_id: int
     ) -> tuple[CommandReport, InvoiceStatus]:
+        prev_status = self._invoices[invoice_id][STATUS]
+        pay_date = self._invoices[invoice_id][CHANGED_ON]
         response = api.client.revert_invoice_status(invoice_id=invoice_id)
 
         if response.status is not CommandStatus.FAILED:
             invoice: schemas.Invoice = response.body
             self.update_invoice(invoice)
-            return response.report, invoice.status
+            status = invoice.status
+            if status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
+                if prev_status is not InvoiceStatus.REMINDED:
+                    self.pending_payment_changed.emit(invoice.amount)
+            else:
+                self.pending_payment_changed.emit(-invoice.amount)
+            if prev_status is InvoiceStatus.PAID:
+                if pay_date in Period.from_last_quarter():
+                    self.sales_summary_changed.emit(-invoice.amount, schemas.Amount())
+                elif pay_date in Period.from_current_quarter():
+                    self.sales_summary_changed.emit(schemas.Amount(), -invoice.amount)
+            return response.report, status
 
         QtUtil.raise_fatal_error(
             f"Cannot revert invoice to its previous status - Reason is: {response.reason}"
@@ -253,28 +320,42 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
         delta = Config.dfacto_settings.due_date_delta
         one_late = False
+        pending_payments = schemas.Amount()
+        last_quarter_sales = schemas.Amount()
+        current_quarter_sales = schemas.Amount()
         for invoice in invoices:
-            self._invoice_ids.append(invoice.id)
+            invoice_id = invoice.id
+            status = invoice.status
+            amount = invoice.amount
+            self._invoice_ids.append(invoice_id)
             date_ = (
                 invoice.created_on
-                if invoice.status is InvoiceStatus.DRAFT
+                if status is InvoiceStatus.DRAFT
                 else invoice.issued_on
             )
             is_late = False
-            if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
+            if status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
                 is_late = date_ + timedelta(days=delta) < datetime.now()
                 one_late = is_late
-            self._invoices[invoice.id] = [
-                invoice.id,
+                pending_payments += amount
+            if status is InvoiceStatus.PAID:
+                pay_date= invoice.paid_on
+                if pay_date in Period.from_last_quarter():
+                    last_quarter_sales += amount
+                if pay_date in Period.from_current_quarter():
+                    current_quarter_sales += amount
+            self._invoices[invoice_id] = [
+                invoice_id,
                 invoice.client_id,
                 invoice.client.name,
                 invoice.code,
                 date_,
-                invoice.amount.raw,
-                invoice.amount.vat,
-                invoice.amount.net,
-                invoice.status,
+                amount.raw,
+                amount.vat,
+                amount.net,
+                status,
                 is_late,
+                invoice.changed_to_on(status),
             ]
 
         self.endInsertRows()
@@ -283,9 +364,34 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 0,
                 lambda: self.some_payment_needed.emit()
             )
+        self.pending_payment_created.emit(pending_payments)
+        self.sales_summary_created.emit(last_quarter_sales, current_quarter_sales)
 
     def add_invoice(self, invoice: schemas.Invoice) -> None:
-        self.add_invoices([invoice])
+        row = self.rowCount()
+        self.beginInsertRows(QtCore.QModelIndex(), row, row)
+
+        invoice_id = invoice.id
+        status = invoice.status
+        assert status is InvoiceStatus.DRAFT
+        amount = invoice.amount
+        self._invoice_ids.append(invoice_id)
+        date_ = invoice.created_on
+        self._invoices[invoice_id] = [
+            invoice_id,
+            invoice.client_id,
+            invoice.client.name,
+            invoice.code,
+            date_,
+            amount.raw,
+            amount.vat,
+            amount.net,
+            status,
+            False,
+            date_,
+        ]
+
+        self.endInsertRows()
 
     def update_invoice(self, invoice: schemas.Invoice) -> None:
         start_index = self.index_from_invoice_id(invoice.id)
@@ -310,6 +416,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 invoice.amount.net,
                 invoice.status,
                 is_late,
+                invoice.changed_to_on(invoice.status),
             ]
             end_index = start_index.sibling(start_index.row(), IS_LATE)
             self.dataChanged.emit(
@@ -406,6 +513,18 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 if role == QtCore.Qt.ItemDataRole.DecorationRole:
                     if column == IS_LATE and item[IS_LATE]:
                         return self._is_late_icon
+
+                if role in (
+                    QtCore.Qt.ItemDataRole.ToolTipRole,
+                    QtCore.Qt.ItemDataRole.StatusTipRole
+                ):
+                    if column == STATUS:
+                        status = cast(InvoiceStatus, item[STATUS])
+                        status_changed_on = cast(datetime, item[CHANGED_ON]).date()
+                        changed_date = format_date(
+                            status_changed_on, format="short", locale="fr_FR"
+                        )
+                        return f"{status.name.title()} on {changed_date}"
 
                 if role == InvoiceTableModel.UserRoles.DateRole:
                     return cast(datetime, item[CREATED_ON]).date()
@@ -1201,11 +1320,18 @@ class InvoiceTable(QtWidgets.QTableView):
             )
 
     def select_and_show_row(self, row: int) -> None:
+        # To raise currentChanged signal on row selection
+        self.setCurrentIndex(QtCore.QModelIndex())
         self.selectRow(row)
         self.scrollTo(
             self.model().index(row, 1),
             QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible
         )
+        proxy = cast(InvoiceFilterProxyModel, self.model())
+        for column in range(proxy.columnCount()):
+            self.horizontalHeader().setSectionResizeMode(
+                column, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
+            )
 
     def select_first_invoice(self) -> None:
         self.select_and_show_row(0)
@@ -1375,7 +1501,7 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
     def filterAcceptsColumn(
         self, source_column: int, source_parent: QtCore.QModelIndex
     ) -> bool:
-        if source_column in (ID, CLIENT_ID):
+        if source_column in (ID, CLIENT_ID, CHANGED_ON):
             return False
         if source_column == CLIENT_NAME:
             return self.are_all_invoices_visible()
