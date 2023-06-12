@@ -361,7 +361,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         self.endInsertRows()
         if one_late:
             QtCore.QTimer.singleShot(
-                0,
+                1000,   # To let the splash screen to finish
                 lambda: self.some_payment_needed.emit()
             )
         self.pending_payment_created.emit(pending_payments)

@@ -1,4 +1,10 @@
-"""Entry point for the GUI version of fotocop.
+# Copyright (c) 2023, Eric Lemoine
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+"""Entry point of the Dfacto application.
 """
 import logging
 import os
@@ -20,14 +26,15 @@ from dfacto.backend import api, schemas
 from dfacto.backend.api.command import CommandStatus
 
 # Views
-from dfacto.frontend.companydialogs import AddCompanyDialog, SelectCompanyDialog
-from dfacto.util import qtutil as QtUtil
-from dfacto.util.logutil import LogConfig
-
+from .companydialogs import AddCompanyDialog, SelectCompanyDialog
 from .basketviewer import BasketTableModel, BasketViewer
 from .invoiceviewer import InvoiceTableModel, InvoiceViewer
 from .clientselector import ClientSelector
 from .serviceselector import ServiceSelector
+
+# Util
+from dfacto.util import qtutil as QtUtil
+from dfacto.util.logutil import LogConfig
 
 __all__ = ["qt_main"]
 
@@ -35,37 +42,47 @@ logger = logging.getLogger(__name__)
 
 
 class QtMainView(QtWidgets.QMainWindow):
-    #     """The fotocop main view.
-    #
-    #     The Main view is composed of:
-    #         The source selector:  browse and select an images' source.
-    #         The thumbnail viewer: show images from the selected source.
-    #         The timeline viewer: select a time range to filter the thumbnails.
-    #         The toolbar: propose access to fotocop settings and help.
-    #         The status bar: display information and warning messages.
-    #
-    #     Args:
-    #         sourceManager: reference to the images' sources manager.
-    #         splash: reference to the splash screen to show the main view initialization
-    #             progress.
-    #         *args, **kwargs: Any other positional and keyword argument are passed to
-    #             the parent QMainWindow.
-    #
-    #     Attributes:
-    #         _sourceManager: reference to the images' sources manager.
-    #         _splash: reference to the splash screen to show the main view initialization
-    #             progress.
-    #         _status: reference to the Main window status bar.
-    #     """
+    """The Dfacto main view.
+
+    The Main view is composed of:
+        The client selector:  Create, edit delete clients and select one.
+        The service selector:  Create, edit delete services and add them
+            to the basket of the selected client.
+        The basket viewer: Show and edit the basket of the selected client.
+        The invoices viewer: a filterable list invoices where all invoices
+            actions are available.
+        The toolbar: Show a summary of pending payments and sales as well
+            as a company profile selector
+        The toolbar menu: propose access to fotocop settings and help.
+        The status bar: display information and warning messages.
+
+    Args:
+        company_profile: reference to the selected company profile.
+        splash: reference to the splash screen to show the main view initialization
+            progress.
+        *args, **kwargs: Any other positional and keyword argument are passed to
+            the parent QMainWindow.
+
+    Attributes:
+        _sourceManager: reference to the images' sources manager.
+        _splash: reference to the splash screen to show the main view initialization
+            progress.
+        _status: reference to the Main window status bar.
+    """
 
     # def __init__(self, sourceManager: SourceManager, splash, *args, **kwargs) -> None:
-    def __init__(self, company_profile: schemas.Company, *args, **kwargs) -> None:
+    def __init__(
+        self,
+        company_profile: schemas.Company,
+        splash: QtUtil.SplashScreen,
+        *args, **kwargs
+    ) -> None:
         self.company_profile = company_profile
         super().__init__(*args, **kwargs)
-        #
-        #         splash.setProgress(10, "Create Gui objects...")
-        #
-        #         self._splash = splash
+
+        splash.setProgress(10, "Create Gui objects...")
+
+        self._splash = splash
 
         resources = Config.dfacto_settings.resources
 
@@ -95,32 +112,6 @@ class QtMainView(QtWidgets.QMainWindow):
         )
         self.sales_summary_lbl.setWordWrap(True)
         self.sales_summary_lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        #         fsModel = FileSystemModel()
-        #         fsDelegate = FileSystemDelegate()
-        #         fsFilter = FileSystemFilter()
-        #         fsFilter.setSourceModel(fsModel)
-        #         self._sourceManager = sourceManager
-        #         sourceSelector = SourceSelector(sourceManager, fsModel, fsFilter, fsDelegate)
-        #
-        #         # https://stackoverflow.com/questions/42673010/how-to-correctly-load-images-asynchronously-in-pyqt5
-        #         thumbnailViewer = ThumbnailViewer()
-        #
-        #         timelineViewer = TimelineViewer(parent=self)
-        #
-        #         self._downloader = Downloader()
-        #         renamePanel = RenamePanel(downloader=self._downloader, parent=self)
-        #         destinationPanel = DestinationPanel(
-        #             downloader=self._downloader,
-        #             fsModel=fsModel,
-        #             fsFilter=fsFilter,
-        #             fsDelegate=fsDelegate,
-        #             parent=self,
-        #         )
-        #
-        #         self._sourceManager.sourcesChanged.connect(sourceSelector.displaySources)
-        #
-        #         self._sourceManager.sourceSelected.connect(sourceSelector.displaySelectedSource)
-        #         self._sourceManager.sourceSelected.connect(self.displaySelectedSource)
 
         self.client_selector.client_selected.connect(
             self.basket_viewer.set_current_client
@@ -141,51 +132,8 @@ class QtMainView(QtWidgets.QMainWindow):
         invoice_model.pending_payment_changed.connect(self.do_update_pending_pmt)
         invoice_model.sales_summary_created.connect(self.do_set_sales_summary)
         invoice_model.sales_summary_changed.connect(self.do_update_sales_summary)
-        #         self._sourceManager.sourceSelected.connect(timelineViewer.setTimeline)
-        #         self._sourceManager.sourceSelected.connect(self._downloader.setSourceSelection)
-        #
-        #         self._sourceManager.imagesBatchLoaded.connect(thumbnailViewer.addImages)
-        #         self._sourceManager.imagesBatchLoaded.connect(self._downloader.addImages)
-        #
-        #         self._sourceManager.thumbnailLoaded.connect(thumbnailViewer.updateImage)
-        #
-        #         self._sourceManager.imagesInfoChanged.connect(timelineViewer.updateTimeline)
-        #         self._sourceManager.imagesInfoChanged.connect(self._downloader.updateImagesInfo)
-        #         self._sourceManager.imagesInfoChanged.connect(self.updateDownloadButtonText)
-        #         self._sourceManager.imagesInfoChanged.connect(thumbnailViewer.updateToolbar)
-        #
-        #         self._sourceManager.timelineBuilt.connect(timelineViewer.finalizeTimeline)
-        #
-        #         self._sourceManager.imageSampleChanged.connect(self._downloader.updateImageSample)
-        #
-        #         self._downloader.imageNamingTemplateSelected.connect(
-        #             renamePanel.imageNamingTemplateSelected
-        #         )
-        #         self._downloader.imageNamingExtensionSelected.connect(
-        #             renamePanel.imageNamingExtensionSelected
-        #         )
-        #         self._downloader.destinationNamingTemplateSelected.connect(
-        #             destinationPanel.destinationNamingTemplateSelected
-        #         )
-        #
-        #         self._downloader.imageSampleChanged.connect(renamePanel.updateImageSample)
-        #         self._downloader.folderPreviewChanged.connect(
-        #             destinationPanel.folderPreviewChanged
-        #         )
-        #
-        #         self._downloader.destinationSelected.connect(
-        #             destinationPanel.destinationSelected
-        #         )
-        #
-        #         self._downloader.sessionRequired.connect(thumbnailViewer.requestSession)
-        #
-        #         thumbnailViewer.zoomLevelChanged.connect(timelineViewer.zoom)
-        #
-        #         timelineViewer.zoomed.connect(thumbnailViewer.onZoomLevelChanged)
-        #         timelineViewer.hoveredNodeChanged.connect(thumbnailViewer.showNodeInfo)
-        #         timelineViewer.timeRangeChanged.connect(thumbnailViewer.updateTimeRange)
-        #
-        #         splash.setProgress(30)
+
+        splash.setProgress(30)
 
         # Build the main view layout.
         left_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
@@ -202,17 +150,12 @@ class QtMainView(QtWidgets.QMainWindow):
         center_vert_splitter.setChildrenCollapsible(False)
         center_vert_splitter.setHandleWidth(3)
         center_vert_splitter.addWidget(self.invoice_viewer)
-        # center_vert_splitter.addWidget(invoice_editor)
         center_vert_splitter.addWidget(self.basket_viewer)
-        # center_vert_splitter.setStretchFactor(0, 3)
-        # center_vert_splitter.setStretchFactor(1, 1)
+        center_vert_splitter.setStretchFactor(0, 4)
+        center_vert_splitter.setStretchFactor(1, 3)
         center_vert_splitter.setOpaqueResize(False)
 
         right_vert_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
-        # right_vert_splitter.setSizePolicy(
-        #     QtWidgets.QSizePolicy.Policy.Maximum,
-        #     QtWidgets.QSizePolicy.Policy.Preferred
-        # )
         right_vert_splitter.setContentsMargins(5, 0, 0, 5)
         right_vert_splitter.setChildrenCollapsible(False)
         right_vert_splitter.setHandleWidth(3)
@@ -284,19 +227,6 @@ class QtMainView(QtWidgets.QMainWindow):
             shortcut="Ctrl+Q",
             icon=f"{resources}/close-window.png",
         )
-        #
-        #         sourceWidget = QtWidgets.QWidget()
-        #         self.sourcePix = QtWidgets.QLabel()
-        #         self.sourceLbl = QtWidgets.QLabel()
-        #         self.sourceLbl.setFrameShape(QtWidgets.QFrame.NoFrame)
-        #         self.sourceLbl.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
-        #         self.sourceLbl.setFixedWidth(350)
-        #         srcLayout = QtWidgets.QHBoxLayout()
-        #         srcLayout.setContentsMargins(10, 0, 10, 0)
-        #         srcLayout.addWidget(self.sourcePix, 0, QtCore.Qt.AlignCenter)
-        #         srcLayout.addWidget(self.sourceLbl, 0, QtCore.Qt.AlignCenter)
-        #         srcLayout.addStretch()
-        #         sourceWidget.setLayout(srcLayout)
 
         # To right-align the main toolbar.
         spacer = QtWidgets.QWidget(self)
@@ -327,7 +257,6 @@ class QtMainView(QtWidgets.QMainWindow):
         self.company_btn.setMenu(self.company_menu)
 
         self.menu = QtWidgets.QMenu()
-        # self.menu.addAction(self.downloadAction)
         self.menu.addAction(preferences_action)
         self.menu.addSeparator()
         self.menu.addAction(about_action)
@@ -355,51 +284,13 @@ class QtMainView(QtWidgets.QMainWindow):
         self.top_bar.addWidget(spacer)
         self.top_bar.addWidget(self.company_btn)
         self.top_bar.addWidget(self.menu_btn)
-        #
-        #         self.downloadProgress = DownloadProgress(self._downloader, self)
-        #         self._downloader.backgroundActionStarted.connect(self.downloadProgress.reinit)
-        #         self._downloader.backgroundActionProgressChanged.connect(
-        #             self.downloadProgress.updateProgress
-        #         )
-        #         self._downloader.backgroundActionCompleted.connect(
-        #             self.downloadProgress.terminate
-        #         )
-        #         self._downloader.backgroundActionCancelled.connect(
-        #             self.downloadProgress.onCancel
-        #         )
 
         # Build the status bar.
-        #         actionProgressBar = QtUtil.BackgroundProgressBar()
-        #         actionProgressBar.hide()
-        #         self._sourceManager.backgroundActionStarted.connect(
-        #             actionProgressBar.showActionProgress
-        #         )
-        #         self._sourceManager.backgroundActionProgressChanged.connect(
-        #             actionProgressBar.setActionProgressValue
-        #         )
-        #         self._sourceManager.backgroundActionCompleted.connect(
-        #             actionProgressBar.hideActionProgress
-        #         )
-        #         self._downloader.backgroundActionStarted.connect(
-        #             actionProgressBar.showActionProgress
-        #         )
-        #         self._downloader.backgroundActionProgressChanged.connect(
-        #             actionProgressBar.setActionProgressValue
-        #         )
-        #         self._downloader.backgroundActionCompleted.connect(
-        #             actionProgressBar.hideActionProgress
-        #         )
-        #         self._downloader.backgroundActionCancelled.connect(
-        #             actionProgressBar.hideActionProgress
-        #         )
-
         self._status = QtUtil.StatusBar()
         self.setStatusBar(self._status)
-        #         self._status.addPermanentWidget(actionProgressBar)
-        #
-        #         # Enumerate images sources
-        #         splash.setProgress(50, "Enumerating images sources...")
-        #         self._sourceManager.enumerateSources()
+
+        # Enumerate images sources
+        splash.setProgress(50)
 
         # Finalize the main window initialization once it is built.
         QtCore.QTimer.singleShot(0, self.initUI)
@@ -409,7 +300,7 @@ class QtMainView(QtWidgets.QMainWindow):
 
         Called on an immediate timer once the main windows is built.
         """
-        # self._splash.setProgress(70, "Load company settings")
+        self._splash.setProgress(70, "Loading database...")
 
         settings = Config.dfacto_settings
 
@@ -419,17 +310,8 @@ class QtMainView(QtWidgets.QMainWindow):
         self.service_selector.load_services()
         self.invoice_viewer.load_invoices()
         self.client_selector.load_clients()
-        #
-        # self._downloader.selectDestination(Path(settings.lastDestination))
-        # self._downloader.setNamingTemplate(
-        #     TemplateType.INVOICE, settings.lastImageNamingTemplate
-        # )
-        # self._downloader.setNamingTemplate(
-        #     TemplateType.DESTINATION, settings.lastDestinationNamingTemplate
-        # )
-        # self._downloader.setExtension(Case[settings.lastNamingExtension])
-        #
-        # self._splash.setProgress(100)
+
+        self._splash.setProgress(100)
 
     def show_status_message(
         self, msg: str, is_warning: bool = False, delay: int = None
@@ -858,17 +740,10 @@ def qt_main() -> None:
     a Qt Application and the application main view.
     Display a splash screen during application initialization and start the Qt main loop.
     """
-    # https://stackoverflow.com/questions/67599432/setting-the-same-icon-as-application-icon-in-task-bar-for-pyqt5-application
-    # import ctypes
-    # myappid = 'fotocop'  # arbitrary string
-    # ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
-    # or create HKEY_LOCAL_MACHINE\SOFTWARE\Classes\Applications\python.exe with an empty
-    # IsHostApp chain value
 
     # Retrieve the fotocop app settings.
     settings = Config.dfacto_settings
     resources = settings.resources
-    templates = settings.templates
 
     # Initialize and start the log server.
     log_config = LogConfig(
@@ -894,7 +769,7 @@ def qt_main() -> None:
     app.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
     f = app.font()
     fSize = f.pointSize()
-    f.setPointSize(fSize + 2)
+    f.setPointSize(fSize + settings.font_size)
     app.setFont(f)
 
     # Select a company profile
@@ -926,20 +801,17 @@ def qt_main() -> None:
     logger.info(f"Connected to {company_profile.home / 'dfacto.db'}")
     logger.info(f"Company profile {company_profile.name} is selected")
 
-    # Initialize the images sources manager.
-    # sourceManager = SourceManager()
-
     # Build and show the splash screen.
-    # splash = QtUtil.SplashScreen(
-    #     f"{resources}/splashscreen600.png",
-    #     __about__.__version__,
-    #     QtCore.Qt.WindowStaysOnTopHint,
-    # )
-    # splash.show()
+    splash = QtUtil.SplashScreen(
+        f"{resources}/splashscreen600.png",
+        __about__.__version__,
+        QtCore.Qt.WindowType.WindowStaysOnTopHint,
+    )
+    splash.show()
 
     # Build and show the main view after the splash screen delay.
-    mainView = QtMainView(company_profile)
-    # splash.finish(mainView)
+    mainView = QtMainView(company_profile, splash)
+    splash.finish(mainView)
     mainView.show()
 
     # Start the Qt main loop.

@@ -25,7 +25,6 @@ typing-extensions = {version = "^4.5.0", python = "<3.8"}
 sqlalchemy = "2.0.4"
 jinja2 = "^3.1.2"
 babel = "^2.12.1"
-pywin32 = "^305"
 pyqt6 = "^6.5.0"
 pyqt6-webengine = "^6.5.0"
 

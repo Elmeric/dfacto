@@ -28,7 +28,7 @@ from dfacto.backend import BackendError
 
 # from .backgroundprogressbar import BackgroundProgressBar
 # from .signaladpater import QtSignalAdapter
-# from .splash import SplashScreen
+from .splash import SplashScreen
 from .fittedlineedit import FittedLineEdit
 
 # from .autocompletetextedit import AutoCompleteTextEdit
@@ -144,34 +144,34 @@ def getMainWindow() -> QtWidgets.QMainWindow:
 #         pass
 #     if newSlot is not None:
 #         signal.connect(newSlot)
-#
-#
-# def standardFontSize(shrinkOnOdd: bool = True) -> int:
-#     h = QtGui.QFontMetrics(QtGui.QFont()).height()
-#     if h % 2 == 1:
-#         if shrinkOnOdd:
-#             h -= 1
-#         else:
-#             h += 1
-#     return h
-#
-#
-# def scaledIcon(path: str, size: Optional[QtCore.QSize] = None) -> QtGui.QIcon:
-#     """Create a QIcon that scales well.
-#
-#     Args:
-#         path: path to the icon file.
-#         size: target size for the icon.
-#
-#     Returns:
-#         The scaled icon
-#     """
-#     i = QtGui.QIcon()
-#     if size is None:
-#         s = standardFontSize()
-#         size = QtCore.QSize(s, s)
-#     i.addFile(path, size)
-#     return i
+
+
+def standardFontSize(shrinkOnOdd: bool = True) -> int:
+    h = QtGui.QFontMetrics(QtGui.QFont()).height()
+    if h % 2 == 1:
+        if shrinkOnOdd:
+            h -= 1
+        else:
+            h += 1
+    return h
+
+
+def scaledIcon(path: str, size: Optional[QtCore.QSize] = None) -> QtGui.QIcon:
+    """Create a QIcon that scales well.
+
+    Args:
+        path: path to the icon file.
+        size: target size for the icon.
+
+    Returns:
+        The scaled icon
+    """
+    i = QtGui.QIcon()
+    if size is None:
+        s = standardFontSize()
+        size = QtCore.QSize(s, s)
+    i.addFile(path, size)
+    return i
 #
 #
 # def setElidedText(label: QtWidgets.QLabel, text: str):

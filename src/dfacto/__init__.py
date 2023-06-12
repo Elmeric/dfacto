@@ -4,29 +4,31 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-"""Fotocop is a tool to copy images from a movable support such as a SD Card
-onto your local HDD.
+"""Dfacto is a tool to manage invoices for your company.
 
-Images can be renamed according to a user-defined pattern and using EXIF data.
-
-Requires Python >= 3.6.1
+Requires Python >= 3.8
 
 Usage:
-    ''python -m fotocop''
+    ''python -m dfacto''
 """
 __all__ = ["run_main"]
 
 import logging
+import multiprocessing
 import sys
 
 from dfacto.frontend import guimain as gui
 
 
-def except_hook(cls, exception, traceback_):
-    error_msg = f"{cls.__name__}: {exception}"
-    # error_msg = "".join(traceback.format_exception(cls, exception, traceback_))
+def except_hook(exc_type, exc_value, exc_traceback):
+    error_msg = f"{exc_type.__name__}: {exc_value}"
     logger = logging.getLogger(__name__)
     logger.fatal("%s", error_msg, exc_info=False)
+    sys.stderr.write(f"\ndfacto - {str(error_msg)}\n\n")
+    # for p in multiprocessing.active_children():
+    #     p.terminate()
+    sys.exit(1)
+
 
 
 def run_main():
@@ -35,13 +37,12 @@ def run_main():
     Handles exceptions not trapped earlier.
     """
     sys.excepthook = except_hook
-    try:
-        sys.exit(gui.qt_main())
-    except Exception as e:
-        logger = logging.getLogger(__name__)
-        logger.fatal("Fatal error!", exc_info=True)
-        sys.stderr.write(f"\ndfacto - {str(e)}\n\n")
-        sys.exit(1)
+    sys.exit(gui.qt_main())
+    # except Exception as e:
+    #     logger = logging.getLogger(__name__)
+    #     logger.fatal("Fatal error!", exc_info=True)
+    #     sys.stderr.write(f"\ndfacto - {str(e)}\n\n")
+    #     sys.exit(1)
 
 
 if __name__ == "__main__":
