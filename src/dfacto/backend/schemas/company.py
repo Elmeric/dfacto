@@ -16,12 +16,6 @@ from dfacto.backend.schemas import Address
 class _CompanyBase:
     name: str
     home: Path
-    address: Address
-    phone_number: str
-    email: str
-    siret: str
-    rcs: str
-    no_vat: bool
 
 
 @dataclass
@@ -45,12 +39,21 @@ class CompanyCreate(_CompanyBase):
     no_vat: Optional[bool] = None
 
     def flatten(self) -> dict[str, Any]:
+        address: Optional[str]
+        zip_code: Optional[str]
+        city: Optional[str]
+        if self.address is None:
+            address = zip_code = city = None
+        else:
+            address = self.address.address
+            zip_code = self.address.zip_code
+            city = self.address.city
         return dict(
             name=self.name,
             home=self.home,
-            address=self.address.address,
-            zip_code=self.address.zip_code,
-            city=self.address.city,
+            address=address,
+            zip_code=zip_code,
+            city=city,
             phone_number=self.phone_number,
             email=self.email,
             siret=self.siret,
@@ -77,14 +80,18 @@ class CompanyUpdate(_CompanyDefaultsBase):
             email=self.email,
             siret=self.siret,
             rcs=self.rcs,
-            no_vat=self.no_vat
+            no_vat=self.no_vat,
         )
 
 
 @dataclass
 class _CompanyInDBBase(_CompanyBase):
-    pass
-    # id: int
+    address: Address
+    phone_number: str
+    email: str
+    siret: str
+    rcs: str
+    no_vat: bool
 
 
 # Additional properties to return from DB
@@ -96,7 +103,6 @@ class Company(_CompanyInDBBase):
             address=orm_obj.address, zip_code=orm_obj.zip_code, city=orm_obj.city
         )
         return cls(
-            # id=orm_obj.id,
             name=orm_obj.name,
             home=orm_obj.home,
             address=address,
@@ -104,7 +110,7 @@ class Company(_CompanyInDBBase):
             email=orm_obj.email,
             siret=orm_obj.siret,
             rcs=orm_obj.rcs,
-            no_vat=orm_obj.no_vat
+            no_vat=orm_obj.no_vat,
         )
 
 

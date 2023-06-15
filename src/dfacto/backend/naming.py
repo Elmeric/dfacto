@@ -1,12 +1,12 @@
-import logging
 import json
-from typing import TYPE_CHECKING, Optional, NamedTuple
-from dataclasses import dataclass
-from enum import Enum, auto
+import logging
+from dataclasses import dataclass, field
 from datetime import datetime
+from enum import Enum, auto
+from typing import TYPE_CHECKING, NamedTuple, Optional
 
-from dfacto.util.basicpatterns import visitable
 from dfacto import settings as Config
+from dfacto.util.basicpatterns import visitable
 
 if TYPE_CHECKING:
     from dfacto.backend.schemas.invoice import Invoice
@@ -38,22 +38,24 @@ class TemplateType(Enum):
 
 
 class FormatSpec(NamedTuple):
-    name: str
-    spec: Optional[str]
+    name: str = ""
+    spec: str = ""
 
 
 @visitable
 @dataclass()
 class TokenNode:
     name: str
-    notAllowed = {
-        TemplateType.INVOICE: (),
-        TemplateType.DESTINATION: (),
-    }
+    notAllowed: dict[TemplateType, tuple[str, ...]] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.parent: Optional["TokenNode"] = None
-        self.children: tuple["TokenNode"] = tuple()
+        self.children: tuple["TokenNode", ...] = tuple()
+        self.notAllowed = {
+            TemplateType.INVOICE: (),
+            TemplateType.DESTINATION: (),
+        }
+
 
     @property
     def isLeaf(self) -> bool:
@@ -67,32 +69,30 @@ class TokenNode:
 class TokenTree(TokenNode):
     pass
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.tokensByName: dict[str, Token] = dict()
 
 
 @dataclass()
 class TokenFamily(TokenNode):
-    notAllowed = {
-        TemplateType.INVOICE: (),
-        TemplateType.DESTINATION: (),
-    }
+    pass
 
 
 @dataclass()
 class TokenGenus(TokenNode):
-    notAllowed = {
-        TemplateType.INVOICE: (),
-        TemplateType.DESTINATION: ("Invoice code",),
-    }
+    def __post_init__(self) -> None:
+        self.notAllowed = {
+            TemplateType.INVOICE: (),
+            TemplateType.DESTINATION: ("Invoice code",),
+        }
 
 
 @dataclass()
 class Token(TokenNode):
     genusName: str
-    formatSpec: Optional[FormatSpec]
+    formatSpec: FormatSpec
 
-    def asText(self):
+    def asText(self) -> str:
         if self.genusName == "Free text":
             return self.name
         return f"<{self.name}>"
@@ -117,7 +117,7 @@ class Token(TokenNode):
             fmt = self.formatSpec.spec
             if fmt == "%F":  # UPPERCASE
                 client_name = client_name.upper()
-            elif fmt == "%f":    # lowercase
+            elif fmt == "%f":  # lowercase
                 client_name = client_name.lower()
             return client_name
 
@@ -127,6 +127,9 @@ class Token(TokenNode):
         # Free text token
         if genusName == "Free text":
             return self.name
+
+        # Default (should not be used)
+        return ""
 
 
 class TokensDescription:
@@ -170,7 +173,7 @@ class TokensDescription:
     def buildTokensTree(cls) -> TokenTree:
         root = TokenTree("Tokens")
         tokensByName = dict()
-        families = list()
+        families: list[TokenNode] = list()
         for familyName in cls.TOKEN_FAMILIES:
             family = TokenFamily(familyName)
             family.parent = root
@@ -189,7 +192,7 @@ class TokensDescription:
                     tokens.append(token)
                 genus.children = tuple(tokens)
             family.children = tuple(genuses)
-        root.children = families
+        root.children = tuple(families)
         root.tokensByName = tokensByName
         return root
 
@@ -205,7 +208,7 @@ class NamingTemplate:
     name: str
     template: tuple[Token, ...]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.isBuiltin = True
 
     def asText(self) -> str:
@@ -221,9 +224,7 @@ class NamingTemplate:
         return boundaries
 
     def format(
-            self,
-            invoice: "Invoice",
-            kind: TemplateType = TemplateType.INVOICE
+        self, invoice: "Invoice", kind: TemplateType = TemplateType.INVOICE
     ) -> str:
         return "".join(token.format(invoice) for token in self.template)
         # if kind == TemplateType.INVOICE:
@@ -234,13 +235,13 @@ class NamingTemplate:
 
 
 class NamingTemplateDecoder(json.JSONDecoder):
-    """A JSONDecoder to decode a NamingTemplate object in a JSON file.
-    """
-    def __init__(self):
+    """A JSONDecoder to decode a NamingTemplate object in a JSON file."""
+
+    def __init__(self) -> None:
         super().__init__(object_hook=self.namingTemplateHook)
 
     @staticmethod
-    def namingTemplateHook(obj):
+    def namingTemplateHook(obj):  # type: ignore[no-untyped-def]
         if "__naming_template__" in obj:
             template = NamingTemplate(
                 obj["key"],
@@ -254,7 +255,7 @@ class NamingTemplateDecoder(json.JSONDecoder):
             try:
                 token = NamingTemplates.getToken(obj["name"])
             except KeyError:
-                token = Token(obj["name"], "Free text", None)
+                token = Token(obj["name"], "Free text", FormatSpec())
             return token
 
         if "__case__" in obj:
@@ -264,9 +265,9 @@ class NamingTemplateDecoder(json.JSONDecoder):
 
 
 class NamingTemplateEncoder(json.JSONEncoder):
-    """A JSONEncoder to encode a NamingTemplate object in a JSON file.
-    """
-    def default(self, obj):
+    """A JSONEncoder to encode a NamingTemplate object in a JSON file."""
+
+    def default(self, obj):  # type: ignore[no-untyped-def]
         """Overrides the JSONEncoder default encoding method.
 
         Non NamingTemplate objects are passed to the JSONEncoder base class, raising a
@@ -293,7 +294,6 @@ class NamingTemplateEncoder(json.JSONEncoder):
 
 
 class NamingTemplates:
-
     # Build the tokens tree and keep its root node reference
     tokensRootNode = TokensDescription.buildTokensTree()
 
@@ -303,9 +303,9 @@ class NamingTemplates:
             "By Date - YYYYmmDD-Client_1-FC1234",
             (
                 tokensRootNode.tokensByName["Invoice date (YYYYmmDD)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice code (One digit)"],
             ),
         ),
@@ -315,9 +315,9 @@ class NamingTemplates:
             (
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
                 tokensRootNode.tokensByName["Invoice date (mm)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice code (Four digits)"],
             ),
         ),
@@ -326,9 +326,9 @@ class NamingTemplates:
             "By Year - YYYY-Client_1-FC1234",
             (
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice code (One digit)"],
             ),
         ),
@@ -337,9 +337,9 @@ class NamingTemplates:
             "By Client name and date - Client_1-YYYYmmDD-FC1234",
             (
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice date (YYYYmmDD)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice code (One digit)"],
             ),
         ),
@@ -348,10 +348,10 @@ class NamingTemplates:
             "By Client name and year, month - Client_1-YYYYmm-FC1234",
             (
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
                 tokensRootNode.tokensByName["Invoice date (mm)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice code (One digit)"],
             ),
         ),
@@ -360,9 +360,9 @@ class NamingTemplates:
             "By Client name and year - Client_1-YYYY-FC1234",
             (
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice code (One digit)"],
             ),
         ),
@@ -371,16 +371,14 @@ class NamingTemplates:
             "By Client name - Client_1-FC1234",
             (
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("-", "Free text", None),
+                Token("-", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice code (One digit)"],
             ),
         ),
         "TPL_8": NamingTemplate(
             "TPL_8",
             "By invoice code - FC1234",
-            (
-                tokensRootNode.tokensByName["Invoice code (One digit)"],
-            ),
+            (tokensRootNode.tokensByName["Invoice code (One digit)"],),
         ),
     }
 
@@ -390,9 +388,9 @@ class NamingTemplates:
             "By year, quarter and client name - YYYY/Qn/Client_1",
             (
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
-                Token("/", "Free text", None),
+                Token("/", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice date (Quarter)"],
-                Token("/", "Free text", None),
+                Token("/", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Client name (Original Case)"],
             ),
         ),
@@ -401,25 +399,23 @@ class NamingTemplates:
             "By year and client name - YYYY/Client_1",
             (
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
-                Token("/", "Free text", None),
+                Token("/", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Client name (Original Case)"],
             ),
         ),
         "TPL_3": NamingTemplate(
             "TPL_3",
             "By year - YYYY",
-            (
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
-            ),
+            (tokensRootNode.tokensByName["Invoice date (YYYY)"],),
         ),
         "TPL_4": NamingTemplate(
             "TPL_4",
             "By client name, year and quarter - Client_1/YYYY/Qn",
             (
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("/", "Free text", None),
+                Token("/", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
-                Token("/", "Free text", None),
+                Token("/", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice date (Quarter)"],
             ),
         ),
@@ -428,22 +424,20 @@ class NamingTemplates:
             "By client name and year - Client_1/YYYY",
             (
                 tokensRootNode.tokensByName["Client name (Original Case)"],
-                Token("/", "Free text", None),
+                Token("/", "Free text", FormatSpec()),
                 tokensRootNode.tokensByName["Invoice date (YYYY)"],
             ),
         ),
         "TPL_6": NamingTemplate(
             "TPL_6",
             "By client name - Client_1",
-            (
-                tokensRootNode.tokensByName["Client name (Original Case)"],
-            ),
+            (tokensRootNode.tokensByName["Client name (Original Case)"],),
         ),
     }
     defaultInvoiceNamingTemplate = "TPL_2"
     defaultDestinationNamingTemplate = "TPL_2"
 
-    def __init__(self):
+    def __init__(self) -> None:
         settings = Config.dfacto_settings
         self._templatesFile = settings.app_dirs.user_config_dir / "templates.json"
 
@@ -461,7 +455,7 @@ class NamingTemplates:
             assert kind == TemplateType.DESTINATION
             return list(cls.builtinDestinationNamingTemplates.values())
 
-    def _load(self):
+    def _load(self) -> tuple[dict[str, NamingTemplate], dict[str, NamingTemplate]]:
         try:
             with self._templatesFile.open() as fh:
                 templates = json.load(fh, cls=NamingTemplateDecoder)
@@ -500,9 +494,7 @@ class NamingTemplates:
             return list(self.destination.values())
 
     def add(
-            self,
-            kind: TemplateType,
-            name: str, template: tuple[Token, ...]
+        self, kind: TemplateType, name: str, template: tuple[Token, ...]
     ) -> NamingTemplate:
         key = f"TPL_{id(name)}"
         namingTemplate = NamingTemplate(key, name, template)
@@ -522,10 +514,7 @@ class NamingTemplates:
             del self.destination[templateKey]
 
     def change(
-            self,
-            kind: TemplateType,
-            templateKey: str,
-            template: tuple[Token, ...]
+        self, kind: TemplateType, templateKey: str, template: tuple[Token, ...]
     ) -> NamingTemplate:
         if kind == TemplateType.INVOICE:
             namingTemplate = self.invoice[templateKey]
@@ -562,4 +551,6 @@ class NamingTemplates:
             return self.builtinInvoiceNamingTemplates[self.defaultInvoiceNamingTemplate]
         else:
             assert kind == TemplateType.DESTINATION
-            return self.builtinDestinationNamingTemplates[self.defaultDestinationNamingTemplate]
+            return self.builtinDestinationNamingTemplates[
+                self.defaultDestinationNamingTemplate
+            ]

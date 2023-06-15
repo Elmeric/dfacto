@@ -27,7 +27,7 @@ class ClientSelector(QtUtil.QFramedWidget):
     class UserRoles(IntEnum):
         ClientRole = QtCore.Qt.ItemDataRole.UserRole + 1
 
-    client_selected = QtCore.pyqtSignal(object)   # client or None
+    client_selected = QtCore.pyqtSignal(object)  # client or None
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent=parent)
@@ -192,8 +192,7 @@ class ClientSelector(QtUtil.QFramedWidget):
             return
 
         QtUtil.raise_fatal_error(
-            f"Cannot load the clients list"
-            f" - Reason is: {response.reason}"
+            f"Cannot load the clients list - Reason is: {response.reason}"
         )
 
     @QtCore.pyqtSlot(bool)
@@ -289,8 +288,7 @@ class ClientSelector(QtUtil.QFramedWidget):
 
         if response.status is CommandStatus.FAILED:
             QtUtil.raise_fatal_error(
-                f"Cannot delete client {client.name}"
-                f" - Reason is: {response.reason}"
+                f"Cannot delete client {client.name} - Reason is: {response.reason}"
             )
         if response.status is CommandStatus.REJECTED:
             QtWidgets.QMessageBox.warning(
@@ -337,9 +335,7 @@ class ClientSelector(QtUtil.QFramedWidget):
 
             new_client: schemas.Client = response.body
             active_only = not self.inactive_ckb.isChecked()
-            new_item = self._add_item_from_client(
-                new_client, active_only
-            )
+            new_item = self._add_item_from_client(new_client, active_only)
             clients_lst.sortItems(QtCore.Qt.SortOrder.AscendingOrder)
             row = clients_lst.row(new_item)
 
@@ -353,8 +349,7 @@ class ClientSelector(QtUtil.QFramedWidget):
             return
 
         QtUtil.raise_fatal_error(
-            f"Cannot {action} client {client.name}"
-            f" - Reason is: {response.reason}"
+            f"Cannot {action} client {client.name} - Reason is: {response.reason}"
         )
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):

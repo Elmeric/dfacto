@@ -44,6 +44,11 @@ class CompanyModel:
 
     def get_others(self) -> CommandResponse:
         profile = self.crud_object.get_current()
+        if profile is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET_OTHERS - No selected company profile",
+            )
         companies = self.crud_object.get_all()
         body = [
             self.schema.from_orm(company_)

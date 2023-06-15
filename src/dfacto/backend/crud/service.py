@@ -3,9 +3,10 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
+
 from datetime import datetime
 from random import randint
-from typing import Union, Any, cast
+from typing import Any, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -19,8 +20,9 @@ from .base import CRUDBase, CrudError
 class CRUDService(
     CRUDBase[models.Service, schemas.ServiceCreate, schemas.ServiceUpdate]
 ):
-
-    def get_all(self, dbsession: Session, current_only: bool = True) -> list[models.Service]:
+    def get_all(
+        self, dbsession: Session, current_only: bool = True
+    ) -> list[models.Service]:
         if current_only:
             return self._get_all_current(dbsession)
         else:
@@ -31,8 +33,7 @@ class CRUDService(
             obj_list = cast(
                 list[models.Service],
                 dbsession.scalars(
-                    select(self.model)
-                    .where(self.model.is_current == True)
+                    select(self.model).where(self.model.is_current == True)
                 ).all(),
             )
         except SQLAlchemyError as exc:
@@ -52,20 +53,19 @@ class CRUDService(
 
     def get_current(self, dbsession: Session, obj_id: int) -> models.Service:
         try:
-            service = cast(
-                models.Service,
-                dbsession.scalars(
-                    select(self.model)
-                    .where(self.model.id == obj_id)
-                    .where(self.model.is_current == True)
-                ).one(),
-            )
+            service_ = dbsession.scalars(
+                select(self.model)
+                .where(self.model.id == obj_id)
+                .where(self.model.is_current == True)
+            ).one()
         except SQLAlchemyError as exc:
             raise CrudError from exc
         else:
-            return service
+            return service_
 
-    def create(self, dbsession: Session, *, obj_in: schemas.ServiceCreate) -> models.Service:
+    def create(
+        self, dbsession: Session, *, obj_in: schemas.ServiceCreate
+    ) -> models.Service:
         obj_in_data = obj_in.flatten()
         obj_in_data["id"] = randint(1, 100000)
         obj_in_data["version"] = 1

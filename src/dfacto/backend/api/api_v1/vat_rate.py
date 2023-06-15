@@ -73,7 +73,9 @@ class VatRateModel(DFactoModel[crud.CRUDVatRate, schemas.VatRate]):
                 return CommandResponse(CommandStatus.COMPLETED)
 
     @command
-    def update(self, obj_id: int, *, obj_in: schemas.VatRateUpdate) -> CommandResponse:
+    def update(
+        self, obj_id: int, *, obj_in: schemas.VatRateUpdate  # type: ignore[override]
+    ) -> CommandResponse:
         try:
             vat_rate_ = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:

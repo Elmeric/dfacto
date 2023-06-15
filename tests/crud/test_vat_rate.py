@@ -147,12 +147,12 @@ def test_crud_get_all_error(dbsession, init_vat_rates, mock_select):
 
 def test_crud_create(dbsession, init_vat_rates):
     vat_rate = crud.vat_rate.create(
-        dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=Decimal('30.0'))
+        dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=Decimal("30.0"))
     )
 
     assert vat_rate.id is not None
     assert vat_rate.name == "A new rate"
-    assert vat_rate.rate == Decimal('30.0')
+    assert vat_rate.rate == Decimal("30.0")
     assert not vat_rate.is_default
     assert not vat_rate.is_preset
     try:
@@ -160,7 +160,7 @@ def test_crud_create(dbsession, init_vat_rates):
     except sa.exc.SQLAlchemyError:
         s = None
     assert s.name == "A new rate"
-    assert s.rate == Decimal('30.0')
+    assert s.rate == Decimal("30.0")
     assert not s.is_default
     assert not s.is_preset
 
@@ -171,11 +171,12 @@ def test_crud_create_error(dbsession, init_vat_rates, mock_commit):
 
     with pytest.raises(crud.CrudError):
         _vat_rate = crud.vat_rate.create(
-            dbsession, obj_in=schemas.VatRateCreate(name="A new rate", rate=Decimal('30.0'))
+            dbsession,
+            obj_in=schemas.VatRateCreate(name="A new rate", rate=Decimal("30.0")),
         )
     assert (
         dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.rate == Decimal('30.0'))
+            sa.select(models.VatRate).where(models.VatRate.rate == Decimal("30.0"))
         ).first()
         is None
     )
@@ -188,12 +189,12 @@ def test_crud_update(obj_in_factory, dbsession, init_vat_rates):
     updated = crud.vat_rate.update(
         dbsession,
         db_obj=vat_rate,
-        obj_in=obj_in_factory(name="A super rate!", rate=Decimal('50.0')),
+        obj_in=obj_in_factory(name="A super rate!", rate=Decimal("50.0")),
     )
 
     assert updated.id == vat_rate.id
     assert updated.name == "A super rate!"
-    assert updated.rate == Decimal('50.0')
+    assert updated.rate == Decimal("50.0")
     assert updated.is_default == vat_rate.is_default
     assert updated.is_preset == vat_rate.is_preset
     try:
@@ -201,7 +202,7 @@ def test_crud_update(obj_in_factory, dbsession, init_vat_rates):
     except sa.exc.SQLAlchemyError:
         s = None
     assert s.name == "A super rate!"
-    assert s.rate == Decimal('50.0')
+    assert s.rate == Decimal("50.0")
     assert s.is_default == vat_rate.is_default
     assert s.is_preset == vat_rate.is_preset
 
@@ -215,7 +216,9 @@ def test_crud_update_is_default_failed(set_default, obj_id, dbsession, init_vat_
         _updated = crud.vat_rate.update(
             dbsession,
             db_obj=vat_rate,
-            obj_in=dict(name="A super rate!", rate=Decimal('50.0'), is_default=set_default),
+            obj_in=dict(
+                name="A super rate!", rate=Decimal("50.0"), is_default=set_default
+            ),
         )
 
     try:
@@ -251,12 +254,12 @@ def test_crud_update_partial(dbsession, init_vat_rates):
     vat_rate = init_vat_rates[6]
 
     updated = crud.vat_rate.update(
-        dbsession, db_obj=vat_rate, obj_in=schemas.VatRateUpdate(rate=Decimal('50.0'))
+        dbsession, db_obj=vat_rate, obj_in=schemas.VatRateUpdate(rate=Decimal("50.0"))
     )
 
     assert updated.id == vat_rate.id
     assert updated.name == vat_rate.name
-    assert updated.rate == Decimal('50.0')
+    assert updated.rate == Decimal("50.0")
     assert updated.is_default == vat_rate.is_default
     assert updated.is_preset == vat_rate.is_preset
     try:
@@ -264,7 +267,7 @@ def test_crud_update_partial(dbsession, init_vat_rates):
     except sa.exc.SQLAlchemyError:
         s = None
     assert s.name == vat_rate.name
-    assert s.rate == Decimal('50.0')
+    assert s.rate == Decimal("50.0")
     assert s.is_default == vat_rate.is_default
     assert s.is_preset == vat_rate.is_preset
 
@@ -291,12 +294,14 @@ def test_crud_update_error(dbsession, init_vat_rates, mock_commit):
 
     with pytest.raises(crud.CrudError):
         _updated = crud.vat_rate.update(
-            dbsession, db_obj=vat_rate, obj_in=schemas.VatRateUpdate(rate=Decimal('30.0'))
+            dbsession,
+            db_obj=vat_rate,
+            obj_in=schemas.VatRateUpdate(rate=Decimal("30.0")),
         )
 
     assert (
         dbsession.scalars(
-            sa.select(models.VatRate).where(models.VatRate.rate == Decimal('30.0'))
+            sa.select(models.VatRate).where(models.VatRate.rate == Decimal("30.0"))
         ).first()
         is None
     )

@@ -9,14 +9,15 @@
 import logging
 import os
 import sys
+import time
 from decimal import Decimal
-from typing import Optional
-
-from babel.numbers import format_currency
+from typing import Optional, Any
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
+
+from babel.numbers import format_currency
 
 import dfacto.__about__ as __about__
 
@@ -25,16 +26,17 @@ from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api.command import CommandStatus
 
-# Views
-from .companydialogs import AddCompanyDialog, SelectCompanyDialog
-from .basketviewer import BasketTableModel, BasketViewer
-from .invoiceviewer import InvoiceTableModel, InvoiceViewer
-from .clientselector import ClientSelector
-from .serviceselector import ServiceSelector
-
 # Util
 from dfacto.util import qtutil as QtUtil
 from dfacto.util.logutil import LogConfig
+from dfacto.util.settings import SettingsError
+
+# Views
+from .basketviewer import BasketTableModel, BasketViewer
+from .clientselector import ClientSelector
+from .companydialogs import AddCompanyDialog, SelectCompanyDialog
+from .invoiceviewer import InvoiceTableModel, InvoiceViewer
+from .serviceselector import ServiceSelector
 
 __all__ = ["qt_main"]
 
@@ -70,17 +72,18 @@ class QtMainView(QtWidgets.QMainWindow):
         _status: reference to the Main window status bar.
     """
 
-    # def __init__(self, sourceManager: SourceManager, splash, *args, **kwargs) -> None:
     def __init__(
         self,
         company_profile: schemas.Company,
         splash: QtUtil.SplashScreen,
-        *args, **kwargs
+        *args: Any,
+        **kwargs: Any,
     ) -> None:
         self.company_profile = company_profile
         super().__init__(*args, **kwargs)
 
         splash.setProgress(10, "Create Gui objects...")
+        time.sleep(1)
 
         self._splash = splash
 
@@ -125,9 +128,7 @@ class QtMainView(QtWidgets.QMainWindow):
         self.basket_viewer.invoice_created.connect(
             self.invoice_viewer.on_invoice_creation
         )
-        self.invoice_viewer.basket_updated.connect(
-            self.basket_viewer.on_basket_update
-        )
+        self.invoice_viewer.basket_updated.connect(self.basket_viewer.on_basket_update)
         invoice_model.pending_payment_created.connect(self.do_set_pending_pmt)
         invoice_model.pending_payment_changed.connect(self.do_update_pending_pmt)
         invoice_model.sales_summary_created.connect(self.do_set_sales_summary)
@@ -295,12 +296,13 @@ class QtMainView(QtWidgets.QMainWindow):
         # Finalize the main window initialization once it is built.
         QtCore.QTimer.singleShot(0, self.initUI)
 
-    def initUI(self):
+    def initUI(self) -> None:
         """Intialize the main window to its last position.
 
         Called on an immediate timer once the main windows is built.
         """
         self._splash.setProgress(70, "Loading database...")
+        time.sleep(1)
 
         settings = Config.dfacto_settings
 
@@ -314,8 +316,11 @@ class QtMainView(QtWidgets.QMainWindow):
         self._splash.setProgress(100)
 
     def show_status_message(
-        self, msg: str, is_warning: bool = False, delay: int = None
-    ):
+        self,
+        msg: str,
+        is_warning: bool = False,
+        delay: Optional[int] = None,
+    ) -> None:
         """Convenient function to display a status message.
 
         Encapsulate the displayMessage method of the customized statusBar.
@@ -329,96 +334,8 @@ class QtMainView(QtWidgets.QMainWindow):
         """
         self._status.displayMessage(msg, is_warning, delay)
 
-    #
-    #     def okToContinue(self) -> bool:
-    #         """Authorize app exit, project creation or loading.
-    #
-    #         Ask for confirmation if the project is valid and has pending changes.
-    #
-    #         Returns:
-    #             True if action is authorized, False otherwise.
-    #         """
-    #         # if self.project and self.project.isValid and self.project.isDirty:
-    #         #     reply = QtWidgets.QMessageBox.question(
-    #         #         self,  # noqa
-    #         #         f"{QtWidgets.qApp.applicationName()} - Unsaved Changes",
-    #         #         "Save project changes?",
-    #         #         (
-    #         #             QtWidgets.QMessageBox.Yes
-    #         #             | QtWidgets.QMessageBox.No
-    #         #             | QtWidgets.QMessageBox.Cancel
-    #         #         ),
-    #         #     )  # noqa
-    #         #     if reply == QtWidgets.QMessageBox.Cancel:
-    #         #         return False
-    #         #     elif reply == QtWidgets.QMessageBox.Yes:
-    #         #         return self.saveProject()
-    #         return True
-    #
-    #     @QtCore.pyqtSlot(Source)
-    #     def displaySelectedSource(self, source: "Source") -> None:
-    #         """Update the sourceSelector widgets on source selection.
-    #
-    #         Call when the source manager signals that a source is selected. The selected
-    #         source may be a Device or a LogicalDisk object, or unknown (none).
-    #
-    #         Args:
-    #             source: the selected source of the source manager.
-    #         """
-    #         resources = Config.fotocopSettings.resources
-    #
-    #         media = source.media
-    #
-    #         if source.isDevice:
-    #             caption = media.caption
-    #             self.sourcePix.setPixmap(
-    #                 QtGui.QPixmap(f"{resources}/device.png").scaledToHeight(
-    #                     48, QtCore.Qt.SmoothTransformation
-    #                 )
-    #             )
-    #             QtUtil.setElidedText(self.sourceLbl, f"FROM {caption}\nAll pictures")
-    #             toolTip = f"Device: {caption}"
-    #             self.sourceLbl.setToolTip(toolTip)
-    #             self.sourceLbl.setStatusTip(toolTip)
-    #
-    #         elif source.isLogicalDisk:
-    #             icon = SourceSelector.DRIVE_ICON.get(media.driveType, "drive.png")
-    #             self.sourcePix.setPixmap(
-    #                 QtGui.QPixmap(f"{resources}/{icon}").scaledToHeight(
-    #                     48, QtCore.Qt.SmoothTransformation
-    #                 )
-    #             )
-    #             caption = media.caption
-    #             path = source.selectedPath
-    #             posixPath = path.as_posix()
-    #             sourcePath = posixPath[3:].replace("/", " / ")
-    #             subDirs = source.subDirs
-    #             QtUtil.setElidedText(
-    #                 self.sourceLbl, f"FROM {caption}\n{sourcePath}{' +' if subDirs else ''}"
-    #             )
-    #             toolTip = f"Drive: {caption}\nPath: {posixPath}{' (including subfolders)' if subDirs else ''}"
-    #             self.sourceLbl.setToolTip(toolTip)
-    #             self.sourceLbl.setStatusTip(toolTip)
-    #
-    #         else:
-    #             assert source.isEmpty
-    #             self.sourcePix.setPixmap(
-    #                 QtGui.QPixmap(f"{resources}/double-down.png").scaledToHeight(
-    #                     48, QtCore.Qt.SmoothTransformation
-    #                 )
-    #             )
-    #             self.sourceLbl.setText("Select a source")
-    #             self.sourceLbl.setToolTip("")
-    #             self.sourceLbl.setStatusTip("")
-    #
-    #         self.updateDownloadButtonText([], ImageProperty.IS_SELECTED, True)
-    #
-    #     @QtCore.pyqtSlot()
-    #     def doDownloadAction(self):
-    #         self.downloadButton.animateClick()
-
     @QtCore.pyqtSlot()
-    def do_edit_profile_action(self):
+    def do_edit_profile_action(self) -> None:
         # Retrieve the current company profile
         response = api.company.get_current()
         if response.status is not CommandStatus.COMPLETED:
@@ -463,7 +380,7 @@ class QtMainView(QtWidgets.QMainWindow):
         self.company_btn.setText(response.body.name)
 
     @QtCore.pyqtSlot()
-    def do_select_profile_action(self):
+    def do_select_profile_action(self) -> None:
         companies = api.company.get_others().body
 
         if len(companies) <= 0:
@@ -489,7 +406,7 @@ class QtMainView(QtWidgets.QMainWindow):
             self._select_profile(company, is_new=False)
 
     @QtCore.pyqtSlot()
-    def do_new_profile_action(self):
+    def do_new_profile_action(self) -> None:
         a_dialog = AddCompanyDialog(fixed_size=True)
         a_dialog.reset()
         a_dialog.set_mode(AddCompanyDialog.Mode.ADD)
@@ -540,56 +457,66 @@ class QtMainView(QtWidgets.QMainWindow):
         logger.info(f"Company profile {company.name} is selected")
 
     @QtCore.pyqtSlot(schemas.Amount)
-    def do_set_pending_pmt(self, pmt: schemas.Amount):
+    def do_set_pending_pmt(self, pmt: schemas.Amount) -> None:
         nbsp = "\u00A0"
         self._pending_payments = pmt
         if pmt == Decimal(0):
             self.pending_payments_lbl.setText("No pending payments".replace(" ", nbsp))
             return
-        pending_str = format_currency(pmt.net, 'EUR', locale='fr_FR').replace(" ", nbsp)
+        pending_str = format_currency(pmt.net, "EUR", locale="fr_FR").replace(" ", nbsp)
         self.pending_payments_lbl.setText(
             f"Pending{nbsp}payments:{nbsp}<strong>{pending_str}</strong>"
         )
 
     @QtCore.pyqtSlot(schemas.Amount)
-    def do_update_pending_pmt(self, pmt: schemas.Amount):
+    def do_update_pending_pmt(self, pmt: schemas.Amount) -> None:
         nbsp = "\u00A0"
         self._pending_payments += pmt
         new = self._pending_payments
         if new == Decimal(0):
             self.pending_payments_lbl.setText("No pending payments".replace(" ", nbsp))
             return
-        pending_str = format_currency(new.net, 'EUR', locale='fr_FR').replace(" ", nbsp)
+        pending_str = format_currency(new.net, "EUR", locale="fr_FR").replace(" ", nbsp)
         self.pending_payments_lbl.setText(
             f"Pending{nbsp}payments:{nbsp}<strong>{pending_str}</strong>"
         )
 
     @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
-    def do_set_sales_summary(self, last: schemas.Amount, current: schemas.Amount):
+    def do_set_sales_summary(
+        self,
+        last: schemas.Amount,
+        current: schemas.Amount
+    ) -> None:
         nbsp = "\u00A0"
         self._last_quarter_sales = last
         self._current_quarter_sales = current
-        last_str = format_currency(last.net, 'EUR', locale='fr_FR')
-        current_str = format_currency(current.net, 'EUR', locale='fr_FR')
+        last_str = format_currency(last.net, "EUR", locale="fr_FR")
+        current_str = format_currency(current.net, "EUR", locale="fr_FR")
         self.sales_summary_lbl.setText(
             f"Last{nbsp}quarter{nbsp}sales:{nbsp}<strong>{last_str}</strong>\n"
             f"Current{nbsp}quarter{nbsp}sales:{nbsp}<strong>{current_str}</strong>"
         )
 
     @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
-    def do_update_sales_summary(self, last: schemas.Amount, current: schemas.Amount):
+    def do_update_sales_summary(
+        self,
+        last: schemas.Amount,
+        current: schemas.Amount
+    ) -> None:
         nbsp = "\u00A0"
         self._last_quarter_sales += last
         self._current_quarter_sales += current
-        last_str = format_currency(self._last_quarter_sales.net, 'EUR', locale='fr_FR')
-        current_str = format_currency(self._current_quarter_sales.net, 'EUR', locale='fr_FR')
+        last_str = format_currency(self._last_quarter_sales.net, "EUR", locale="fr_FR")
+        current_str = format_currency(
+            self._current_quarter_sales.net, "EUR", locale="fr_FR"
+        )
         self.sales_summary_lbl.setText(
             f"Last{nbsp}quarter{nbsp}sales:{nbsp}<strong>{last_str}</strong>\n"
             f"Current{nbsp}quarter{nbsp}sales:{nbsp}<strong>{current_str}</strong>"
         )
 
     @QtCore.pyqtSlot()
-    def do_preferences_action(self):
+    def do_preferences_action(self) -> None:
         # TODO: Create a settings dialog.
         """Show the Dfacto settings dialog.
 
@@ -601,7 +528,7 @@ class QtMainView(QtWidgets.QMainWindow):
         #     Config.dfacto_settings.save()
 
     @QtCore.pyqtSlot()
-    def do_about_action(self):
+    def do_about_action(self) -> None:
         """Show the Fotocop 'About' dialog."""
         pass
         resources = Config.dfacto_settings.resources
@@ -636,45 +563,7 @@ class QtMainView(QtWidgets.QMainWindow):
             """,
         )
 
-    #
-    #     @QtCore.pyqtSlot()
-    #     def downloadButtonClicked(self) -> None:
-    #         if self.downloadButton.sessionRequired:
-    #             sourceSelection = self._sourceManager.source
-    #             imageKeys = sourceSelection.getImagesRequiringSession()
-    #             if imageKeys:
-    #                 dialog = SessionEditor(imagesCount=len(imageKeys), parent=self)
-    #                 if dialog.exec():
-    #                     session = dialog.session
-    #                 else:
-    #                     session = ""
-    #                 if not session:
-    #                     return
-    #                 sourceSelection.setImagesSession(imageKeys, session)
-    #
-    #         self._downloader.download()
-    #
-    #     @QtCore.pyqtSlot(list, Enum, object)
-    #     def updateDownloadButtonText(
-    #             self,
-    #             _imageKeys: List["ImageKey"],
-    #             pty: "ImageProperty",
-    #             _value
-    #     ) -> None:
-    #         source = self._sourceManager.source
-    #         timelineBuilt = source.timelineBuilt
-    #         if pty is ImageProperty.IS_SELECTED or (pty is ImageProperty.DATETIME and timelineBuilt):
-    #             count = source.selectedImagesCount
-    #             text = f" {count} images" if count > 1 else f" 1 image" if count == 1 else ""
-    #             self.downloadButton.setText(f"Download{text}")
-    #             selOk = count > 0
-    #             dateOk = (
-    #                 not self.downloadButton.datetimeRequired
-    #                 or timelineBuilt
-    #             )
-    #             self.downloadButton.setEnabled(selOk and dateOk)
-
-    def keyPressEvent(self, e: QtGui.QKeyEvent):
+    def keyPressEvent(self, e: QtGui.QKeyEvent) -> None:
         """Trap the Escape key to close the application.
 
         Reimplement the parent QMainWindow event handler to trap the Escape key
@@ -708,7 +597,7 @@ class QtMainView(QtWidgets.QMainWindow):
         )
         try:
             Config.dfacto_settings.save()
-        except Config.settings.SettingsError as e:
+        except SettingsError as e:
             reply = QtWidgets.QMessageBox.question(
                 self,  # noqa
                 f"{QtWidgets.QApplication.applicationName()} - Exit confirmation",
@@ -725,7 +614,7 @@ class QtMainView(QtWidgets.QMainWindow):
         # self._sourceManager.close()
         # self._downloader.close()
 
-    def eventFilter(self, obj, event) -> bool:
+    def eventFilter(self, obj: QtCore.QObject, event: QtCore.QEvent) -> bool:
         # https://www.qtcentre.org/threads/7718-How-to-disable-context-menu-of-a-toolbar-in-QMainApplication
         if event.type() == QtCore.QEvent.Type.ContextMenu and obj == self.top_bar:
             return True
@@ -733,7 +622,7 @@ class QtMainView(QtWidgets.QMainWindow):
         return super().eventFilter(obj, event)
 
 
-def qt_main() -> None:
+def qt_main() -> int:
     """Main Graphical Interface entry point.
 
     Retrieves settings, initiatizes the whole application logging. Then initializes
@@ -779,7 +668,7 @@ def qt_main() -> None:
         logger.info(f"No company profile is selected: Dfacto is closing...")
         # Stop the log server.
         log_config.stop_logging()
-        return
+        return 1
 
     logger.info("Connecting to database...")
     response = api.company.select(company_profile.name, is_new=is_new)
@@ -797,13 +686,13 @@ def qt_main() -> None:
         )
         # Stop the log server.
         log_config.stop_logging()
-        return
+        return 1
     logger.info(f"Connected to {company_profile.home / 'dfacto.db'}")
     logger.info(f"Company profile {company_profile.name} is selected")
 
     # Build and show the splash screen.
     splash = QtUtil.SplashScreen(
-        f"{resources}/splashscreen600.png",
+        f"{resources}/splash.png",
         __about__.__version__,
         QtCore.Qt.WindowType.WindowStaysOnTopHint,
     )
@@ -820,6 +709,8 @@ def qt_main() -> None:
     logger.info("Dfacto is closing...")
     # Stop the log server.
     log_config.stop_logging()
+
+    return 0
 
 
 def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
@@ -851,26 +742,26 @@ def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
         mode = AddCompanyDialog.Mode.NEW
     names_in_use = [company.name for company in companies]
 
-    a_dialog = AddCompanyDialog(forbidden_names=names_in_use, fixed_size=True)
-    a_dialog.reset()
-    a_dialog.set_mode(mode)
+    dialog = AddCompanyDialog(forbidden_names=names_in_use, fixed_size=True)
+    dialog.reset()
+    dialog.set_mode(mode)
 
-    if a_dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
+    if dialog.exec() != QtWidgets.QDialog.DialogCode.Accepted:
         return None, False
-    company = a_dialog.company
+    new_company = dialog.company
 
     # Add the new company profile to the database (the Dfacto settings JSON file)
-    response = api.company.add(company)
+    response = api.company.add(new_company)
     if response.status is not CommandStatus.COMPLETED:
         logger.warning(
             "Cannot create the %s company profile - Reason is: %s",
-            company.name,
+            new_company.name,
             response.reason,
         )
         QtWidgets.QMessageBox.warning(
             None,  # type: ignore
             f"Dfacto - Connection failed",
-            f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
+            f"Cannot create the {new_company.name} company profile\n\nReason is:\n{response.reason}",
             QtWidgets.QMessageBox.StandardButton.Close,
         )
         return None, False

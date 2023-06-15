@@ -7,8 +7,6 @@ import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-# from win32com.shell import shell, shellcon  # noqa
-
 from dfacto.backend import naming
 from dfacto.util import settings
 from dfacto.util.settings import Setting

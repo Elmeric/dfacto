@@ -5,9 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from typing import Any, NamedTuple, Optional
+from typing import Any, NamedTuple, Optional, Callable, TypeVar, ParamSpec
 
 from dfacto.backend.db import session_factory
+
+P = ParamSpec('P')
+T = TypeVar('T')
 
 
 class CommandException(Exception):
@@ -68,10 +71,12 @@ class CommandResponse(NamedTuple):
         return CommandReport(self.status, self.reason)
 
 
-def command(func):
-    def wrapper(self, *args, **kwargs) -> CommandResponse:
+# https://mypy.readthedocs.io/en/stable/generics.html#declaring-decorators
+def command(func: Callable[P, T]) -> Callable[P, T]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
         with session_factory() as session:
-            self.session = session
-            return func(self, *args, **kwargs)
+            dfacto_model = args[0]
+            dfacto_model.session = session  # type: ignore[attr-defined]
+            return func(*args, **kwargs)
 
     return wrapper

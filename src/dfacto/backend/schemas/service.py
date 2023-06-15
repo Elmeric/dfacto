@@ -14,8 +14,8 @@ from dfacto.backend import models
 from .base import BaseSchema
 from .vat_rate import VatRate
 
+ServiceKey = tuple[int, int]  # (id, version)
 
-ServiceKey = tuple[int, int]    # (id, version)
 
 @dataclass
 class _ServiceBase(BaseSchema[models.Service]):
@@ -60,7 +60,7 @@ class Service(_ServiceInDBBase):
         return cls(
             key=(orm_obj.id, orm_obj.version),
             name=orm_obj.name,
-            unit_price=orm_obj.unit_price.quantize(Decimal('0.01')),
+            unit_price=orm_obj.unit_price.quantize(Decimal("0.01")),
             vat_rate=VatRate.from_orm(orm_obj.vat_rate),
         )
 

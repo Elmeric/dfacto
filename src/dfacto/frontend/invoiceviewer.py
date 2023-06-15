@@ -5,36 +5,55 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from decimal import Decimal
 from datetime import datetime, timedelta
+from decimal import Decimal
 from enum import IntEnum
 from typing import Any, Optional, cast
-
-from babel.dates import format_date
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
+from babel.dates import format_date
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
-from dfacto.backend.api import CommandStatus, CommandReport
+from dfacto.backend.api import CommandReport, CommandStatus
 from dfacto.backend.models.invoice import InvoiceStatus
-from dfacto.backend.util import Period, PeriodFilter, DatetimeRange
+from dfacto.backend.util import DatetimeRange, Period, PeriodFilter
 from dfacto.util import qtutil as QtUtil
+
 from . import get_current_company
-from .invoice_web_view import InvoiceWebViewer
 from .invoice_log_view import StatusLogEditor
+from .invoice_web_view import InvoiceWebViewer
 
 logger = logging.getLogger(__name__)
 
-InvoiceItem = list[
-    int, int, str, str, datetime, Decimal, Decimal, Decimal, InvoiceStatus, bool, datetime
+InvoiceItem = tuple[
+    int,
+    int,
+    str,
+    str,
+    datetime,
+    Decimal,
+    Decimal,
+    Decimal,
+    InvoiceStatus,
+    bool,
+    datetime,
 ]
 
 (
-    ID, CLIENT_ID, CLIENT_NAME, CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT,
-    STATUS, IS_LATE, CHANGED_ON
+    ID,
+    CLIENT_ID,
+    CLIENT_NAME,
+    CODE,
+    CREATED_ON,
+    RAW_AMOUNT,
+    VAT,
+    NET_AMOUNT,
+    STATUS,
+    IS_LATE,
+    CHANGED_ON,
 ) = range(11)
 VAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, VAT, NET_AMOUNT, STATUS, IS_LATE)
 NOVAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, STATUS, IS_LATE)
@@ -42,12 +61,12 @@ NOVAT_COLUMNS = (CODE, CREATED_ON, RAW_AMOUNT, STATUS, IS_LATE)
 
 class InvoiceTableModel(QtCore.QAbstractTableModel):
     STATUS_COLOR = {
-        InvoiceStatus.PAID: 'darkGreen',
-        InvoiceStatus.EMITTED: 'darkslateblue',
-        InvoiceStatus.CANCELLED: 'lightgrey',
-        InvoiceStatus.REMINDED: 'darkorange',
-        InvoiceStatus.DRAFT: 'darkgrey',
-        'ERROR': 'firebrick'
+        InvoiceStatus.PAID: "darkGreen",
+        InvoiceStatus.EMITTED: "darkslateblue",
+        InvoiceStatus.CANCELLED: "lightgrey",
+        InvoiceStatus.REMINDED: "darkorange",
+        InvoiceStatus.DRAFT: "darkgrey",
+        "ERROR": "firebrick",
     }
 
     class UserRoles(IntEnum):
@@ -59,8 +78,12 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
     some_payment_needed = QtCore.pyqtSignal()
     pending_payment_created = QtCore.pyqtSignal(schemas.Amount)
     pending_payment_changed = QtCore.pyqtSignal(schemas.Amount)
-    sales_summary_created = QtCore.pyqtSignal(schemas.Amount, schemas.Amount)   # last and current quarter sales
-    sales_summary_changed = QtCore.pyqtSignal(schemas.Amount, schemas.Amount)   # relative last and current quarter sales
+    sales_summary_created = QtCore.pyqtSignal(
+        schemas.Amount, schemas.Amount
+    )  # last and current quarter sales
+    sales_summary_changed = QtCore.pyqtSignal(
+        schemas.Amount, schemas.Amount
+    )  # relative last and current quarter sales
 
     def __init__(self) -> None:
         super().__init__()
@@ -104,31 +127,26 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             return invoice
 
         QtUtil.raise_fatal_error(
-            f"Cannot get invoice {invoice_id}"
-            f" - Reason is: {response.reason}"
+            f"Cannot get invoice {invoice_id} - Reason is: {response.reason}"
         )
 
     def get_html_preview(
         self, invoice_id: int, mode: api.client.HtmlMode
     ) -> tuple[Optional[str], CommandReport]:
         response = api.client.preview_invoice(
-            self._get_client_id_of_invoice(invoice_id),
-            invoice_id=invoice_id,
-            mode=mode
+            self._get_client_id_of_invoice(invoice_id), invoice_id=invoice_id, mode=mode
         )
 
         if response.status is not CommandStatus.FAILED:
             return response.body, response.report
 
         QtUtil.raise_fatal_error(
-            f"Cannot get HTML preview"
-            f" - Reason is: {response.reason}"
+            f"Cannot get HTML preview - Reason is: {response.reason}"
         )
 
     def delete_invoice(self, invoice_id: int) -> CommandReport:
         response = api.client.delete_invoice(
-            self._get_client_id_of_invoice(invoice_id),
-            invoice_id=invoice_id
+            self._get_client_id_of_invoice(invoice_id), invoice_id=invoice_id
         )
 
         if response.status is CommandStatus.COMPLETED:
@@ -167,8 +185,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         #         raise ValueError(f"Cannot mark invoice as {status.name}")
 
         response = action(
-            self._get_client_id_of_invoice(invoice_id),
-            invoice_id=invoice_id
+            self._get_client_id_of_invoice(invoice_id), invoice_id=invoice_id
         )
 
         if response.status is CommandStatus.COMPLETED:
@@ -211,9 +228,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         )
 
     def update_invoice_history(
-        self,
-        invoice_id: int,
-        log: dict[InvoiceStatus, DatetimeRange]
+        self, invoice_id: int, log: dict[InvoiceStatus, DatetimeRange]
     ) -> CommandReport:
         status = self._invoices[invoice_id][STATUS]
         prev_pay_date = None
@@ -339,12 +354,12 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 one_late = is_late
                 pending_payments += amount
             if status is InvoiceStatus.PAID:
-                pay_date= invoice.paid_on
+                pay_date = invoice.paid_on
                 if pay_date in Period.from_last_quarter():
                     last_quarter_sales += amount
                 if pay_date in Period.from_current_quarter():
                     current_quarter_sales += amount
-            self._invoices[invoice_id] = [
+            self._invoices[invoice_id] = (
                 invoice_id,
                 invoice.client_id,
                 invoice.client.name,
@@ -356,13 +371,13 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 status,
                 is_late,
                 invoice.changed_to_on(status),
-            ]
+            )
 
         self.endInsertRows()
         if one_late:
             QtCore.QTimer.singleShot(
-                1000,   # To let the splash screen to finish
-                lambda: self.some_payment_needed.emit()
+                1000,  # To let the splash screen to finish
+                lambda: self.some_payment_needed.emit(),
             )
         self.pending_payment_created.emit(pending_payments)
         self.sales_summary_created.emit(last_quarter_sales, current_quarter_sales)
@@ -377,7 +392,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         amount = invoice.amount
         self._invoice_ids.append(invoice_id)
         date_ = invoice.created_on
-        self._invoices[invoice_id] = [
+        self._invoices[invoice_id] = (
             invoice_id,
             invoice.client_id,
             invoice.client.name,
@@ -389,7 +404,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             status,
             False,
             date_,
-        ]
+        )
 
         self.endInsertRows()
 
@@ -405,7 +420,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
                 delta = Config.dfacto_settings.due_date_delta
                 is_late = date_ + timedelta(days=delta) < datetime.now()
-            self._invoices[invoice.id] = [
+            self._invoices[invoice.id] = (
                 invoice.id,
                 invoice.client_id,
                 invoice.client.name,
@@ -417,12 +432,15 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 invoice.status,
                 is_late,
                 invoice.changed_to_on(invoice.status),
-            ]
+            )
             end_index = start_index.sibling(start_index.row(), IS_LATE)
             self.dataChanged.emit(
                 start_index,
                 end_index,
-                (QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.DecorationRole),
+                (
+                    QtCore.Qt.ItemDataRole.DisplayRole,
+                    QtCore.Qt.ItemDataRole.DecorationRole,
+                ),
             )
 
     def remove_invoice(self, invoice_id: int) -> None:
@@ -516,7 +534,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
                 if role in (
                     QtCore.Qt.ItemDataRole.ToolTipRole,
-                    QtCore.Qt.ItemDataRole.StatusTipRole
+                    QtCore.Qt.ItemDataRole.StatusTipRole,
                 ):
                     if column == STATUS:
                         status = cast(InvoiceStatus, item[STATUS])
@@ -567,7 +585,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 
 
 class InvoiceViewer(QtUtil.QFramedWidget):
-    basket_updated = QtCore.pyqtSignal(int)     # client id
+    basket_updated = QtCore.pyqtSignal(int)  # client id
 
     def __init__(self, invoice_model: InvoiceTableModel, parent=None) -> None:
         super().__init__(parent=parent)
@@ -580,9 +598,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.inactive_pix = QtGui.QPixmap(
             f"{resources}/client-inactive.png"
         ).scaledToHeight(24, QtCore.Qt.TransformationMode.SmoothTransformation)
-        self.all_pix = QtGui.QPixmap(
-            f"{resources}/client-all.png"
-        ).scaledToHeight(24, QtCore.Qt.TransformationMode.SmoothTransformation)
+        self.all_pix = QtGui.QPixmap(f"{resources}/client-all.png").scaledToHeight(
+            24, QtCore.Qt.TransformationMode.SmoothTransformation
+        )
 
         self.header_lbl = QtWidgets.QLabel("INVOICES")
         self.header_lbl.setMaximumHeight(32)
@@ -604,10 +622,12 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.period_cmb.setToolTip("Filter on emitted date")
         self.period_cmb.setStatusTip("Filter on emitted date")
         self.status_btn = QtWidgets.QToolButton()
-        self.status_btn.setText('Status filter ')
+        self.status_btn.setText("Status filter ")
         self.status_btn.setToolTip("Filter on status")
         self.status_btn.setStatusTip("Filter on status")
-        self.status_btn.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup)
+        self.status_btn.setPopupMode(
+            QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
+        )
         self.late_btn = QtWidgets.QPushButton()
         self.late_btn.setCheckable(True)
         self.late_btn.setFlat(True)
@@ -746,8 +766,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         for filter_ in PeriodFilter:
             self.period_cmb.addItem(
-                filter_.name.title().replace("_", " "),
-                userData=filter_.as_period()
+                filter_.name.title().replace("_", " "), userData=filter_.as_period()
             )
         self.period_cmb.addItem("All Dates", userData=Period())
         self.period_cmb.model().sort(0)
@@ -868,10 +887,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         a_dialog = StatusLogEditor(invoice)
 
         if a_dialog.exec():
-            model.update_invoice_history(
-                invoice_id=invoice_id,
-                log=a_dialog.status_log
-            )
+            model.update_invoice_history(invoice_id=invoice_id, log=a_dialog.status_log)
 
     @QtCore.pyqtSlot()
     def undo(self) -> None:
@@ -901,7 +917,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         proxy = cast(InvoiceFilterProxyModel, self._invoice_table.model())
 
         if client is None:
-            logger.info("No client exists or all clients are hidden, disable invoices interactions")
+            logger.info(
+                "No client exists or all clients are hidden, disable invoices interactions"
+            )
             self.client_lbl.clear()
             self.client_pix.clear()
             self._enable_filters(False)
@@ -1000,7 +1018,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if state == QtCore.Qt.CheckState.Checked.value:
             with QtCore.QSignalBlocker(ckb):
                 ckb.setChecked(
-                    all([c.isChecked() for s, c in self.status_actions.items() if s != "all"])
+                    all(
+                        [
+                            c.isChecked()
+                            for s, c in self.status_actions.items()
+                            if s != "all"
+                        ]
+                    )
                 )
         else:
             with QtCore.QSignalBlocker(ckb):
@@ -1090,7 +1114,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         #         assert result == InvoiceWebViewer.Action.NO_ACTION
 
     @QtCore.pyqtSlot()
-    def check_if_paid(self, ):
+    def check_if_paid(self):
         reply = QtWidgets.QMessageBox.question(
             self,  # noqa
             f"{QtWidgets.QApplication.applicationName()} - Payment reminder",
@@ -1112,15 +1136,14 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.reset_btn.setEnabled(enable)
 
     def _enable_buttons(
-        self,
-        *,
-        status: InvoiceStatus = None,
-        enable: bool = True
+        self, *, status: InvoiceStatus = None, enable: bool = True
     ) -> None:
         if enable:
             assert status is not None
             is_draft = status is InvoiceStatus.DRAFT
-            is_emitted_or_reminded = status is InvoiceStatus.EMITTED or status is InvoiceStatus.REMINDED
+            is_emitted_or_reminded = (
+                status is InvoiceStatus.EMITTED or status is InvoiceStatus.REMINDED
+            )
             is_undoable = not is_draft
             self.show_btn.setEnabled(True)
             self.history_btn.setEnabled(True)
@@ -1172,13 +1195,14 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         invoice_id = invoice[ID]
 
         html, report = invoice_table.source_model().get_html_preview(
-            invoice_id,
-            mode=mode
+            invoice_id, mode=mode
         )
 
         if html is not None:
             status = cast(InvoiceStatus, invoice[STATUS])
-            self.invoice_html_view.set_invoice(invoice_id, status, html, mode=viewer_mode)
+            self.invoice_html_view.set_invoice(
+                invoice_id, status, html, mode=viewer_mode
+            )
             self.invoice_html_view.open()
             return
 
@@ -1229,8 +1253,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
     def _move_in_basket(self, invoice: InvoiceItem):
         report = self._invoice_table.source_model().move_in_basket(
-            invoice[CLIENT_ID],
-            invoice[ID]
+            invoice[CLIENT_ID], invoice[ID]
         )
 
         if report.status is CommandStatus.COMPLETED:
@@ -1248,8 +1271,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
     def _copy_in_basket(self, invoice: InvoiceItem):
         report = self._invoice_table.source_model().copy_in_basket(
-            invoice[CLIENT_ID],
-            invoice[ID]
+            invoice[CLIENT_ID], invoice[ID]
         )
 
         if report.status is CommandStatus.COMPLETED:
@@ -1325,7 +1347,7 @@ class InvoiceTable(QtWidgets.QTableView):
         self.selectRow(row)
         self.scrollTo(
             self.model().index(row, 1),
-            QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible
+            QtWidgets.QAbstractItemView.ScrollHint.EnsureVisible,
         )
         proxy = cast(InvoiceFilterProxyModel, self.model())
         for column in range(proxy.columnCount()):
@@ -1372,11 +1394,13 @@ class InvoiceTable(QtWidgets.QTableView):
 
         resources = Config.dfacto_settings.resources
         test_action = QtUtil.createAction(
-            self, 'Test',
-            slot=lambda: print("Test"), # noqa
-            icon=QtGui.QIcon(f'{resources}/ok.png'),
+            self,
+            "Test",
+            slot=lambda: print("Test"),  # noqa
+            icon=QtGui.QIcon(f"{resources}/ok.png"),
             # shortcut="CTRL+ALT+P",
-            tip='Test a context menu action')
+            tip="Test a context menu action",
+        )
 
         menu = QtWidgets.QMenu(self)
         menu.addAction(test_action)
@@ -1477,9 +1501,16 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
 
     def reset_to_defaults(self) -> None:
         InvoiceFilterProxyModel._are_all_invoices_visible = False
-        InvoiceFilterProxyModel._period_filter = PeriodFilter.CURRENT_QUARTER.as_period()
+        InvoiceFilterProxyModel._period_filter = (
+            PeriodFilter.CURRENT_QUARTER.as_period()
+        )
         InvoiceFilterProxyModel._status_filter = "Not Cancelled"
-        InvoiceFilterProxyModel._statuses_filter = ["draft", "emitted", "reminded", "paid"]
+        InvoiceFilterProxyModel._statuses_filter = [
+            "draft",
+            "emitted",
+            "reminded",
+            "paid",
+        ]
         InvoiceFilterProxyModel._late_filter = False
         self.invalidateFilter()
 
@@ -1488,12 +1519,10 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
 
         if left.column() == CREATED_ON:
             left_date = source_model.data(
-                left,
-                role=InvoiceTableModel.UserRoles.DateRole
+                left, role=InvoiceTableModel.UserRoles.DateRole
             )
             right_date = source_model.data(
-                right,
-                role=InvoiceTableModel.UserRoles.DateRole
+                right, role=InvoiceTableModel.UserRoles.DateRole
             )
             return left_date < right_date
         return super().lessThan(left, right)
@@ -1514,14 +1543,18 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
                 return True
             return False
 
-    def filterAcceptsRow(self, source_row: int, source_parent: QtCore.QModelIndex) -> bool:
+    def filterAcceptsRow(
+        self, source_row: int, source_parent: QtCore.QModelIndex
+    ) -> bool:
         source_model = self.sourceModel()
 
         if self._are_all_invoices_visible:
             ok_client = True
         else:
             index = source_model.index(source_row, CLIENT_ID, source_parent)
-            client_id = self.sourceModel().data(index, QtCore.Qt.ItemDataRole.DisplayRole)
+            client_id = self.sourceModel().data(
+                index, QtCore.Qt.ItemDataRole.DisplayRole
+            )
             ok_client = int(client_id) == self.client_filter()
 
         if self._period_filter == Period():

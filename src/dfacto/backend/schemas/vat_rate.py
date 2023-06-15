@@ -51,7 +51,7 @@ class VatRate(_VatRateInDBBase):
         return cls(
             id=orm_obj.id,
             name=orm_obj.name,
-            rate=orm_obj.rate.quantize(Decimal('0.1')),
+            rate=orm_obj.rate.quantize(Decimal("0.1")),
             is_default=orm_obj.is_default,
             is_preset=orm_obj.is_preset,
         )

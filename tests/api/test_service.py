@@ -4,10 +4,10 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from typing import Union, Any
+from decimal import Decimal
+from typing import Any, Union
 
 import pytest
-from decimal import Decimal
 
 from dfacto.backend import api, crud, schemas
 from dfacto.backend.api.command import CommandStatus
@@ -31,9 +31,7 @@ def mock_service_model(mock_dfacto_model, monkeypatch):
             obj_in.id = 1
             return obj_in
 
-    def _update(
-        _db, *, db_obj, obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]
-    ):
+    def _update(_db, *, db_obj, obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]):
         methods_called.append("UPDATE")
         exc = state["raises"]["UPDATE"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
@@ -177,7 +175,9 @@ def test_cmd_add(mock_service_model, mock_schema_from_orm):
     state["raises"] = {"CREATE": False}
 
     response = api.service.add(
-        schemas.ServiceCreate(name="Service 2", unit_price=Decimal('200.00'), vat_rate_id=3)
+        schemas.ServiceCreate(
+            name="Service 2", unit_price=Decimal("200.00"), vat_rate_id=3
+        )
     )
 
     assert len(methods_called) == 1
@@ -185,7 +185,7 @@ def test_cmd_add(mock_service_model, mock_schema_from_orm):
     assert response.status is CommandStatus.COMPLETED
     assert response.body.id == 1
     assert response.body.name == "Service 2"
-    assert response.body.unit_price == Decimal('200.00')
+    assert response.body.unit_price == Decimal("200.00")
     assert response.body.vat_rate_id == 3
 
 
@@ -194,7 +194,9 @@ def test_cmd_add_error(mock_service_model, mock_schema_from_orm):
     state["raises"] = {"CREATE": True}
 
     response = api.service.add(
-        schemas.ServiceCreate(name="Service 2", unit_price=Decimal('200.00'), vat_rate_id=3)
+        schemas.ServiceCreate(
+            name="Service 2", unit_price=Decimal("200.00"), vat_rate_id=3
+        )
     )
 
     assert len(methods_called) == 1
@@ -211,17 +213,16 @@ def test_cmd_update(mock_service_model, mock_schema_from_orm):
         rev_id=1,
         revisions={
             1: FakeORMServiceRevision(
-                id=1,
-                name="Service 1",
-                unit_price=Decimal('100.00'),
-                vat_rate_id=1
+                id=1, name="Service 1", unit_price=Decimal("100.00"), vat_rate_id=1
             )
-        }
+        },
     )
 
     response = api.service.update(
         obj_id=1,
-        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=Decimal('200.00'), vat_rate_id=3),
+        obj_in=schemas.ServiceUpdate(
+            name="Service 2", unit_price=Decimal("200.00"), vat_rate_id=3
+        ),
     )
 
     assert len(methods_called) == 2
@@ -231,7 +232,7 @@ def test_cmd_update(mock_service_model, mock_schema_from_orm):
     assert response.body.id == 1
     assert response.body.rev_id == 2
     assert response.body.revisions[2].name == "Service 2"
-    assert response.body.revisions[2].unit_price == Decimal('200.00')
+    assert response.body.revisions[2].unit_price == Decimal("200.00")
     assert response.body.revisions[2].vat_rate_id == 3
 
 
@@ -242,7 +243,9 @@ def test_cmd_update_unknown(mock_service_model, mock_schema_from_orm):
 
     response = api.service.update(
         obj_id=1,
-        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=Decimal('200.00'), vat_rate_id=3),
+        obj_in=schemas.ServiceUpdate(
+            name="Service 2", unit_price=Decimal("200.00"), vat_rate_id=3
+        ),
     )
 
     assert len(methods_called) == 1
@@ -258,7 +261,9 @@ def test_cmd_update_error(mock_service_model, mock_schema_from_orm):
 
     response = api.service.update(
         obj_id=1,
-        obj_in=schemas.ServiceUpdate(name="Service 2", unit_price=Decimal('200.00'), vat_rate_id=3),
+        obj_in=schemas.ServiceUpdate(
+            name="Service 2", unit_price=Decimal("200.00"), vat_rate_id=3
+        ),
     )
 
     assert len(methods_called) == 2
@@ -271,9 +276,7 @@ def test_cmd_update_error(mock_service_model, mock_schema_from_orm):
 def test_cmd_delete(mock_dfacto_model, mock_schema_from_orm):
     state, methods_called = mock_dfacto_model
     state["raises"] = {"READ": False, "DELETE": False}
-    state["read_value"] = FakeORMService(
-        id=1, rev_id=1
-    )
+    state["read_value"] = FakeORMService(id=1, rev_id=1)
 
     response = api.service.delete(obj_id=1)
 
@@ -301,9 +304,7 @@ def test_cmd_delete_unknown(mock_dfacto_model, mock_schema_from_orm):
 def test_cmd_delete_error(error, mock_dfacto_model, mock_schema_from_orm):
     state, methods_called = mock_dfacto_model
     state["raises"] = {"READ": False, "DELETE": error}
-    state["read_value"] = FakeORMService(
-        id=1, rev_id=1
-    )
+    state["read_value"] = FakeORMService(id=1, rev_id=1)
 
     response = api.service.delete(obj_id=1)
 

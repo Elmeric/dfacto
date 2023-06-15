@@ -10,11 +10,14 @@ It provides:
     A getAppDir convenient function to retrieve the standard windows' application
         directories in '%LOCALAPPDATA%\<appName>'
 """
+
+from __future__ import annotations
+
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Type, overload
+from typing import Any, NamedTuple, Optional, overload, cast
 
 from dfacto.util.basicpatterns import Singleton
 
@@ -30,7 +33,7 @@ class PathEncoder(json.JSONEncoder):
     an empty string if the path name is not defined.
     """
 
-    def default(self, obj: Any) -> str:
+    def default(self, obj: Any) -> Any:
         """Overrides the JSONEncoder default encoding method.
 
         Non Path objects are passed to the JSONEncoder base class, raising a
@@ -77,7 +80,7 @@ class Settings(object, metaclass=Singleton):
         _keys: the settings key/value pairs container.
     """
 
-    _keys: Dict[str, Any]
+    _keys: dict[str, Any]
     _settings_file: Path
 
     def __init__(self, settings_file: Path) -> None:
@@ -85,7 +88,7 @@ class Settings(object, metaclass=Singleton):
 
         self._keys = self._load()
 
-    def _load(self) -> Dict[str, Any]:
+    def _load(self) -> dict[str, Any]:
         """Intialize the settings from its persistent JSON file.
 
         Returns:
@@ -94,7 +97,7 @@ class Settings(object, metaclass=Singleton):
         """
         try:
             with self._settings_file.open() as fh:
-                keys = json.load(fh)
+                keys = cast(dict[str, Any], json.load(fh))
             return keys
         except (FileNotFoundError, json.JSONDecodeError) as exc:
             logger.debug(f"Cannot load the settings file: {exc}")
@@ -162,7 +165,7 @@ class Settings(object, metaclass=Singleton):
         if key in self._keys:
             del self._keys[key]
 
-    def all_keys(self) -> List[str]:
+    def all_keys(self) -> list[str]:
         """Returns a list of all keys that can be read using the Settings object.
 
         Returns:
@@ -202,7 +205,7 @@ class Setting(object):
     def __init__(self, default_value: Any = None) -> None:
         self.default_value = default_value
 
-    def __set_name__(self, owner: Type[Settings], name: str) -> None:
+    def __set_name__(self, owner: type[Settings], name: str) -> None:
         """Save the Setting instance name to use as a Settings key.
 
         Args:
@@ -216,11 +219,11 @@ class Setting(object):
         ...
 
     @overload
-    def __get__(self, instance: Settings, owner: Type[Settings]) -> Any:
+    def __get__(self, instance: Settings, owner: type[Settings]) -> Any:
         ...
 
     def __get__(
-        self, instance: Optional[Settings], owner: Optional[Type[Settings]]
+        self, instance: Optional[Settings], owner: Optional[type[Settings]]
     ) -> Any:
         """Descriptor getter.
 
@@ -278,6 +281,7 @@ def get_app_dirs(app_name: str, roaming: bool = False) -> WinAppDirs:
     Returns:
         A WinAppDirs NamedTuple containing the user app directories paths.
     """
+    folder: str | Path | None
     key = roaming and "APPDATA" or "LOCALAPPDATA"
     folder = os.environ.get(key)
 

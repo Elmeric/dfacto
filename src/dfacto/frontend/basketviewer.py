@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+from decimal import Decimal
 from typing import Any, Optional, cast
 
 import PyQt6.QtCore as QtCore
@@ -15,11 +16,12 @@ from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
 from dfacto.util import qtutil as QtUtil
+
 from . import get_current_company
 
 logger = logging.getLogger(__name__)
 
-BasketItem = list[int, str, float, int, float, float, float, float]
+BasketItem = tuple[int, str, Decimal, int, Decimal, Decimal, Decimal, Decimal]
 
 ID, SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT_RATE, VAT, NET_AMOUNT = range(8)
 VAT_COLUMNS = (SERVICE, UNIT_PRICE, QUANTITY, RAW_AMOUNT, VAT_RATE, VAT, NET_AMOUNT)
@@ -245,7 +247,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
 
         for item in items:
             self._item_ids.append(item.id)
-            self._items[item.id] = [
+            self._items[item.id] = (
                 item.service_id,
                 item.current_service.name,
                 item.current_service.unit_price,
@@ -254,7 +256,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 item.current_service.vat_rate.rate,
                 item.current_amount.vat,
                 item.current_amount.net,
-            ]
+            )
             self._services_map[item.service.id] = item.id
 
         self.endInsertRows()
@@ -265,7 +267,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
     def update_item(self, item: schemas.Item) -> None:
         start_index = self.index_from_item_id(item.id)
         if start_index.isValid():
-            self._items[item.id] = [
+            self._items[item.id] = (
                 item.service_id,
                 item.current_service.name,
                 item.current_service.unit_price,
@@ -274,7 +276,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                 item.current_service.vat_rate.rate,
                 item.current_amount.vat,
                 item.current_amount.net,
-            ]
+            )
             end_index = start_index.sibling(start_index.row(), NET_AMOUNT)
             self.dataChanged.emit(
                 start_index,
@@ -782,7 +784,7 @@ class BasketTableDelegate(QtWidgets.QStyledItemDelegate):
         parent: QtWidgets.QWidget,
         options: QtWidgets.QStyleOptionViewItem,
         index: QtCore.QModelIndex,
-    ) -> QtWidgets:
+    ) -> QtWidgets.QWidget:
         proxy_model = index.model()
         source_index = proxy_model.mapToSource(index)
         column = source_index.column()

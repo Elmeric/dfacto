@@ -179,7 +179,7 @@ class AddCompanyDialog(QtWidgets.QDialog):
             email=self.email_text.text(),
             siret=self.siret_text.text(),
             rcs=self.rcs_text.text(),
-            no_vat=self.vat_ckb.isChecked()
+            no_vat=self.vat_ckb.isChecked(),
         )
 
     @property

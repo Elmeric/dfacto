@@ -4,8 +4,8 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from decimal import Decimal
 from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -739,7 +739,7 @@ def test_cmd_set_inactive(mock_client_model, mock_schema_from_orm):
         "READ": False,
         "GET_BASKET": False,
         "CLEAR_BASKET": False,
-        "UPDATE": False
+        "UPDATE": False,
     }
     state["read_value"] = FakeORMClient(
         id=1,
@@ -871,16 +871,14 @@ def test_cmd_delete_error(mock_client_model, mock_schema_from_orm):
 def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "ADD_TO_BASKET": False}
-    state["read_value"] = (
-        FakeORMClient(
-            id=1,
-            name="Client 1",
-            address="Address 1",
-            zip_code="1",
-            city="CITY 1",
-            email="client_1@domain.com",
-            is_active=True,
-        )
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
+        email="client_1@domain.com",
+        is_active=True,
     )
     return_value = FakeORMItem(
         id=1,
@@ -890,10 +888,10 @@ def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
-        )
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
+        ),
     )
     state["return_value"] = return_value
 
@@ -911,16 +909,14 @@ def test_cmd_add_to_basket(mock_client_model, mock_schema_from_orm):
 def test_cmd_add_to_basket_get_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": True, "ADD_TO_BASKET": False}
-    state["read_value"] = (
-        FakeORMClient(
-            id=1,
-            name="Client 1",
-            address="Address 1",
-            zip_code="1",
-            city="CITY 1",
-            email="client_1@domain.com",
-            is_active=True,
-        )
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
+        email="client_1@domain.com",
+        is_active=True,
     )
     state["return_value"] = None
 
@@ -952,16 +948,14 @@ def test_cmd_add_to_basket_unknown(mock_client_model, mock_schema_from_orm):
 def test_cmd_add_to_basket_add_error(mock_client_model, mock_schema_from_orm):
     state, methods_called = mock_client_model
     state["raises"] = {"READ": False, "ADD_TO_BASKET": True}
-    state["read_value"] = (
-        FakeORMClient(
-            id=1,
-            name="Client 1",
-            address="Address 1",
-            zip_code="1",
-            city="CITY 1",
-            email="client_1@domain.com",
-            is_active=True,
-        )
+    state["read_value"] = FakeORMClient(
+        id=1,
+        name="Client 1",
+        address="Address 1",
+        zip_code="1",
+        city="CITY 1",
+        email="client_1@domain.com",
+        is_active=True,
     )
     state["return_value"] = None
 
@@ -989,9 +983,9 @@ def test_cmd_update_item_quantity(mock_client_model, mock_schema_from_orm):
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
@@ -1019,9 +1013,9 @@ def test_cmd_update_item_quantity_bad_quantity(mock_client_model, mock_schema_fr
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
@@ -1076,9 +1070,9 @@ def test_cmd_update_item_quantity_bad_basket(mock_client_model, mock_schema_from
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         basket=FakeORMBasket(
             id=1,
@@ -1110,9 +1104,9 @@ def test_cmd_update_item_quantity_bad_invoice(mock_client_model, mock_schema_fro
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
     )
@@ -1141,9 +1135,9 @@ def test_cmd_update_item_quantity_non_draft(mock_client_model, mock_schema_from_
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.EMITTED),
     )
@@ -1171,9 +1165,9 @@ def test_cmd_update_item_quantity_update_error(mock_client_model, mock_schema_fr
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
@@ -1200,9 +1194,9 @@ def test_cmd_remove_item(mock_client_model, mock_schema_from_orm):
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
@@ -1259,9 +1253,9 @@ def test_cmd_remove_item_bad_basket(mock_client_model, mock_schema_from_orm):
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         basket=FakeORMBasket(
             id=1,
@@ -1293,9 +1287,9 @@ def test_cmd_remove_item_bad_invoice(mock_client_model, mock_schema_from_orm):
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=2, status=InvoiceStatus.DRAFT),
     )
@@ -1324,9 +1318,9 @@ def test_cmd_remove_item_non_draft(mock_client_model, mock_schema_from_orm):
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.PAID),
     )
@@ -1354,9 +1348,9 @@ def test_cmd_remove_item_remove_error(mock_client_model, mock_schema_from_orm):
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
         invoice=FakeORMInvoice(id=1, client_id=1, status=InvoiceStatus.DRAFT),
     )
@@ -1601,9 +1595,9 @@ def test_cmd_add_to_invoice(
         service=FakeORMServiceRevision(
             id=1,
             name="Service 1",
-            unit_price=Decimal('50.00'),
+            unit_price=Decimal("50.00"),
             vat_rate_id=1,
-            vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+            vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
         ),
     )
     state["return_value"] = return_value
@@ -1711,9 +1705,9 @@ def test_cmd_clear_invoice(mock_client_model, mock_invoice_model, mock_schema_fr
             service=FakeORMServiceRevision(
                 id=1,
                 name="Service 1",
-                unit_price=Decimal('50.00'),
+                unit_price=Decimal("50.00"),
                 vat_rate_id=1,
-                vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+                vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
             ),
             basket=FakeORMBasket(
                 id=1,
@@ -1843,9 +1837,9 @@ def test_cmd_delete_invoice(
             service=FakeORMServiceRevision(
                 id=1,
                 name="Service 1",
-                unit_price=Decimal('50.00'),
+                unit_price=Decimal("50.00"),
                 vat_rate_id=1,
-                vat_rate=FakeORMVatRate(id=1, rate=Decimal('10.00')),
+                vat_rate=FakeORMVatRate(id=1, rate=Decimal("10.00")),
             ),
             basket=FakeORMBasket(
                 id=1,

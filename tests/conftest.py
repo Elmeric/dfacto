@@ -8,8 +8,8 @@
 
 import dataclasses
 import sys
-from decimal import Decimal
 from datetime import datetime, timedelta
+from decimal import Decimal
 from sqlite3 import Connection as SQLite3Connection
 from typing import Any, Optional, Union, cast
 
@@ -296,7 +296,8 @@ def init_data(dbsession: Session) -> TestData:
     init_db_data(dbsession)
     for i in range(3):
         vat_rate = models.VatRate(
-            name=f"Rate {i + 1}", rate=Decimal(str(12.5 + 2.5 * i))  # Rate_1 to _3  # 12.5, 15, 17.5
+            name=f"Rate {i + 1}",
+            rate=Decimal(str(12.5 + 2.5 * i)),  # Rate_1 to _3  # 12.5, 15, 17.5
         )
         dbsession.add(vat_rate)
     dbsession.commit()
@@ -309,10 +310,10 @@ def init_data(dbsession: Session) -> TestData:
         dbsession.add(service)
         dbsession.flush([service])
         service_revision = models.ServiceRevision(
-            name=f"Service_{i + 1}",    # Service_1 to _5
-            unit_price=Decimal(100 + 10 * i),   # 100, 110, 120, 130, 140
-            vat_rate_id=i + 1,    # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
-            service_id=service.id
+            name=f"Service_{i + 1}",  # Service_1 to _5
+            unit_price=Decimal(100 + 10 * i),  # 100, 110, 120, 130, 140
+            vat_rate_id=i + 1,  # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
+            service_id=service.id,
         )
         dbsession.add(service_revision)
         dbsession.flush([service_revision])
@@ -446,7 +447,9 @@ class FakeORMItem(FakeORMModel):
 class FakeORMService(FakeORMModel):
     rev_id: int
     vat_rate: "FakeORMVatRate" = None
-    revisions: dict[int, "FakeORMServiceRevision"] = dataclasses.field(default_factory=dict)
+    revisions: dict[int, "FakeORMServiceRevision"] = dataclasses.field(
+        default_factory=dict
+    )
 
 
 @dataclasses.dataclass

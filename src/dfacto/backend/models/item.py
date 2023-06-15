@@ -45,7 +45,7 @@ class Item(BaseModel):
     service: Mapped["Service"] = relationship(
         init=False,
         foreign_keys="[Item.service_id, Item.service_version]",
-        overlaps="current_service"
+        overlaps="current_service",
     )
     current_service: Mapped["Service"] = relationship(
         init=False,

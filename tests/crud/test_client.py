@@ -52,7 +52,7 @@ def init_services(dbsession: Session) -> list[models.Service]:
             name=f"Service_{i + 1}",
             unit_price=Decimal(100 + 10 * i),
             vat_rate_id=(i % 3) + 1,
-            service_id=service.id
+            service_id=service.id,
         )
         dbsession.add(service_revision)
         dbsession.flush([service_revision])
@@ -782,4 +782,6 @@ def test_item_from_orm(dbsession, init_data):
     assert from_db.service_id == item.service_id
     assert from_db.service_rev_id == item.service_rev_id
     assert from_db.quantity == item.quantity
-    assert from_db.service == schemas.Service.from_revision(item.service, item.service_rev_id)
+    assert from_db.service == schemas.Service.from_revision(
+        item.service, item.service_rev_id
+    )

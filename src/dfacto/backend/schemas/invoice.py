@@ -12,8 +12,8 @@ from typing import Optional, cast
 from dfacto.backend import models
 
 from .base import Amount, BaseSchema
-from .item import Item
 from .client import Client
+from .item import Item
 
 
 @dataclass
@@ -136,7 +136,7 @@ class Invoice(_InvoiceInDBBase):
             status_log={
                 log.status: StatusLog.from_orm(log) for log in orm_obj.status_log
             },
-            client=Client.from_orm(orm_obj.client)
+            client=Client.from_orm(orm_obj.client),
         )
 
 

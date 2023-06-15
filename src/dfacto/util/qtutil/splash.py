@@ -35,15 +35,20 @@ class SplashScreen(QtWidgets.QSplashScreen):
 
     def drawContents(self, painter: QtGui.QPainter) -> None:
         painter.save()
-        painter.setPen(QtGui.QColor(QtCore.Qt.GlobalColor.black))
-        painter.drawText(12, 60, self._version)
+        painter.setPen(QtGui.QColor(29, 32, 153))
+        f = painter.font()
+        f.setBold(True)
+        painter.setFont(f)
+        # painter.setPen(QtGui.QColor(QtCore.Qt.GlobalColor.black))
+        painter.drawText(360, 70, self._version)
         if self._progress:
             painter.setPen(self._progress_bar_pen)
             x = int(self._progress / 100 * self._image_width)
-            painter.drawLine(0, 360, x, 360)
+            painter.drawLine(0, 350, x, 350)
         if self._message:
-            painter.setPen(QtGui.QColor(QtCore.Qt.GlobalColor.black))
-            painter.drawText(12, 385, self._message)
+            painter.setPen(QtGui.QColor(29, 32, 153))
+            # painter.setPen(QtGui.QColor(QtCore.Qt.GlobalColor.black))
+            painter.drawText(12, 378, self._message)
         painter.restore()
 
     def setProgress(self, value: int, msg: str = None) -> None:

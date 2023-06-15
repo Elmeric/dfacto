@@ -32,7 +32,9 @@ class ServiceModel(DFactoModel[crud.CRUDService, schemas.Service]):
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
-    def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
+    def update(
+        self, obj_id: int, *, obj_in: schemas.ServiceUpdate  # type: ignore[override]
+    ) -> CommandResponse:
         try:
             db_obj = self.crud_object.get_current(self.session, obj_id)
         except crud.CrudError as exc:

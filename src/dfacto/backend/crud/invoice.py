@@ -4,10 +4,10 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING, cast
 
-from sqlalchemy import update, select, delete
+from sqlalchemy import delete, select, update
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -30,9 +30,9 @@ class CRUDInvoice(
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
 
-        now = datetime.now().date()
+        now = datetime.combine(date.today(), datetime.min.time())
         log = models.StatusLog(
-            invoice_id=db_obj.id, from_=now, to=None, status=models.InvoiceStatus.DRAFT
+            invoice_id=db_obj.id, from_=now, status=models.InvoiceStatus.DRAFT
         )
         dbsession.add(log)
 
@@ -67,9 +67,9 @@ class CRUDInvoice(
         dbsession.add(db_obj)
         dbsession.flush([db_obj])
 
-        now = datetime.now().date()
+        now = datetime.combine(date.today(), datetime.min.time())
         log = models.StatusLog(
-            invoice_id=db_obj.id, from_=now, to=None, status=models.InvoiceStatus.DRAFT
+            invoice_id=db_obj.id, from_=now, status=models.InvoiceStatus.DRAFT
         )
         dbsession.add(log)
 
@@ -92,6 +92,7 @@ class CRUDInvoice(
         client: models.Client = invoice_.client
         basket: models.Basket = client.basket
 
+        item: models.Item
         if clear_basket:
             for item in basket.items:
                 if item.invoice_id is None:
@@ -101,7 +102,6 @@ class CRUDInvoice(
                     # In use by an invoice, do not delete it, only dereferences the basket.
                     item.basket_id = None
 
-        item: models.Item
         for item in invoice_.items:
             item_copy = models.Item(
                 service_id=item.service_id,
@@ -225,7 +225,7 @@ class CRUDInvoice(
             models.InvoiceStatus.REMINDED,
         ), "Only emitted invoices may be cancelled."
 
-        now = datetime.now().date()
+        now = datetime.combine(date.today(), datetime.min.time())
         invoice_.status = models.InvoiceStatus.CANCELLED
         dbsession.execute(
             update(models.StatusLog)
@@ -236,7 +236,6 @@ class CRUDInvoice(
         log = models.StatusLog(
             invoice_id=invoice_.id,
             from_=now,
-            to=None,
             status=models.InvoiceStatus.CANCELLED,
         )
         dbsession.add(log)
@@ -261,7 +260,7 @@ class CRUDInvoice(
             models.InvoiceStatus.CANCELLED,
         )
 
-        now = datetime.now().date()
+        now = datetime.combine(date.today(), datetime.min.time())
         current_status = invoice_.status
         if status is models.InvoiceStatus.REMINDED and current_status == status:
             # It is a new reminder, only changes from_ date of the last status log
@@ -280,7 +279,7 @@ class CRUDInvoice(
                 .values(to=now)
             )
             log = models.StatusLog(
-                invoice_id=invoice_.id, from_=now, to=None, status=status
+                invoice_id=invoice_.id, from_=now, status=status
             )
             dbsession.add(log)
 
@@ -300,7 +299,7 @@ class CRUDInvoice(
                     select(models.StatusLog)
                     .where(models.StatusLog.invoice_id == invoice_id)
                     .order_by(models.StatusLog.from_)
-                ).all()
+                ).all(),
             )
         except SQLAlchemyError as exc:
             raise CrudError() from exc
@@ -312,7 +311,7 @@ class CRUDInvoice(
         dbsession: Session,
         *,
         invoice_: models.Invoice,
-        log: dict[models.InvoiceStatus, "DatetimeRange"]
+        log: dict[models.InvoiceStatus, "DatetimeRange"],
     ) -> None:
         for status, from_to in log.items():
             dbsession.execute(

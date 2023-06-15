@@ -13,8 +13,8 @@ from sqlalchemy.orm import Session
 from dfacto.backend import schemas
 from dfacto.backend.models import ModelType
 
-CreateSchemaType = TypeVar("CreateSchemaType", bound=schemas.BaseSchema)
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=schemas.BaseSchema)
+CreateSchemaType = TypeVar("CreateSchemaType", bound=schemas.BaseSchema)  # type: ignore[type-arg]
+UpdateSchemaType = TypeVar("UpdateSchemaType", bound=schemas.BaseSchema)  # type: ignore[type-arg]
 
 
 class CrudError(Exception):
@@ -30,7 +30,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """CRUD object with default methods to Create, Read, Update, Delete (CRUD)."""
         self.model = model
 
-    def get(self, dbsession: Session, obj_id: Any) -> Optional[ModelType]:
+    def get(self, dbsession: Session, obj_id: int) -> Optional[ModelType]:
         try:
             obj = dbsession.get(self.model, obj_id)
         except SQLAlchemyError as exc:

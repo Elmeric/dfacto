@@ -20,7 +20,7 @@ import sys
 from dfacto.frontend import guimain as gui
 
 
-def except_hook(exc_type, exc_value, exc_traceback):
+def except_hook(exc_type, exc_value, exc_traceback):  # type: ignore[no-untyped-def]
     error_msg = f"{exc_type.__name__}: {exc_value}"
     logger = logging.getLogger(__name__)
     logger.fatal("%s", error_msg, exc_info=False)
@@ -30,8 +30,7 @@ def except_hook(exc_type, exc_value, exc_traceback):
     sys.exit(1)
 
 
-
-def run_main():
+def run_main() -> None:
     """Program entry point.
 
     Handles exceptions not trapped earlier.

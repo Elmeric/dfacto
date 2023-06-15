@@ -4,6 +4,8 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+from __future__ import annotations
+
 import enum
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
@@ -43,8 +45,7 @@ class Period(NamedTuple):
     def from_quarter(cls, year: int, quarter: int) -> "Period":
         last_day = 31 if quarter in (1, 4) else 30
         return cls(
-            date(year, 1 + (quarter - 1) * 3, 1),
-            date(year, quarter * 3, last_day)
+            date(year, 1 + (quarter - 1) * 3, 1), date(year, quarter * 3, last_day)
         )
 
     @classmethod
@@ -90,7 +91,7 @@ class Period(NamedTuple):
         start = end.replace(day=1, month=1)
         return cls(start, end)
 
-    def __contains__(self, item) -> bool:
+    def __contains__(self, item: datetime | date) -> bool:  # type: ignore[override]
         if isinstance(item, datetime):
             return self.start_time <= item <= self.end_time
         if isinstance(item, date):
@@ -115,7 +116,7 @@ if __name__ == "__main__":
     for f in PeriodFilter:
         print(f.name, f.as_period())
     for q in range(4):
-        print(Period.from_quarter(2023, q+1))
+        print(Period.from_quarter(2023, q + 1))
     print(date(2023, 2, 11) in Period.from_last_quarter())
     print(datetime(2023, 6, 11, 0, 0) in Period.from_current_quarter())
-    print((2023, 2, 11) in Period.from_last_quarter())
+    print((2023, 2, 11) in Period.from_last_quarter())  # type: ignore

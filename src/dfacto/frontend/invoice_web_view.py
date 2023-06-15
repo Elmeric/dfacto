@@ -11,15 +11,15 @@ from pathlib import Path
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
-import PyQt6.QtWidgets as QtWidgets
 import PyQt6.QtWebEngineWidgets as QtWeb
+import PyQt6.QtWidgets as QtWidgets
 
 from dfacto import settings as Config
 from dfacto.backend import api
 from dfacto.backend.api import CommandStatus
 from dfacto.backend.models.invoice import InvoiceStatus
-from dfacto.util import qtutil as QtUtil
 from dfacto.frontend import get_current_company
+from dfacto.util import qtutil as QtUtil
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +48,9 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.setModal(True)
 
         self.setWindowFlags(
-            QtCore.Qt.WindowType.Dialog |
-            QtCore.Qt.WindowType.WindowTitleHint
+            QtCore.Qt.WindowType.Dialog | QtCore.Qt.WindowType.WindowTitleHint
         )
-        self.setWindowTitle('Invoice preview')
+        self.setWindowTitle("Invoice preview")
         self.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
 
         self.html_view = QtWeb.QWebEngineView()
@@ -142,7 +141,7 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.move(678, 287)
         self.resize(526, 850)
         self.html_view.setZoomFactor(0.7)
-        self.html_view.setEnabled(False)    # To let focus on the toolbar buttons
+        self.html_view.setEnabled(False)  # To let focus on the toolbar buttons
         self.progress_bar.hide()
 
     def set_invoice(
@@ -171,7 +170,9 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.html_view.printToPdf(file_path.as_posix())
 
     def _get_invoice_pathname(self, home: Path) -> Path:
-        response = api.client.get_invoice_pathname(invoice_id=self._invoice_id, home=home)
+        response = api.client.get_invoice_pathname(
+            invoice_id=self._invoice_id, home=home
+        )
         if response.status is CommandStatus.COMPLETED:
             pathname: Path = response.body
             return pathname
@@ -226,12 +227,20 @@ class InvoiceWebViewer(QtWidgets.QDialog):
                 <p><strong>{file_path}</strong></p>
                 """
             )
-            msg_box.setInformativeText("You can open it in a PDF viewer or in the Explorer")
+            msg_box.setInformativeText(
+                "You can open it in a PDF viewer or in the Explorer"
+            )
             msg_box.setIcon(QtWidgets.QMessageBox.Icon.Information)
             msg_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Close)
-            open_btn = msg_box.addButton("Open", QtWidgets.QMessageBox.ButtonRole.ActionRole)
-            explore_btn = msg_box.addButton("Show in Explorer", QtWidgets.QMessageBox.ButtonRole.ActionRole)
-            mail_btn = msg_box.addButton("Send by email", QtWidgets.QMessageBox.ButtonRole.ActionRole)
+            open_btn = msg_box.addButton(
+                "Open", QtWidgets.QMessageBox.ButtonRole.ActionRole
+            )
+            explore_btn = msg_box.addButton(
+                "Show in Explorer", QtWidgets.QMessageBox.ButtonRole.ActionRole
+            )
+            mail_btn = msg_box.addButton(
+                "Send by email", QtWidgets.QMessageBox.ButtonRole.ActionRole
+            )
             mail_btn.setEnabled(False)
             mail_btn.setToolTip("Send by email is not yet implemented")
             # mail_lbl = QtWidgets.QLabel(msg_box)
@@ -279,7 +288,11 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         if key == QtCore.Qt.Key.Key_Escape:
             self.quit()
             return
-        if alt and key in (QtCore.Qt.Key.Key_Enter, QtCore.Qt.Key.Key_Return) and self._mode == InvoiceWebViewer.Mode.CONFIRM:
+        if (
+            alt
+            and key in (QtCore.Qt.Key.Key_Enter, QtCore.Qt.Key.Key_Return)
+            and self._mode == InvoiceWebViewer.Mode.CONFIRM
+        ):
             self.send()
             return
 
@@ -299,7 +312,9 @@ class InvoiceWebViewer(QtWidgets.QDialog):
                 status = self._status
                 is_in_show_mode = self._mode is InvoiceWebViewer.Mode.SHOW
                 is_draft = status is InvoiceStatus.DRAFT
-                is_emitted_or_reminded = status is InvoiceStatus.EMITTED or status is InvoiceStatus.REMINDED
+                is_emitted_or_reminded = (
+                    status is InvoiceStatus.EMITTED or status is InvoiceStatus.REMINDED
+                )
                 self.delete_btn.setVisible(is_draft)
                 self.emit_btn.setVisible(is_draft and not is_in_show_mode)
                 self.paid_btn.setVisible(is_emitted_or_reminded)

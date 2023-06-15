@@ -69,7 +69,9 @@ class StatusLogEditor(QtWidgets.QDialog):
             QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignTop
         )
         log_layout.setHorizontalSpacing(10)
-        log_layout.setFieldGrowthPolicy(QtWidgets.QFormLayout.FieldGrowthPolicy.FieldsStayAtSizeHint)
+        log_layout.setFieldGrowthPolicy(
+            QtWidgets.QFormLayout.FieldGrowthPolicy.FieldsStayAtSizeHint
+        )
         self._date_editors: dict[InvoiceStatus, QtWidgets.QDateEdit] = dict()
         labels = {
             InvoiceStatus.DRAFT: "Created on",
@@ -132,7 +134,7 @@ class StatusLogEditor(QtWidgets.QDialog):
         ok_date = True
         a_date_changed = False
         for status, editor in self._date_editors.items():
-            date_= self._date_editors[status].date()
+            date_ = self._date_editors[status].date()
             old_date = self._status_log[status].from_.date()
             prev_status = self._previous_status[status]
             if date_.toPyDate() != old_date:
@@ -151,6 +153,6 @@ class StatusLogEditor(QtWidgets.QDialog):
         self._enable_buttons(self.is_valid)
 
     def _enable_buttons(self, is_valid: bool):
-        self.button_box.button(
-            QtWidgets.QDialogButtonBox.StandardButton.Ok
-        ).setEnabled(is_valid)
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setEnabled(
+            is_valid
+        )

@@ -1,24 +1,40 @@
-class Singleton(type):
+# Copyright (c) 2023, Eric Lemoine
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
+# mypy: ignore-errors
+
+from __future__ import annotations
+
+from typing import Any, Generic, TypeVar, Optional
+
+_T = TypeVar("_T")
+
+
+# https://stackoverflow.com/questions/75307905/python-typing-for-a-metaclass-singleton
+class Singleton(type, Generic[_T]):
     """A Standard Singleton metaclass."""
 
-    _instances = {}
+    _instances: dict[Singleton[_T], _T] = {}
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, *args: Any, **kwargs: Any) -> _T:
         if cls not in cls._instances:
             cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
         return cls._instances[cls]
 
 
-class ObjectFactory(object):
+class ObjectFactory(Generic[_T]):
     """A general purpose object factory."""
 
-    def __init__(self):
-        self._builders = {}
+    def __init__(self) -> None:
+        self._builders: dict[str, type[_T]] = {}
 
-    def register_builder(self, key, builder):
+    def register_builder(self, key: str, builder: type[_T]) -> None:
         self._builders[key] = builder
 
-    def create(self, key, *args, **kwargs):
+    def create(self, key: str, *args: Any, **kwargs: Any) -> _T:
         builder = self._builders.get(key)
         if not builder:
             raise ValueError(key)
@@ -83,11 +99,11 @@ def visitable(cls):
 # https://programmingideaswithjake.wordpress.com/2015/05/23/python-decorator-for-simplifying-delegate-pattern/
 # https://gist.github.com/dubslow/b8996308fc6af2437bef436fa28e86fa
 class DelegatedAttribute:
-    def __init__(self, delegate_name: str, attr_name: str = None) -> None:
+    def __init__(self, delegate_name: str, attr_name: Optional[str] = None) -> None:
         self.attr_name = attr_name
         self.delegate_name = delegate_name
 
-    def __set_name__(self, owner, name: str):
+    def __set_name__(self, owner: Any, name: str) -> None:
         if self.attr_name is None:
             self.attr_name = name
 

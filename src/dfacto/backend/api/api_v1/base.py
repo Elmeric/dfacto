@@ -4,23 +4,23 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from dataclasses import dataclass
-from typing import Generic, Optional, Type, TypeVar, Any
+from dataclasses import dataclass, field
+from typing import Generic, Type, TypeVar
 
 from sqlalchemy.orm import Session
 
 from dfacto.backend import crud, schemas
 from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 
-CRUDObjectType = TypeVar("CRUDObjectType", bound=crud.CRUDBase)
-SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)
+CRUDObjectType = TypeVar("CRUDObjectType", bound=crud.CRUDBase)  # type: ignore[type-arg]
+SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)  # type: ignore[type-arg]
 
 
 @dataclass()
 class DFactoModel(Generic[CRUDObjectType, SchemaType]):
     crud_object: CRUDObjectType
     schema: Type[SchemaType]
-    session: Optional[Session] = None
+    session: Session = field(init=False)
 
     @command
     def get(self, obj_id: int) -> CommandResponse:
@@ -81,7 +81,7 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
-    def update(self, obj_id: Any, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
+    def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
         try:
             db_obj = self.crud_object.get(self.session, obj_id)
         except crud.CrudError as exc:

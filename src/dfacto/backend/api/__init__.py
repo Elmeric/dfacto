@@ -9,3 +9,13 @@ from .api_v1.company import company
 from .api_v1.service import service
 from .api_v1.vat_rate import vat_rate
 from .command import CommandReport, CommandResponse, CommandStatus
+
+__all__ = [
+    "client",
+    "company",
+    "service",
+    "vat_rate",
+    "CommandReport",
+    "CommandResponse",
+    "CommandStatus",
+]

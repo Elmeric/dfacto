@@ -29,7 +29,7 @@ def init_services(dbsession: Session) -> list[models.Service]:
             name=f"Service_{i + 1}",
             unit_price=Decimal(100 + 10 * i),
             vat_rate_id=(i % 3) + 1,
-            service_id=service.id
+            service_id=service.id,
         )
         dbsession.add(service_revision)
         dbsession.flush([service_revision])
@@ -105,26 +105,26 @@ def test_crud_create(dbsession, init_services):
     service = crud.service.create(
         dbsession,
         obj_in=schemas.ServiceCreate(
-            name="Wonderful service", unit_price=Decimal('1000.00'), vat_rate_id=2
+            name="Wonderful service", unit_price=Decimal("1000.00"), vat_rate_id=2
         ),
     )
 
     assert service.id is not None
     assert service.rev_id is not None
     assert service.revisions[service.rev_id].name == "Wonderful service"
-    assert service.revisions[service.rev_id].unit_price == Decimal('1000.00')
+    assert service.revisions[service.rev_id].unit_price == Decimal("1000.00")
     assert service.revisions[service.rev_id].vat_rate_id == 2
     assert service.revisions[service.rev_id].vat_rate.id == 2
-    assert service.revisions[service.rev_id].vat_rate.rate == Decimal('2.1')
+    assert service.revisions[service.rev_id].vat_rate.rate == Decimal("2.1")
     try:
         s = dbsession.get(models.Service, service.id)
     except sa.exc.SQLAlchemyError:
         s = None
     assert s.revisions[s.rev_id].name == "Wonderful service"
-    assert s.revisions[s.rev_id].unit_price == Decimal('1000.00')
+    assert s.revisions[s.rev_id].unit_price == Decimal("1000.00")
     assert s.revisions[s.rev_id].vat_rate_id == 2
     assert s.revisions[s.rev_id].vat_rate.id == 2
-    assert s.revisions[s.rev_id].vat_rate.rate == Decimal('2.1')
+    assert s.revisions[s.rev_id].vat_rate.rate == Decimal("2.1")
 
 
 def test_crud_create_error(dbsession, init_services, mock_commit):
@@ -135,13 +135,14 @@ def test_crud_create_error(dbsession, init_services, mock_commit):
         _service = crud.service.create(
             dbsession,
             obj_in=schemas.ServiceCreate(
-                name="Wonderful service", unit_price=Decimal('1000.00'), vat_rate_id=2
+                name="Wonderful service", unit_price=Decimal("1000.00"), vat_rate_id=2
             ),
         )
     assert (
         dbsession.scalars(
-            sa.select(models.ServiceRevision)
-            .where(models.ServiceRevision.name == "Wonderful service")
+            sa.select(models.ServiceRevision).where(
+                models.ServiceRevision.name == "Wonderful service"
+            )
         ).first()
         is None
     )
@@ -155,25 +156,25 @@ def test_crud_update(obj_in_factory, dbsession, init_services):
         dbsession,
         db_obj=service,
         obj_in=obj_in_factory(
-            name="Wonderful service", unit_price=Decimal('1000.00'), vat_rate_id=2
+            name="Wonderful service", unit_price=Decimal("1000.00"), vat_rate_id=2
         ),
     )
 
     assert updated.id == service.id
     assert updated.revisions[updated.rev_id].name == "Wonderful service"
-    assert updated.revisions[updated.rev_id].unit_price == Decimal('1000.00')
+    assert updated.revisions[updated.rev_id].unit_price == Decimal("1000.00")
     assert updated.revisions[updated.rev_id].vat_rate_id == 2
     assert updated.revisions[updated.rev_id].vat_rate.id == 2
-    assert updated.revisions[updated.rev_id].vat_rate.rate == Decimal('2.1')
+    assert updated.revisions[updated.rev_id].vat_rate.rate == Decimal("2.1")
     try:
         s = dbsession.get(models.Service, updated.id)
     except sa.exc.SQLAlchemyError:
         s = None
     assert s.revisions[s.rev_id].name == "Wonderful service"
-    assert s.revisions[s.rev_id].unit_price == Decimal('1000.00')
+    assert s.revisions[s.rev_id].unit_price == Decimal("1000.00")
     assert s.revisions[s.rev_id].vat_rate_id == 2
     assert s.revisions[s.rev_id].vat_rate.id == 2
-    assert s.revisions[s.rev_id].vat_rate.rate == Decimal('2.1')
+    assert s.revisions[s.rev_id].vat_rate.rate == Decimal("2.1")
 
 
 def test_crud_update_partial(dbsession, init_services):
@@ -181,21 +182,33 @@ def test_crud_update_partial(dbsession, init_services):
 
     updated = crud.service.update(
         dbsession,
-        db_obj=service, obj_in=schemas.ServiceUpdate(unit_price=Decimal('1000.00'))
+        db_obj=service,
+        obj_in=schemas.ServiceUpdate(unit_price=Decimal("1000.00")),
     )
 
     assert updated.id == service.id
-    assert updated.revisions[updated.rev_id].name == service.revisions[service.rev_id].name
-    assert updated.revisions[updated.rev_id].unit_price == Decimal('1000.00')
-    assert updated.revisions[updated.rev_id].vat_rate_id == service.revisions[service.rev_id].vat_rate_id
-    assert updated.revisions[updated.rev_id].vat_rate is service.revisions[service.rev_id].vat_rate
+    assert (
+        updated.revisions[updated.rev_id].name == service.revisions[service.rev_id].name
+    )
+    assert updated.revisions[updated.rev_id].unit_price == Decimal("1000.00")
+    assert (
+        updated.revisions[updated.rev_id].vat_rate_id
+        == service.revisions[service.rev_id].vat_rate_id
+    )
+    assert (
+        updated.revisions[updated.rev_id].vat_rate
+        is service.revisions[service.rev_id].vat_rate
+    )
     try:
         s = dbsession.get(models.Service, updated.id)
     except sa.exc.SQLAlchemyError:
         s = None
     assert s.revisions[s.rev_id].name == service.revisions[service.rev_id].name
-    assert s.revisions[s.rev_id].unit_price == Decimal('1000.00')
-    assert s.revisions[s.rev_id].vat_rate_id == service.revisions[service.rev_id].vat_rate_id
+    assert s.revisions[s.rev_id].unit_price == Decimal("1000.00")
+    assert (
+        s.revisions[s.rev_id].vat_rate_id
+        == service.revisions[service.rev_id].vat_rate_id
+    )
     assert s.revisions[s.rev_id].vat_rate is service.revisions[service.rev_id].vat_rate
 
 
@@ -208,7 +221,9 @@ def test_crud_update_idem(dbsession, init_services, mock_commit):
     updated = crud.service.update(
         dbsession,
         db_obj=service,
-        obj_in=schemas.ServiceUpdate(unit_price=service.revisions[service.rev_id].unit_price),
+        obj_in=schemas.ServiceUpdate(
+            unit_price=service.revisions[service.rev_id].unit_price
+        ),
     )
 
     assert updated is service
@@ -230,8 +245,9 @@ def test_crud_update_error(dbsession, init_services, mock_commit):
 
     assert (
         dbsession.scalars(
-            sa.select(models.ServiceRevision)
-            .where(models.ServiceRevision.name == "Wonderful service")
+            sa.select(models.ServiceRevision).where(
+                models.ServiceRevision.name == "Wonderful service"
+            )
         ).first()
         is None
     )
@@ -240,17 +256,18 @@ def test_crud_update_error(dbsession, init_services, mock_commit):
 def test_crud_delete(dbsession, init_services):
     service = init_services[0]
     assert dbsession.get(models.Service, service.id) is not None
-    assert service.revisions[service.rev_id] in dbsession.get(
-        models.VatRate,
-        service.revisions[service.rev_id].vat_rate_id
-    ).services
+    assert (
+        service.revisions[service.rev_id]
+        in dbsession.get(
+            models.VatRate, service.revisions[service.rev_id].vat_rate_id
+        ).services
+    )
 
     crud.service.delete(dbsession, db_obj=service)
 
     assert dbsession.get(models.Service, service.id) is None
     for revision in dbsession.get(
-        models.VatRate,
-        service.revisions[service.rev_id].vat_rate_id
+        models.VatRate, service.revisions[service.rev_id].vat_rate_id
     ).services:
         assert revision.service_id != service.id
 
@@ -285,7 +302,7 @@ def test_schema_from_revision(dbsession, init_services):
         dbsession,
         db_obj=init_services[0],
         obj_in=schemas.ServiceUpdate(
-            name="Wonderful service", unit_price=Decimal('1000.00'), vat_rate_id=2
+            name="Wonderful service", unit_price=Decimal("1000.00"), vat_rate_id=2
         ),
     )
 

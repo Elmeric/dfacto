@@ -6,8 +6,8 @@
 
 import logging
 from collections import namedtuple
-from enum import Enum, auto
 from decimal import Decimal
+from enum import Enum, auto
 from typing import Optional
 
 import PyQt6.QtCore as QtCore
@@ -18,6 +18,7 @@ from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api import CommandStatus
 from dfacto.util import qtutil as QtUtil
+
 from . import get_current_company
 
 logger = logging.getLogger(__name__)
@@ -149,8 +150,7 @@ class ServiceEditor(QtWidgets.QWidget):
 
         if response.status is not CommandStatus.COMPLETED:
             QtUtil.raise_fatal_error(
-                f"Cannot retrieve the VAT rates"
-                f" - Reason is: {response.reason}"
+                f"Cannot retrieve the VAT rates" f" - Reason is: {response.reason}"
             )
 
         vat_rates: list[schemas.VatRate] = response.body
@@ -247,7 +247,11 @@ class ServiceEditor(QtWidgets.QWidget):
             if key == QtCore.Qt.Key.Key_Escape:
                 self.reject()
                 return
-            if alt and key in (QtCore.Qt.Key.Key_Enter, QtCore.Qt.Key.Key_Return) and self.is_valid:
+            if (
+                alt
+                and key in (QtCore.Qt.Key.Key_Enter, QtCore.Qt.Key.Key_Return)
+                and self.is_valid
+            ):
                 self.accept()
                 return
 

@@ -5,19 +5,19 @@
 # LICENSE file in the root directory of this source tree.
 
 from dataclasses import dataclass
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Type, cast
+from typing import Optional, Type, cast, Any
 
 import jinja2 as jinja
 from babel.dates import format_date
 
 from dfacto import settings as Config
-from dfacto.backend import crud, schemas, naming
+from dfacto.backend import crud, naming, schemas
 from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 from dfacto.backend.models import InvoiceStatus
-from dfacto.backend.util import Period, PeriodFilter, DatetimeRange
+from dfacto.backend.util import DatetimeRange, Period, PeriodFilter
 
 from .base import DFactoModel
 
@@ -45,7 +45,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         ISSUE = 2
         REMIND = 3
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         naming_templates = naming.NamingTemplates()
 
         self.destination_naming_template = naming_templates.getDefault(
@@ -200,6 +200,12 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 f"GET-INVOICE - SQL or database error: {exc}",
             )
         else:
+            if invoice is None:
+                return CommandResponse(
+                    CommandStatus.FAILED,
+                    f"GET-INVOICE - Invoice {invoice_id} not found.",
+                )
+
             body = schemas.Invoice.from_orm(invoice)
             return CommandResponse(CommandStatus.COMPLETED, body=body)
 
@@ -739,12 +745,10 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
             invoice = schemas.Invoice.from_orm(orm_invoice)
             destination = self.destination_naming_template.format(
-                invoice,
-                kind=naming.TemplateType.DESTINATION
+                invoice, kind=naming.TemplateType.DESTINATION
             )
             filename = self.invoice_naming_template.format(
-                invoice,
-                kind=naming.TemplateType.INVOICE
+                invoice, kind=naming.TemplateType.INVOICE
             )
             if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
                 filename += "-REMIND"
@@ -809,11 +813,11 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 template_dir = templates_dir / orm_company.home.name
                 if not template_dir.exists():
                     template_dir = templates_dir / "default"
-                    tpl_name = "invoice_no_vat.html" if orm_company.no_vat else "invoice.html"
-                env = jinja.Environment(
-                    loader=jinja.FileSystemLoader(
-                        template_dir.as_posix()
+                    tpl_name = (
+                        "invoice_no_vat.html" if orm_company.no_vat else "invoice.html"
                     )
+                env = jinja.Environment(
+                    loader=jinja.FileSystemLoader(template_dir.as_posix())
                 )
             except ValueError as exc:
                 return CommandResponse(
@@ -865,33 +869,43 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             if status is InvoiceStatus.DRAFT:
                 return "DRAFT", "is-draft"
             if status is InvoiceStatus.EMITTED:
+                changed_on = invoice.issued_on
+                assert changed_on is not None
                 date_ = format_date(
-                    invoice.issued_on.date(), format="long", locale="fr_FR"
+                    changed_on.date(), format="long", locale="fr_FR"
                 )
                 return f"Emise le {date_}", "is-ok"
             if status is InvoiceStatus.REMINDED:
+                changed_on = invoice.reminded_on
+                assert changed_on is not None
                 date_ = format_date(
-                    invoice.reminded_on.date(), format="long", locale="fr_FR"
+                    changed_on.date(), format="long", locale="fr_FR"
                 )
                 return f"Rappel le {date_}", "is-bad"
             if status is InvoiceStatus.PAID:
+                changed_on = invoice.paid_on
+                assert changed_on is not None
                 date_ = format_date(
-                    invoice.paid_on.date(), format="long", locale="fr_FR"
+                    changed_on.date(), format="long", locale="fr_FR"
                 )
                 return f"Payée le {date_}", "is-ok"
             if status is InvoiceStatus.CANCELLED:
+                changed_on = invoice.cancelled_on
+                assert changed_on is not None
                 date_ = format_date(
-                    invoice.cancelled_on.date(), format="long", locale="fr_FR"
+                    changed_on.date(), format="long", locale="fr_FR"
                 )
                 return f"Annulée le {date_}", "is-bad"
+
+        return "", ""
 
     def _build_context(
         self,
         client_: schemas.Client,
         invoice: schemas.Invoice,
         company: schemas.Company,
-        mode: HtmlMode
-    ) -> dict:
+        mode: HtmlMode,
+    ) -> dict[str, Any]:
         company_address = f"{company.address.address}\n{company.address.zip_code} {company.address.city}"
         client_address = f"{client_.address.address}\n{client_.address.zip_code} {client_.address.city}"
         if mode is self.HtmlMode.SHOW:
@@ -900,11 +914,10 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 if invoice.status is InvoiceStatus.DRAFT
                 else invoice.issued_on
             )
+            assert date_ is not None
         else:
             date_ = (
-                invoice.issued_on
-                if invoice.issued_on is not None
-                else datetime.now()
+                invoice.issued_on if invoice.issued_on is not None else datetime.now()
             )
         due_date = (
             None
@@ -930,9 +943,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             "invoice": {
                 "code": invoice.code,
                 "date": format_date(date_.date(), format="long", locale="fr_FR"),
-                "due_date": None if due_date is None else format_date(
-                    due_date.date(), format="long", locale="fr_FR"
-                ),
+                "due_date": None
+                if due_date is None
+                else format_date(due_date.date(), format="long", locale="fr_FR"),
                 "raw_amount": invoice.amount.raw,
                 "vat": invoice.amount.vat,
                 "net_amount": invoice.amount.net,
@@ -962,7 +975,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def copy_in_basket(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
         return self._back_in_basket(obj_id, invoice_id, move=False)
 
-    def _back_in_basket(self, obj_id: int, invoice_id: int, move: bool) -> CommandResponse:
+    def _back_in_basket(
+        self, obj_id: int, invoice_id: int, move: bool
+    ) -> CommandResponse:
         action = "move" if move else "copy"
         try:
             invoice = crud.invoice.get(self.session, invoice_id)
@@ -1002,7 +1017,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def revert_invoice_status(self, *, invoice_id: int) -> CommandResponse:
         try:
             invoice = crud.invoice.get(self.session, invoice_id)
-            status_log = crud.invoice.get_status_history(self.session, invoice_id=invoice_id)
+            status_log = crud.invoice.get_status_history(
+                self.session, invoice_id=invoice_id
+            )
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -1020,10 +1037,12 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                     f"REVERT-INVOICE - Invoice {invoice_id} is in DRAFT status.",
                 )
 
-            current_status = cast(InvoiceStatus, invoice.status)
-            previous_status = cast(InvoiceStatus, status_log[-2].status)
+            current_status = invoice.status
+            previous_status = status_log[-2].status
             try:
-                crud.invoice.revert_status(self.session, invoice_=invoice, status=previous_status)
+                crud.invoice.revert_status(
+                    self.session, invoice_=invoice, status=previous_status
+                )
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,
@@ -1053,9 +1072,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 )
 
             try:
-                crud.invoice.set_status_history(
-                    self.session, invoice_=invoice, log=log
-                )
+                crud.invoice.set_status_history(self.session, invoice_=invoice, log=log)
             except crud.CrudError as exc:
                 return CommandResponse(
                     CommandStatus.FAILED,

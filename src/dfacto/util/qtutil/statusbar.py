@@ -1,3 +1,5 @@
+from typing import Optional
+
 import PyQt6.QtCore as QtCore
 import PyQt6.QtWidgets as QtWidgets
 
@@ -47,7 +49,7 @@ class StatusBar(QtWidgets.QStatusBar):
         if not msg:
             self.setStyleSheet(self.DEFAULT_MSG_STYLE)
 
-    def displayMessage(self, msg: str, isWarning: bool = False, delay: int = None):
+    def displayMessage(self, msg: str, isWarning: bool = False, delay: Optional[int] = None):
         """Convenient function to display a status message.
 
         Display a temporary message in the status bar with the right style.
