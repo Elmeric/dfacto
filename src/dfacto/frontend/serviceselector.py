@@ -410,7 +410,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
 
-        response = api.service.delete(service.id)
+        response = api.service.delete(
+            service.id,
+        )
 
         if response.status is CommandStatus.COMPLETED:
             _deleted_item = self.services_lst.takeItem(row)

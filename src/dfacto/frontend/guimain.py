@@ -11,12 +11,11 @@ import os
 import sys
 import time
 from decimal import Decimal
-from typing import Optional, Any
+from typing import Any, Optional
 
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
-
 from babel.numbers import format_currency
 
 import dfacto.__about__ as __about__
@@ -483,9 +482,7 @@ class QtMainView(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
     def do_set_sales_summary(
-        self,
-        last: schemas.Amount,
-        current: schemas.Amount
+        self, last: schemas.Amount, current: schemas.Amount
     ) -> None:
         nbsp = "\u00A0"
         self._last_quarter_sales = last
@@ -499,9 +496,7 @@ class QtMainView(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
     def do_update_sales_summary(
-        self,
-        last: schemas.Amount,
-        current: schemas.Amount
+        self, last: schemas.Amount, current: schemas.Amount
     ) -> None:
         nbsp = "\u00A0"
         self._last_quarter_sales += last

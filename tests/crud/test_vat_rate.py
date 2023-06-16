@@ -311,7 +311,9 @@ def test_crud_delete(dbsession, init_vat_rates):
     vat_rate = init_vat_rates[0]
     assert dbsession.get(models.VatRate, vat_rate.id) is not None
 
-    crud.vat_rate.delete(dbsession, db_obj=vat_rate)
+    crud.vat_rate.delete(
+        dbsession,
+    )
 
     assert dbsession.get(models.VatRate, vat_rate.id) is None
 
@@ -324,7 +326,9 @@ def test_crud_delete_error(dbsession, init_vat_rates, mock_commit):
     assert dbsession.get(models.VatRate, vat_rate.id) is not None
 
     with pytest.raises(crud.CrudError):
-        crud.vat_rate.delete(dbsession, db_obj=vat_rate)
+        crud.vat_rate.delete(
+            dbsession,
+        )
 
     assert dbsession.get(models.VatRate, vat_rate.id) is not None
 

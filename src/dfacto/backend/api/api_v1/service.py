@@ -27,9 +27,8 @@ class ServiceModel(DFactoModel[crud.CRUDService, schemas.Service]):
                 CommandStatus.FAILED,
                 f"GET-ALL - SQL or database error: {exc}",
             )
-        else:
-            body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def update(
@@ -42,25 +41,22 @@ class ServiceModel(DFactoModel[crud.CRUDService, schemas.Service]):
                 CommandStatus.FAILED,
                 f"UPDATE - SQL or database error: {exc}",
             )
-        else:
-            if db_obj is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE - Object {obj_id} not found.",
-                )
 
-            try:
-                db_obj = self.crud_object.update(
-                    self.session, db_obj=db_obj, obj_in=obj_in
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE - Cannot update object {obj_id}: {exc}",
-                )
-            else:
-                body = self.schema.from_orm(db_obj)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if db_obj is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE - Object {obj_id} not found.",
+            )
+
+        try:
+            db_obj = self.crud_object.update(self.session, db_obj=db_obj, obj_in=obj_in)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE - Cannot update object {obj_id}: {exc}",
+            )
+        body = self.schema.from_orm(db_obj)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
 
 service = ServiceModel()

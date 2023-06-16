@@ -19,6 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class Item(BaseModel):
+    # pylint: disable=too-few-public-methods
     __tablename__ = "item"
     __table_args__ = (
         CheckConstraint(

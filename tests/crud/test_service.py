@@ -263,7 +263,9 @@ def test_crud_delete(dbsession, init_services):
         ).services
     )
 
-    crud.service.delete(dbsession, db_obj=service)
+    crud.service.delete(
+        dbsession,
+    )
 
     assert dbsession.get(models.Service, service.id) is None
     for revision in dbsession.get(
@@ -280,7 +282,9 @@ def test_crud_delete_error(dbsession, init_services, mock_commit):
     assert dbsession.get(models.Service, service.id) is not None
 
     with pytest.raises(crud.CrudError):
-        crud.service.delete(dbsession, db_obj=service)
+        crud.service.delete(
+            dbsession,
+        )
 
     assert dbsession.get(models.Service, service.id) is not None
 

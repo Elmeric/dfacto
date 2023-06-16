@@ -55,12 +55,14 @@ class DfactoSettings(settings.Settings):
     last_profile: Setting = settings.Setting(default_value=None)
     profiles: Setting = settings.Setting(default_value=None)
     lastInvoiceNamingTemplate: Setting = settings.Setting(
-        default_value=naming.NamingTemplates.defaultInvoiceNamingTemplate
+        default_value=naming.NamingTemplates.default_invoice_naming_template
     )
     lastDestinationNamingTemplate: Setting = settings.Setting(
-        default_value=naming.NamingTemplates.defaultDestinationNamingTemplate
+        default_value=naming.NamingTemplates.default_destination_naming_template
     )
-    # default_company_folder = settings.Setting(default_value="C:/Users/T0018179/MyApp/Git/home/portable/DFacto")
+    # default_company_folder = settings.Setting(
+    # default_value="C:/Users/T0018179/MyApp/Git/home/portable/DFacto"
+    # )
     default_company_folder = settings.Setting(default_value="F:/Users/Documents/Dfacto")
     due_date_delta = settings.Setting(default_value=30)
     log_level: Setting = settings.Setting(default_value=_DEFAULT_LOGLEVEL)

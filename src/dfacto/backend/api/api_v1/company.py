@@ -32,7 +32,7 @@ class CompanyModel:
         if profile is None:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"GET - No selected company profile",
+                "GET - No selected company profile",
             )
         body = self.schema.from_orm(profile)
         return CommandResponse(CommandStatus.COMPLETED, body=body)
@@ -47,7 +47,7 @@ class CompanyModel:
         if profile is None:
             return CommandResponse(
                 CommandStatus.FAILED,
-                f"GET_OTHERS - No selected company profile",
+                "GET_OTHERS - No selected company profile",
             )
         companies = self.crud_object.get_all()
         body = [
@@ -65,8 +65,7 @@ class CompanyModel:
                 CommandStatus.FAILED,
                 f"SELECT - Cannot select object: {exc}",
             )
-        else:
-            return CommandResponse(CommandStatus.COMPLETED)
+        return CommandResponse(CommandStatus.COMPLETED)
 
     def add(self, obj_in: schemas.CompanyCreate) -> CommandResponse:
         try:
@@ -76,9 +75,8 @@ class CompanyModel:
                 CommandStatus.FAILED,
                 f"ADD - Cannot add object: {exc}",
             )
-        else:
-            body = self.schema.from_orm(db_obj)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = self.schema.from_orm(db_obj)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def update(self, name: str, *, obj_in: schemas.CompanyUpdate) -> CommandResponse:
         db_obj = self.crud_object.get(name)
@@ -95,9 +93,8 @@ class CompanyModel:
                 CommandStatus.FAILED,
                 f"UPDATE - Cannot update company profile {name}: {exc}",
             )
-        else:
-            body = self.schema.from_orm(db_obj)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = self.schema.from_orm(db_obj)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
 
 company = CompanyModel()

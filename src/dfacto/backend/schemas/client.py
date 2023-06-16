@@ -40,14 +40,14 @@ class ClientCreate(_ClientBase):
     is_active: bool = True
 
     def flatten(self) -> dict[str, Any]:
-        return dict(
-            name=self.name,
-            address=self.address.address,
-            zip_code=self.address.zip_code,
-            city=self.address.city,
-            email=self.email,
-            is_active=self.is_active,
-        )
+        return {
+            "name": self.name,
+            "address": self.address.address,
+            "zip_code": self.address.zip_code,
+            "city": self.address.city,
+            "email": self.email,
+            "is_active": self.is_active,
+        }
 
 
 @dataclass
@@ -59,14 +59,14 @@ class ClientUpdate(_ClientDefaultsBase):
             address = self.address.address
             zip_code = self.address.zip_code
             city = self.address.city
-        return dict(
-            name=self.name,
-            address=address,
-            zip_code=zip_code,
-            city=city,
-            email=self.email,
-            is_active=self.is_active,
-        )
+        return {
+            "name": self.name,
+            "address": address,
+            "zip_code": zip_code,
+            "city": city,
+            "email": self.email,
+            "is_active": self.is_active,
+        }
 
 
 @dataclass

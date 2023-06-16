@@ -19,6 +19,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 # https://hub.packtpub.com/slowly-changing-dimension-scd-type-6/
 class Service(BaseModel):
+    # pylint: disable=too-few-public-methods
     __tablename__ = "service"
 
     id: Mapped[int] = mapped_column(primary_key=True)

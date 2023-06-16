@@ -48,18 +48,18 @@ class CompanyCreate(_CompanyBase):
             address = self.address.address
             zip_code = self.address.zip_code
             city = self.address.city
-        return dict(
-            name=self.name,
-            home=self.home,
-            address=address,
-            zip_code=zip_code,
-            city=city,
-            phone_number=self.phone_number,
-            email=self.email,
-            siret=self.siret,
-            rcs=self.rcs,
-            no_vat=self.no_vat,
-        )
+        return {
+            "name": self.name,
+            "home": self.home,
+            "address": address,
+            "zip_code": zip_code,
+            "city": city,
+            "phone_number": self.phone_number,
+            "email": self.email,
+            "siret": self.siret,
+            "rcs": self.rcs,
+            "no_vat": self.no_vat,
+        }
 
 
 @dataclass
@@ -71,17 +71,17 @@ class CompanyUpdate(_CompanyDefaultsBase):
             address = self.address.address
             zip_code = self.address.zip_code
             city = self.address.city
-        return dict(
-            name=self.name,
-            address=address,
-            zip_code=zip_code,
-            city=city,
-            phone_number=self.phone_number,
-            email=self.email,
-            siret=self.siret,
-            rcs=self.rcs,
-            no_vat=self.no_vat,
-        )
+        return {
+            "name": self.name,
+            "address": address,
+            "zip_code": zip_code,
+            "city": city,
+            "phone_number": self.phone_number,
+            "email": self.email,
+            "siret": self.siret,
+            "rcs": self.rcs,
+            "no_vat": self.no_vat,
+        }
 
 
 @dataclass

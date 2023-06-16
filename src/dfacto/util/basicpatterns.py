@@ -8,7 +8,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Generic, TypeVar, Optional
+from typing import Any, Generic, Optional, TypeVar
 
 _T = TypeVar("_T")
 
@@ -41,7 +41,8 @@ class ObjectFactory(Generic[_T]):
         return builder(*args, **kwargs)
 
 
-class Visitor(object):
+class Visitor:
+    # pylint: disable=too-few-public-methods
     """Base class for visitors."""
 
     def visit(self, node, *args, **kwargs):
@@ -68,15 +69,15 @@ class Visitor(object):
             mro = type(node).mro()
 
         for cls in mro:
-            clsName = cls.__name__
-            clsName = clsName[0].upper() + clsName[1:]
-            meth = getattr(self, "visit" + clsName, None)
+            cls_name = cls.__name__
+            cls_name = cls_name[0].upper() + cls_name[1:]
+            meth = getattr(self, "visit" + cls_name, None)
             if meth is not None:
                 return meth(node, *args, **kwargs)
 
-        clsName = node.__class__.__name__
-        clsName = clsName[0].upper() + clsName[1:]
-        raise NotImplementedError(f"No visitation method visit{clsName}")
+        cls_name = node.__class__.__name__
+        cls_name = cls_name[0].upper() + cls_name[1:]
+        raise NotImplementedError(f"No visitation method visit{cls_name}")
 
 
 def visitable(cls):
@@ -110,9 +111,8 @@ class DelegatedAttribute:
     def __get__(self, instance, owner):
         if instance is None:
             return self
-        else:
-            # return obj.delegate.attr
-            return getattr(self.delegate(instance), self.attr_name)
+        # return obj.delegate.attr
+        return getattr(self.delegate(instance), self.attr_name)
 
     def __set__(self, instance, value):
         # obj.delegate.attr = value
@@ -156,6 +156,7 @@ def delegate_as(delegate_cls, to="delegate", include=None, ignore=None):
 
 
 if __name__ == "__main__":
+    # pylint: disable=all
 
     class A:
         def __init__(self):

@@ -25,21 +25,20 @@ class CRUDService(
     ) -> list[models.Service]:
         if current_only:
             return self._get_all_current(dbsession)
-        else:
-            return self._get_all(dbsession)
+        return self._get_all(dbsession)
 
     def _get_all_current(self, dbsession: Session) -> list[models.Service]:
         try:
             obj_list = cast(
                 list[models.Service],
                 dbsession.scalars(
+                    # pylint: disable-next=singleton-comparison
                     select(self.model).where(self.model.is_current == True)
                 ).all(),
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return obj_list
+        return obj_list
 
     def _get_all(self, dbsession: Session) -> list[models.Service]:
         try:
@@ -48,20 +47,18 @@ class CRUDService(
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return obj_list
+        return obj_list
 
     def get_current(self, dbsession: Session, obj_id: int) -> models.Service:
         try:
             service_ = dbsession.scalars(
-                select(self.model)
-                .where(self.model.id == obj_id)
+                select(self.model).where(self.model.id == obj_id)
+                # pylint: disable-next=singleton-comparison
                 .where(self.model.is_current == True)
             ).one()
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return service_
+        return service_
 
     def create(
         self, dbsession: Session, *, obj_in: schemas.ServiceCreate
@@ -76,9 +73,8 @@ class CRUDService(
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
-        else:
-            dbsession.refresh(db_obj)
-            return db_obj
+        dbsession.refresh(db_obj)
+        return db_obj
 
     def update(
         self,
@@ -123,9 +119,8 @@ class CRUDService(
             except SQLAlchemyError as exc:
                 dbsession.rollback()
                 raise CrudError() from exc
-            else:
-                dbsession.refresh(new_db_obj)
-                return new_db_obj
+            dbsession.refresh(new_db_obj)
+            return new_db_obj
 
         return db_obj
 

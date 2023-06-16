@@ -27,12 +27,12 @@ class InvoiceStatus(enum.Enum):
 
 
 class Invoice(BaseModel):
+    # pylint: disable=too-few-public-methods
     __tablename__ = "invoice"
 
     id: Mapped[intpk] = mapped_column(init=False)
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"))
     status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
-    #    status: Mapped[InvoiceStatus] = mapped_column(Enum(create_constraint=True, validate_strings=True))
 
     client: Mapped["Client"] = relationship(back_populates="invoices", init=False)
     items: Mapped[list["Item"]] = relationship(
@@ -46,6 +46,7 @@ class Invoice(BaseModel):
 
 
 class StatusLog(BaseModel):
+    # pylint: disable=too-few-public-methods
     __tablename__ = "status_log"
 
     id: Mapped[intpk] = mapped_column(init=False)

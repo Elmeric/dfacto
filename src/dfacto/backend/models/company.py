@@ -10,6 +10,7 @@ from pathlib import Path
 
 @dataclass
 class Company:
+    # pylint: disable=too-many-instance-attributes
     name: str
     home: Path
     address: str = ""

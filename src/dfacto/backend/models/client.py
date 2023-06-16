@@ -15,12 +15,13 @@ from .invoice import Invoice, InvoiceStatus
 
 # Refer to: https://github.com/dropbox/sqlalchemy-stubs/issues/98#issuecomment-762884766
 if TYPE_CHECKING:
-    hybrid_property = property
+    hybrid_property = property  # pylint: disable=invalid-name
 else:
     from sqlalchemy.ext.hybrid import hybrid_property
 
 
 class Client(BaseModel):
+    # pylint: disable=too-few-public-methods
     __tablename__ = "client"
 
     id: Mapped[intpk] = mapped_column(init=False)
@@ -48,18 +49,18 @@ class Client(BaseModel):
         return any(invoice.status != InvoiceStatus.DRAFT for invoice in self.invoices)
 
     @has_emitted_invoices.expression
-    def has_emitted_invoices(cls):  # type: ignore
+    def has_emitted_invoices(self):  # type: ignore
         return select(
             case(
                 (
                     exists()
                     .where(
                         and_(
-                            Invoice.client_id == cls.id,
+                            Invoice.client_id == self.id,
                             Invoice.status != "DRAFT",
                         )
                     )
-                    .correlate(cls),  # type: ignore
+                    .correlate(self),  # type: ignore
                     True,
                 ),
                 else_=False,

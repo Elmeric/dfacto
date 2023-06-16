@@ -41,9 +41,8 @@ class CRUDInvoice(
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
-        else:
-            dbsession.refresh(db_obj)
-            return db_obj
+        dbsession.refresh(db_obj)
+        return db_obj
 
     def invoice_from_basket(
         self,
@@ -78,9 +77,8 @@ class CRUDInvoice(
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
-        else:
-            dbsession.refresh(db_obj)
-            return db_obj
+        dbsession.refresh(db_obj)
+        return db_obj
 
     def copy_in_basket(
         self,
@@ -99,7 +97,8 @@ class CRUDInvoice(
                     # Not used by an invoice: delete it.
                     dbsession.delete(item)
                 else:
-                    # In use by an invoice, do not delete it, only dereferences the basket.
+                    # In use by an invoice, do not delete it,
+                    # only dereferences the basket.
                     item.basket_id = None
 
         for item in invoice_.items:
@@ -133,7 +132,8 @@ class CRUDInvoice(
                     # Not used by an invoice: delete it.
                     dbsession.delete(item)
                 else:
-                    # In use by an invoice, do not delete it, only dereferences the basket.
+                    # In use by an invoice, do not delete it,
+                    # only dereferences the basket.
                     item.basket_id = None
 
         for item in invoice_.items:
@@ -173,9 +173,8 @@ class CRUDInvoice(
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
-        else:
-            dbsession.refresh(item_)
-            return item_
+        dbsession.refresh(item_)
+        return item_
 
     def clear_invoice(self, dbsession: Session, *, invoice_: models.Invoice) -> None:
         assert (
@@ -230,6 +229,7 @@ class CRUDInvoice(
         dbsession.execute(
             update(models.StatusLog)
             .where(models.StatusLog.invoice_id == invoice_.id)
+            # pylint: disable-next=singleton-comparison
             .where(models.StatusLog.to == None)
             .values(to=now)
         )
@@ -267,6 +267,7 @@ class CRUDInvoice(
             dbsession.execute(
                 update(models.StatusLog)
                 .where(models.StatusLog.invoice_id == invoice_.id)
+                # pylint: disable-next=singleton-comparison
                 .where(models.StatusLog.to == None)
                 .values(from_=now)
             )
@@ -275,12 +276,11 @@ class CRUDInvoice(
             dbsession.execute(
                 update(models.StatusLog)
                 .where(models.StatusLog.invoice_id == invoice_.id)
+                # pylint: disable-next=singleton-comparison
                 .where(models.StatusLog.to == None)
                 .values(to=now)
             )
-            log = models.StatusLog(
-                invoice_id=invoice_.id, from_=now, status=status
-            )
+            log = models.StatusLog(invoice_id=invoice_.id, from_=now, status=status)
             dbsession.add(log)
 
         try:
@@ -303,8 +303,7 @@ class CRUDInvoice(
             )
         except SQLAlchemyError as exc:
             raise CrudError() from exc
-        else:
-            return status_log
+        return status_log
 
     def set_status_history(
         self,

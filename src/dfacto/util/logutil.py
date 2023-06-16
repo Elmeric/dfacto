@@ -4,7 +4,7 @@ import multiprocessing as mp
 import time
 from pathlib import Path
 from queue import Empty
-from typing import Union, Optional
+from typing import Optional, Union
 
 from dfacto.util.basicpatterns import Singleton
 
@@ -28,8 +28,10 @@ class _LogServer(mp.Process):
     def configure(self) -> None:
         logging_format = "%(processName)-15s%(levelname)s: %(message)s"
         logging_date_format = "%Y-%m-%d %H:%M:%S"
-        # file_logging_format = '%(asctime)s.%(msecs)03d %(levelname)-8s %(processName)-15s %(name)s %(filename)s %(lineno)d: %(message)s'
-        file_logging_format = "%(asctime)s.%(msecs)03d %(levelname)-8s %(processName)-15s %(threadName)-20s %(message)s"
+        file_logging_format = (
+            "%(asctime)s.%(msecs)03d %(levelname)-8s"
+            " %(processName)-15s %(threadName)-20s %(message)s"
+        )
         console_log_level = logging.WARNING
 
         root = logging.getLogger()
@@ -69,7 +71,8 @@ class _LogServer(mp.Process):
                     break
                 logger = logging.getLogger(record.name)
                 logger.handle(record)
-            except Exception:
+            except Exception:  # pylint: disable=broad-exception-caught
+                # pylint: disable=import-outside-toplevel
                 import sys
                 import traceback
 

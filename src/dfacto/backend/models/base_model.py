@@ -15,6 +15,8 @@ class SqliteDecimal(TypeDecorator):  # type: ignore[type-arg]
     # https://stackoverflow.com/questions/10355767/how-should-i-handle-decimal-in-sqlalchemy-sqlite
     # This TypeDecorator use Sqlalchemy Integer as impl. It converts Decimals
     # from Python to Integers which is later stored in Sqlite database.
+    # pylint: disable=abstract-method
+    # pylint: disable=too-many-ancestors
     impl = Integer
     cache_ok = True
 
@@ -41,10 +43,11 @@ class SqliteDecimal(TypeDecorator):  # type: ignore[type-arg]
 
 
 class BaseModel(MappedAsDataclass, DeclarativeBase):
+    # pylint: disable=too-few-public-methods
     type_annotation_map = {decimal.Decimal: SqliteDecimal(scale=2)}
 
 
-ModelType = TypeVar("ModelType", bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=BaseModel)  # pylint: disable=invalid-name
 
 
-intpk = Annotated[int, mapped_column(primary_key=True)]
+intpk = Annotated[int, mapped_column(primary_key=True)]  # pylint: disable=invalid-name

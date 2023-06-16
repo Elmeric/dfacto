@@ -24,7 +24,8 @@
 #     {"name": "taux zéro", "rate": 0.0, "is_default": True, "is_preset": True},
 #     {"name": "taux particulier", "rate": 2.1, "is_default": False, "is_preset": True},
 #     {"name": "taux réduit", "rate": 5.5, "is_default": False, "is_preset": True},
-#     {"name": "taux intermédiaire", "rate": 10, "is_default": False, "is_preset": True},
+#     {
+#     "name": "taux intermédiaire", "rate": 10, "is_default": False, "is_preset": True},
 #     {"name": "taux normal", "rate": 20, "is_default": False, "is_preset": True},
 # ]
 #
@@ -35,7 +36,8 @@
 #
 # def init_db_data(session: Union[Session, scoped_session[Session]]) -> None:
 #     if session.scalars(sa.select(models.VatRate)).first() is None:
-#         # No VAT rates in the database: add the presets and mark "taux zéro" as default.
+#         # No VAT rates in the database: add the presets
+#         # and mark "taux zéro" as default.
 #         session.execute(sa.insert(models.VatRate), PRESET_RATES)
 #         session.commit()
 #

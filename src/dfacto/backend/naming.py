@@ -46,31 +46,28 @@ class FormatSpec(NamedTuple):
 @dataclass()
 class TokenNode:
     name: str
-    notAllowed: dict[TemplateType, tuple[str, ...]] = field(init=False)
+    not_allowed: dict[TemplateType, tuple[str, ...]] = field(init=False)
 
     def __post_init__(self) -> None:
         self.parent: Optional["TokenNode"] = None
         self.children: tuple["TokenNode", ...] = tuple()
-        self.notAllowed = {
+        self.not_allowed = {
             TemplateType.INVOICE: (),
             TemplateType.DESTINATION: (),
         }
 
-
     @property
-    def isLeaf(self) -> bool:
+    def is_leaf(self) -> bool:
         return len(self.children) == 0
 
-    def isAllowed(self, kind: TemplateType) -> bool:
-        return self.name not in self.notAllowed[kind]
+    def is_allowed(self, kind: TemplateType) -> bool:
+        return self.name not in self.not_allowed[kind]
 
 
 @dataclass()
 class TokenTree(TokenNode):
-    pass
-
     def __post_init__(self) -> None:
-        self.tokensByName: dict[str, Token] = dict()
+        self.tokens_by_name: dict[str, Token] = {}
 
 
 @dataclass()
@@ -81,7 +78,7 @@ class TokenFamily(TokenNode):
 @dataclass()
 class TokenGenus(TokenNode):
     def __post_init__(self) -> None:
-        self.notAllowed = {
+        self.not_allowed = {
             TemplateType.INVOICE: (),
             TemplateType.DESTINATION: ("Invoice code",),
         }
@@ -89,43 +86,43 @@ class TokenGenus(TokenNode):
 
 @dataclass()
 class Token(TokenNode):
-    genusName: str
-    formatSpec: FormatSpec
+    genus_name: str
+    format_spec: FormatSpec
 
-    def asText(self) -> str:
-        if self.genusName == "Free text":
+    def as_text(self) -> str:
+        if self.genus_name == "Free text":
             return self.name
         return f"<{self.name}>"
 
     def format(self, invoice: "Invoice") -> str:
-        genusName = self.genusName
+        genus_name = self.genus_name
 
         # Date family
-        if genusName == "Invoice date":
+        if genus_name == "Invoice date":
             date_ = invoice.issued_on
             if date_ is None:
                 date_ = datetime.now()
-            fmt = self.formatSpec.spec
+            fmt = self.format_spec.spec
             if fmt == "%Q":
                 quarter = (date_.month - 1) // 3 + 1
                 return f"Q{quarter}"
             return date_.strftime(fmt)
 
         # Invoice info family
-        if genusName == "Client name":
+        if genus_name == "Client name":
             client_name = invoice.client.name
-            fmt = self.formatSpec.spec
+            fmt = self.format_spec.spec
             if fmt == "%F":  # UPPERCASE
                 client_name = client_name.upper()
             elif fmt == "%f":  # lowercase
                 client_name = client_name.lower()
             return client_name
 
-        if genusName == "Invoice code":
-            return f"FC{invoice.id:{self.formatSpec.spec}}"
+        if genus_name == "Invoice code":
+            return f"FC{invoice.id:{self.format_spec.spec}}"
 
         # Free text token
-        if genusName == "Free text":
+        if genus_name == "Free text":
             return self.name
 
         # Default (should not be used)
@@ -133,6 +130,7 @@ class Token(TokenNode):
 
 
 class TokensDescription:
+    # pylint: disable=too-few-public-methods
     DATE_FORMATS = (
         FormatSpec("YYYYmmDD", "%Y%m%d"),
         FormatSpec("YYYY", "%Y"),
@@ -170,30 +168,30 @@ class TokensDescription:
     }
 
     @classmethod
-    def buildTokensTree(cls) -> TokenTree:
+    def build_tokens_tree(cls) -> TokenTree:
         root = TokenTree("Tokens")
-        tokensByName = dict()
-        families: list[TokenNode] = list()
-        for familyName in cls.TOKEN_FAMILIES:
-            family = TokenFamily(familyName)
+        tokens_by_name = {}
+        families: list[TokenNode] = []
+        for family_name in cls.TOKEN_FAMILIES:
+            family = TokenFamily(family_name)
             family.parent = root
             families.append(family)
-            genuses = list()
-            for genusName in cls.TOKEN_GENUS[familyName]:
-                genus = TokenGenus(genusName)
+            genuses = []
+            for genus_name in cls.TOKEN_GENUS[family_name]:
+                genus = TokenGenus(genus_name)
                 genus.parent = family
                 genuses.append(genus)
-                tokens = list()
-                for formatSpec in cls.TOKEN_FORMATS[genusName]:
-                    tokenName = f"{genusName} ({formatSpec[0]})"
-                    token = Token(tokenName, genusName, formatSpec)
-                    tokensByName[tokenName] = token
+                tokens = []
+                for format_spec in cls.TOKEN_FORMATS[genus_name]:
+                    token_name = f"{genus_name} ({format_spec[0]})"
+                    token = Token(token_name, genus_name, format_spec)
+                    tokens_by_name[token_name] = token
                     token.parent = genus
                     tokens.append(token)
                 genus.children = tuple(tokens)
             family.children = tuple(genuses)
         root.children = tuple(families)
-        root.tokensByName = tokensByName
+        root.tokens_by_name = tokens_by_name
         return root
 
 
@@ -209,22 +207,24 @@ class NamingTemplate:
     template: tuple[Token, ...]
 
     def __post_init__(self) -> None:
-        self.isBuiltin = True
+        self.is_builtin = True
 
-    def asText(self) -> str:
-        return "".join(token.asText() for token in self.template)
+    def as_text(self) -> str:
+        return "".join(token.as_text() for token in self.template)
 
     def boundaries(self) -> list[Boundary]:
         start = 0
-        boundaries = list()
+        boundaries = []
         for token in self.template:
-            end = start + len(token.asText())
+            end = start + len(token.as_text())
             boundaries.append(Boundary(start, end))
             start = end
         return boundaries
 
     def format(
-        self, invoice: "Invoice", kind: TemplateType = TemplateType.INVOICE
+        self,
+        invoice: "Invoice",
+        kind: TemplateType = TemplateType.INVOICE,  # pylint: disable=unused-argument
     ) -> str:
         return "".join(token.format(invoice) for token in self.template)
         # if kind == TemplateType.INVOICE:
@@ -238,22 +238,22 @@ class NamingTemplateDecoder(json.JSONDecoder):
     """A JSONDecoder to decode a NamingTemplate object in a JSON file."""
 
     def __init__(self) -> None:
-        super().__init__(object_hook=self.namingTemplateHook)
+        super().__init__(object_hook=self.naming_template_hook)
 
     @staticmethod
-    def namingTemplateHook(obj):  # type: ignore[no-untyped-def]
+    def naming_template_hook(obj):  # type: ignore[no-untyped-def]
         if "__naming_template__" in obj:
             template = NamingTemplate(
                 obj["key"],
                 obj["name"],
                 obj["template"],
             )
-            template.isBuiltin = False
+            template.is_builtin = False
             return template
 
         if "__token__" in obj:
             try:
-                token = NamingTemplates.getToken(obj["name"])
+                token = NamingTemplates.get_token(obj["name"])
             except KeyError:
                 token = Token(obj["name"], "Free text", FormatSpec())
             return token
@@ -267,6 +267,7 @@ class NamingTemplateDecoder(json.JSONDecoder):
 class NamingTemplateEncoder(json.JSONEncoder):
     """A JSONEncoder to encode a NamingTemplate object in a JSON file."""
 
+    # pylint: disable-next=arguments-renamed
     def default(self, obj):  # type: ignore[no-untyped-def]
         """Overrides the JSONEncoder default encoding method.
 
@@ -295,174 +296,173 @@ class NamingTemplateEncoder(json.JSONEncoder):
 
 class NamingTemplates:
     # Build the tokens tree and keep its root node reference
-    tokensRootNode = TokensDescription.buildTokensTree()
+    tokens_root_node = TokensDescription.build_tokens_tree()
 
-    builtinInvoiceNamingTemplates = {
+    builtin_invoice_naming_templates = {
         "TPL_1": NamingTemplate(
             "TPL_1",
             "By Date - YYYYmmDD-Client_1-FC1234",
             (
-                tokensRootNode.tokensByName["Invoice date (YYYYmmDD)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYYmmDD)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice code (One digit)"],
+                tokens_root_node.tokens_by_name["Invoice code (One digit)"],
             ),
         ),
         "TPL_2": NamingTemplate(
             "TPL_2",
             "By Year and Month - YYYYmm-Client_1-FC1234",
             (
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
-                tokensRootNode.tokensByName["Invoice date (mm)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (mm)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice code (Four digits)"],
+                tokens_root_node.tokens_by_name["Invoice code (Four digits)"],
             ),
         ),
         "TPL_3": NamingTemplate(
             "TPL_3",
             "By Year - YYYY-Client_1-FC1234",
             (
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice code (One digit)"],
+                tokens_root_node.tokens_by_name["Invoice code (One digit)"],
             ),
         ),
         "TPL_4": NamingTemplate(
             "TPL_4",
             "By Client name and date - Client_1-YYYYmmDD-FC1234",
             (
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice date (YYYYmmDD)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYYmmDD)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice code (One digit)"],
+                tokens_root_node.tokens_by_name["Invoice code (One digit)"],
             ),
         ),
         "TPL_5": NamingTemplate(
             "TPL_5",
             "By Client name and year, month - Client_1-YYYYmm-FC1234",
             (
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
-                tokensRootNode.tokensByName["Invoice date (mm)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (mm)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice code (One digit)"],
+                tokens_root_node.tokens_by_name["Invoice code (One digit)"],
             ),
         ),
         "TPL_6": NamingTemplate(
             "TPL_6",
             "By Client name and year - Client_1-YYYY-FC1234",
             (
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice code (One digit)"],
+                tokens_root_node.tokens_by_name["Invoice code (One digit)"],
             ),
         ),
         "TPL_7": NamingTemplate(
             "TPL_7",
             "By Client name - Client_1-FC1234",
             (
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("-", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice code (One digit)"],
+                tokens_root_node.tokens_by_name["Invoice code (One digit)"],
             ),
         ),
         "TPL_8": NamingTemplate(
             "TPL_8",
             "By invoice code - FC1234",
-            (tokensRootNode.tokensByName["Invoice code (One digit)"],),
+            (tokens_root_node.tokens_by_name["Invoice code (One digit)"],),
         ),
     }
 
-    builtinDestinationNamingTemplates = {
+    builtin_destination_naming_templates = {
         "TPL_1": NamingTemplate(
             "TPL_1",
             "By year, quarter and client name - YYYY/Qn/Client_1",
             (
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
                 Token("/", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice date (Quarter)"],
+                tokens_root_node.tokens_by_name["Invoice date (Quarter)"],
                 Token("/", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
             ),
         ),
         "TPL_2": NamingTemplate(
             "TPL_2",
             "By year and client name - YYYY/Client_1",
             (
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
                 Token("/", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
             ),
         ),
         "TPL_3": NamingTemplate(
             "TPL_3",
             "By year - YYYY",
-            (tokensRootNode.tokensByName["Invoice date (YYYY)"],),
+            (tokens_root_node.tokens_by_name["Invoice date (YYYY)"],),
         ),
         "TPL_4": NamingTemplate(
             "TPL_4",
             "By client name, year and quarter - Client_1/YYYY/Qn",
             (
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("/", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
                 Token("/", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice date (Quarter)"],
+                tokens_root_node.tokens_by_name["Invoice date (Quarter)"],
             ),
         ),
         "TPL_5": NamingTemplate(
             "TPL_5",
             "By client name and year - Client_1/YYYY",
             (
-                tokensRootNode.tokensByName["Client name (Original Case)"],
+                tokens_root_node.tokens_by_name["Client name (Original Case)"],
                 Token("/", "Free text", FormatSpec()),
-                tokensRootNode.tokensByName["Invoice date (YYYY)"],
+                tokens_root_node.tokens_by_name["Invoice date (YYYY)"],
             ),
         ),
         "TPL_6": NamingTemplate(
             "TPL_6",
             "By client name - Client_1",
-            (tokensRootNode.tokensByName["Client name (Original Case)"],),
+            (tokens_root_node.tokens_by_name["Client name (Original Case)"],),
         ),
     }
-    defaultInvoiceNamingTemplate = "TPL_2"
-    defaultDestinationNamingTemplate = "TPL_2"
+    default_invoice_naming_template = "TPL_2"
+    default_destination_naming_template = "TPL_2"
 
     def __init__(self) -> None:
         settings = Config.dfacto_settings
-        self._templatesFile = settings.app_dirs.user_config_dir / "templates.json"
+        self._templates_file = settings.app_dirs.user_config_dir / "templates.json"
 
         self.invoice, self.destination = self._load()
 
     @classmethod
-    def getToken(cls, name: str) -> "Token":
-        return cls.tokensRootNode.tokensByName[name]
+    def get_token(cls, name: str) -> "Token":
+        return cls.tokens_root_node.tokens_by_name[name]
 
     @classmethod
-    def listBuiltins(cls, kind: TemplateType) -> list[NamingTemplate]:
+    def list_builtins(cls, kind: TemplateType) -> list[NamingTemplate]:
         if kind == TemplateType.INVOICE:
-            return list(cls.builtinInvoiceNamingTemplates.values())
-        else:
-            assert kind == TemplateType.DESTINATION
-            return list(cls.builtinDestinationNamingTemplates.values())
+            return list(cls.builtin_invoice_naming_templates.values())
+        assert kind == TemplateType.DESTINATION
+        return list(cls.builtin_destination_naming_templates.values())
 
     def _load(self) -> tuple[dict[str, NamingTemplate], dict[str, NamingTemplate]]:
         try:
-            with self._templatesFile.open() as fh:
+            with self._templates_file.open() as fh:
                 templates = json.load(fh, cls=NamingTemplateDecoder)
                 return templates["invoice"], templates["destination"]
         except (FileNotFoundError, json.JSONDecodeError) as e:
-            logger.warning(f"Cannot load custom naming templates: {e}")
-            return dict(), dict()
+            logger.warning("Cannot load custom naming templates: %s", e)
+            return {}, {}
 
     def save(self) -> tuple[bool, str]:
         """Save the custom naming templates on a JSON file.
@@ -477,57 +477,55 @@ class NamingTemplates:
             "destination": self.destination,
         }
         try:
-            with self._templatesFile.open(mode="w") as fh:
+            with self._templates_file.open(mode="w") as fh:
                 json.dump(templates, fh, indent=4, cls=NamingTemplateEncoder)
         except (OSError, TypeError) as e:
             msg = f"Cannot save custom naming templates: {e}"
             logger.warning(msg)
             return False, msg
-        else:
-            return True, "Custom naming templates successfully saved."
+        return True, "Custom naming templates successfully saved."
 
-    def listCustoms(self, kind: TemplateType) -> list[NamingTemplate]:
+    def list_customs(self, kind: TemplateType) -> list[NamingTemplate]:
         if kind == TemplateType.INVOICE:
             return list(self.invoice.values())
-        else:
-            assert kind == TemplateType.DESTINATION
-            return list(self.destination.values())
+        assert kind == TemplateType.DESTINATION
+        return list(self.destination.values())
 
     def add(
         self, kind: TemplateType, name: str, template: tuple[Token, ...]
     ) -> NamingTemplate:
         key = f"TPL_{id(name)}"
-        namingTemplate = NamingTemplate(key, name, template)
-        namingTemplate.isBuiltin = False
+        naming_template = NamingTemplate(key, name, template)
+        naming_template.is_builtin = False
         if kind == TemplateType.INVOICE:
-            self.invoice[key] = namingTemplate
+            self.invoice[key] = naming_template
         else:
             assert kind == TemplateType.DESTINATION
-            self.destination[key] = namingTemplate
-        return namingTemplate
+            self.destination[key] = naming_template
+        return naming_template
 
-    def delete(self, kind: TemplateType, templateKey: str) -> None:
+    def delete(self, kind: TemplateType, template_key: str) -> None:
         if kind == TemplateType.INVOICE:
-            del self.invoice[templateKey]
+            del self.invoice[template_key]
         else:
             assert kind == TemplateType.DESTINATION
-            del self.destination[templateKey]
+            del self.destination[template_key]
 
     def change(
-        self, kind: TemplateType, templateKey: str, template: tuple[Token, ...]
+        self, kind: TemplateType, template_key: str, template: tuple[Token, ...]
     ) -> NamingTemplate:
         if kind == TemplateType.INVOICE:
-            namingTemplate = self.invoice[templateKey]
+            naming_template = self.invoice[template_key]
         else:
             assert kind == TemplateType.DESTINATION
-            namingTemplate = self.destination[templateKey]
-        namingTemplate.template = template
-        return namingTemplate
+            naming_template = self.destination[template_key]
+        naming_template.template = template
+        return naming_template
 
-    def getByKey(self, kind: TemplateType, key: str) -> Optional[NamingTemplate]:
+    def get_by_key(self, kind: TemplateType, key: str) -> Optional[NamingTemplate]:
         if kind == TemplateType.INVOICE:
             try:
-                template = NamingTemplates.builtinInvoiceNamingTemplates[key]
+                template = NamingTemplates.builtin_invoice_naming_templates[key]
             except KeyError:
                 try:
                     template = self.invoice[key]
@@ -537,7 +535,7 @@ class NamingTemplates:
         else:
             assert kind == TemplateType.DESTINATION
             try:
-                template = NamingTemplates.builtinDestinationNamingTemplates[key]
+                template = NamingTemplates.builtin_destination_naming_templates[key]
             except KeyError:
                 try:
                     template = self.destination[key]
@@ -546,11 +544,12 @@ class NamingTemplates:
 
         return template
 
-    def getDefault(self, kind: TemplateType) -> NamingTemplate:
+    def get_default(self, kind: TemplateType) -> NamingTemplate:
         if kind == TemplateType.INVOICE:
-            return self.builtinInvoiceNamingTemplates[self.defaultInvoiceNamingTemplate]
-        else:
-            assert kind == TemplateType.DESTINATION
-            return self.builtinDestinationNamingTemplates[
-                self.defaultDestinationNamingTemplate
+            return self.builtin_invoice_naming_templates[
+                self.default_invoice_naming_template
             ]
+        assert kind == TemplateType.DESTINATION
+        return self.builtin_destination_naming_templates[
+            self.default_destination_naming_template
+        ]

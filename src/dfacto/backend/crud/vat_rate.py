@@ -21,12 +21,12 @@ class CRUDVatRate(
     def get_default(self, dbsession: Session) -> Optional[models.VatRate]:
         try:
             db_obj = dbsession.scalars(
+                # pylint: disable-next=singleton-comparison
                 select(self.model).where(self.model.is_default == True)
             ).first()
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return db_obj
+        return db_obj
 
     def set_default(
         self,

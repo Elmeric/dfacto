@@ -17,7 +17,9 @@ class BaseSchema(Generic[ModelType]):
         return asdict(self)
 
     @classmethod
-    def from_orm(cls, orm_obj: ModelType) -> "BaseSchema[ModelType]":
+    def from_orm(
+        cls, orm_obj: ModelType  # pylint: disable=unused-argument
+    ) -> "BaseSchema[ModelType]":
         return BaseSchema()
 
 

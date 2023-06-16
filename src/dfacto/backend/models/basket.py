@@ -17,6 +17,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class Basket(BaseModel):
+    # pylint: disable=too-few-public-methods
     __tablename__ = "basket"
 
     id: Mapped[intpk] = mapped_column(init=False)

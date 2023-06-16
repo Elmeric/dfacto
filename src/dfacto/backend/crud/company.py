@@ -47,7 +47,7 @@ class CRUDCompany:
         try:
             Config.dfacto_settings.save()
         except SettingsError as exc:
-            raise CrudError(f"Cannot persist company profiles: {exc}")
+            raise CrudError(f"Cannot persist company profiles: {exc}") from exc
 
         db_path = profiles[name]["home"] / "dfacto.db"
         db.configure_session(db_path, is_new=is_new)
@@ -61,8 +61,8 @@ class CRUDCompany:
         home = obj_in.home
         try:
             home.mkdir(parents=False, exist_ok=True)
-        except FileNotFoundError:
-            raise CrudError(f"{home} parent folder not found")
+        except FileNotFoundError as exc:
+            raise CrudError(f"{home} parent folder not found") from exc
 
         obj_in_data = obj_in.flatten()
         db_obj = models.Company(**obj_in_data)
@@ -71,7 +71,7 @@ class CRUDCompany:
         try:
             Config.dfacto_settings.save()
         except SettingsError as exc:
-            raise CrudError(f"Cannot persist company profiles: {exc}")
+            raise CrudError(f"Cannot persist company profiles: {exc}") from exc
 
         return db_obj
 
@@ -101,7 +101,7 @@ class CRUDCompany:
             try:
                 Config.dfacto_settings.save()
             except SettingsError as exc:
-                raise CrudError(f"Cannot persist company profiles: {exc}")
+                raise CrudError(f"Cannot persist company profiles: {exc}") from exc
 
         return db_obj
 

@@ -22,13 +22,14 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             clients = cast(
                 list[models.Client],
                 dbsession.scalars(
-                    select(models.Client).where(models.Client.is_active == True)
+                    select(models.Client)
+                    # pylint: disable-next=singleton-comparison
+                    .where(models.Client.is_active == True)
                 ).all(),
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return clients
+        return clients
 
     def get_basket(self, dbsession: Session, obj_id: int) -> Optional[models.Basket]:
         try:
@@ -37,8 +38,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             ).first()
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return basket
+        return basket
 
     def get_item_from_service(
         self, dbsession: Session, obj_id: int, *, service_id: int
@@ -52,8 +52,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             ).first()
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return item
+        return item
 
     def get_invoices(
         self, dbsession: Session, obj_id: int, *, period: Period
@@ -72,8 +71,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return invoices
+        return invoices
 
     def get_invoices_by_status(
         self,
@@ -97,8 +95,7 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return invoices
+        return invoices
 
     def add_to_basket(
         self,
@@ -120,28 +117,26 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
+        if item_ is None:
+            # No item found: create it
+            item_ = models.Item(
+                service_id=service.id,
+                service_version=service.version,
+                quantity=quantity,
+            )
+            item_.basket_id = basket.id
+            dbsession.add(item_)
         else:
-            if item_ is None:
-                # No item found: create it
-                item_ = models.Item(
-                    service_id=service.id,
-                    service_version=service.version,
-                    quantity=quantity,
-                )
-                item_.basket_id = basket.id
-                dbsession.add(item_)
-            else:
-                # Item found: update it
-                item_.quantity += quantity
+            # Item found: update it
+            item_.quantity += quantity
 
-            try:
-                dbsession.commit()
-            except SQLAlchemyError as exc:
-                dbsession.rollback()
-                raise CrudError() from exc
-            else:
-                dbsession.refresh(item_)
-                return item_
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            dbsession.rollback()
+            raise CrudError() from exc
+        dbsession.refresh(item_)
+        return item_
 
     def remove_from_basket(
         self,
@@ -161,20 +156,19 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            if item_ is None:
-                return
 
-            id_ = item_.id
-            dbsession.delete(item_)
+        if item_ is None:
+            return None
 
-            try:
-                dbsession.commit()
-            except SQLAlchemyError as exc:
-                dbsession.rollback()
-                raise CrudError() from exc
-            else:
-                return id_
+        id_ = item_.id
+        dbsession.delete(item_)
+
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            dbsession.rollback()
+            raise CrudError() from exc
+        return id_
 
     def update_item_quantity(
         self, dbsession: Session, *, item: models.Item, quantity: int
@@ -261,7 +255,8 @@ class CRUDClient(CRUDBase[models.Client, schemas.ClientCreate, schemas.ClientUpd
                     # Not used by a basket: delete it.
                     dbsession.delete(item)
                 else:
-                    # In use by a basket, do not delete it, only dereferences the invoice.
+                    # In use by a basket, do not delete it,
+                    # only dereferences the invoice.
                     item.invoice_id = None
             dbsession.delete(invoice)
         dbsession.delete(db_obj.basket)

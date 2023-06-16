@@ -501,7 +501,9 @@ def test_crud_delete(dbsession, init_data):
     basket_items_ids = [item.id for item in client.basket.items]
     invoices_ids = [invoice.id for invoice in client.invoices]
 
-    crud.client.delete(dbsession, db_obj=client)
+    crud.client.delete(
+        dbsession,
+    )
 
     assert dbsession.get(models.Client, client.id) is None
     for id_ in basket_items_ids:
@@ -518,7 +520,9 @@ def test_crud_delete_has_emitted_invoices(dbsession, init_data):
     with pytest.raises(
         AssertionError, match="Cannot delete client with non-draft invoices"
     ):
-        crud.client.delete(dbsession, db_obj=client)
+        crud.client.delete(
+            dbsession,
+        )
 
     cl = dbsession.get(models.Client, client.id)
     assert cl is not None
@@ -535,7 +539,9 @@ def test_crud_delete_error(dbsession, init_data, mock_commit):
     invoices_count = len(client.invoices)
 
     with pytest.raises(crud.CrudError):
-        crud.client.delete(dbsession, db_obj=client)
+        crud.client.delete(
+            dbsession,
+        )
 
     cl = dbsession.get(models.Client, client.id)
     assert cl is not None

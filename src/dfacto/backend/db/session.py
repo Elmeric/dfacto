@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TypedDict
 
 import sqlalchemy as sa
-import sqlalchemy.event
+from sqlalchemy.event import listen
 from sqlalchemy.orm import Session
 
 from dfacto.backend import models
@@ -58,7 +58,7 @@ def _init_database(engine: sa.Engine) -> None:
 
 def configure_session(db_path: Path, *, is_new: bool) -> None:
     engine = sa.create_engine(f"sqlite+pysqlite:///{db_path}")
-    sa.event.listen(engine, "connect", _set_sqlite_pragma)
+    listen(engine, "connect", _set_sqlite_pragma)
     session_factory.configure(bind=engine)
     if is_new:
         _init_database(engine)

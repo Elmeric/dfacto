@@ -5,12 +5,12 @@
 # LICENSE file in the root directory of this source tree.
 
 import enum
-from typing import Any, NamedTuple, Optional, Callable, TypeVar, ParamSpec
+from typing import Any, Callable, NamedTuple, Optional, ParamSpec, TypeVar
 
 from dfacto.backend.db import session_factory
 
-P = ParamSpec('P')
-T = TypeVar('T')
+P = ParamSpec("P")
+T = TypeVar("T")
 
 
 class CommandException(Exception):

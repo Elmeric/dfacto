@@ -4,11 +4,13 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
+# pylint: disable=too-many-lines
+
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Optional, Type, cast, Any
+from typing import Any, Optional, Type
 
 import jinja2 as jinja
 from babel.dates import format_date
@@ -24,6 +26,7 @@ from .base import DFactoModel
 
 @dataclass
 class Company:
+    # pylint: disable=too-many-instance-attributes
     name: str
     address: str
     zip_code: str
@@ -36,6 +39,7 @@ class Company:
 
 @dataclass
 class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
+    # pylint: disable=too-many-public-methods
     crud_object: crud.CRUDClient = crud.client
     schema: Type[schemas.Client] = schemas.Client
 
@@ -48,10 +52,10 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     def __post_init__(self) -> None:
         naming_templates = naming.NamingTemplates()
 
-        self.destination_naming_template = naming_templates.getDefault(
+        self.destination_naming_template = naming_templates.get_default(
             naming.TemplateType.DESTINATION
         )
-        self.invoice_naming_template = naming_templates.getDefault(
+        self.invoice_naming_template = naming_templates.get_default(
             naming.TemplateType.INVOICE
         )
 
@@ -64,9 +68,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"GET-ACTIVE - SQL or database error: {exc}",
             )
-        else:
-            body = [schemas.Client.from_orm(client_) for client_ in clients]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = [schemas.Client.from_orm(client_) for client_ in clients]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_basket(self, obj_id: int) -> CommandResponse:
@@ -77,15 +80,15 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"GET-BASKET - SQL or database error: {exc}",
             )
-        else:
-            if basket is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"GET-BASKET - Basket of client {obj_id} not found.",
-                )
-            else:
-                body = schemas.Basket.from_orm(basket)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+        if basket is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-BASKET - Basket of client {obj_id} not found.",
+            )
+
+        body = schemas.Basket.from_orm(basket)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_quantity_in_basket(
@@ -99,20 +102,19 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"QTY-IN-BASKET - SQL or database error: {exc}",
             )
-        else:
-            if basket is None or service is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"QTY-IN-BASKET - Client {obj_id} or "
-                    f"service {service_id} not found.",
-                )
+        if basket is None or service is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"QTY-IN-BASKET - Client {obj_id} or "
+                f"service {service_id} not found.",
+            )
 
-            quantity = 0
-            for item_ in basket.items:
-                if item_.service_id == service.id:
-                    quantity = item_.quantity
-                    break
-            return CommandResponse(CommandStatus.COMPLETED, body=quantity)
+        quantity = 0
+        for item_ in basket.items:
+            if item_.service_id == service.id:
+                quantity = item_.quantity
+                break
+        return CommandResponse(CommandStatus.COMPLETED, body=quantity)
 
     @command
     def get_item_from_service(self, obj_id: int, *, service_id: int) -> CommandResponse:
@@ -125,15 +127,15 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"ITEM-FROM-SERVICE - SQL or database error: {exc}",
             )
-        else:
-            if item_ is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"ITEM-FROM-SERVICE - Service {service_id} not found.",
-                )
 
-            body = schemas.Item.from_orm(item_)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if item_ is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"ITEM-FROM-SERVICE - Service {service_id} not found.",
+            )
+
+        body = schemas.Item.from_orm(item_)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_invoices(
@@ -157,8 +159,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             period = Period()  # i.e. from now to the epoch
         if status is not None:
             return self._get_invoices_by_status(obj_id, status=status, period=period)
-        else:
-            return self._get_invoices(obj_id, period=period)
+        return self._get_invoices(obj_id, period=period)
 
     def _get_invoices_by_status(
         self, obj_id: int, *, status: InvoiceStatus, period: Period
@@ -172,9 +173,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"GET-INVOICES - SQL or database error: {exc}",
             )
-        else:
-            body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def _get_invoices(self, obj_id: int, *, period: Period) -> CommandResponse:
         try:
@@ -186,9 +186,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"GET-INVOICES - SQL or database error: {exc}",
             )
-        else:
-            body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_invoice(self, *, invoice_id: int) -> CommandResponse:
@@ -199,15 +198,14 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"GET-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if invoice is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"GET-INVOICE - Invoice {invoice_id} not found.",
-                )
+        if invoice is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-INVOICE - Invoice {invoice_id} not found.",
+            )
 
-            body = schemas.Invoice.from_orm(invoice)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = schemas.Invoice.from_orm(invoice)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_all_invoices(self) -> CommandResponse:
@@ -218,9 +216,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"GET-ALL-INVOICES - SQL or database error: {exc}",
             )
-        else:
-            body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     def rename(self, obj_id: int, name: str) -> CommandResponse:
         return self.update(obj_id, obj_in=schemas.ClientUpdate(name=name))
@@ -249,29 +246,28 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"DELETE - SQL or database error: {exc}",
             )
-        else:
-            if client_ is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"DELETE - Object {obj_id} not found.",
-                )
 
-            if client_.has_emitted_invoices:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"DELETE - Client {client_.name} has non-DRAFT invoices"
-                    f" and cannot be deleted.",
-                )
+        if client_ is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"DELETE - Object {obj_id} not found.",
+            )
 
-            try:
-                self.crud_object.delete(self.session, db_obj=client_)
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"DELETE - Cannot delete object {obj_id}: {exc}",
-                )
-            else:
-                return CommandResponse(CommandStatus.COMPLETED)
+        if client_.has_emitted_invoices:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"DELETE - Client {client_.name} has non-DRAFT invoices"
+                f" and cannot be deleted.",
+            )
+
+        try:
+            self.crud_object.delete(self.session, db_obj=client_)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"DELETE - Cannot delete object {obj_id}: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED)
 
     @command
     def add_to_basket(
@@ -290,33 +286,32 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"ADD-TO-BASKET - SQL or database error: {exc}",
             )
-        else:
-            if client_ is None or service is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"ADD-TO-BASKET - Client {obj_id} or "
-                    f"service {service_id} not found.",
-                )
 
-            if not client_.is_active:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"ADD-TO-BASKET - Client {client_.name} is inactive",
-                )
+        if client_ is None or service is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"ADD-TO-BASKET - Client {obj_id} or "
+                f"service {service_id} not found.",
+            )
 
-            basket = client_.basket
-            try:
-                it = self.crud_object.add_to_basket(
-                    self.session, basket=basket, service=service, quantity=quantity
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"ADD-TO-BASKET - Cannot add to basket of client {obj_id}: {exc}",
-                )
-            else:
-                body = schemas.Item.from_orm(it)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if not client_.is_active:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"ADD-TO-BASKET - Client {client_.name} is inactive",
+            )
+
+        basket = client_.basket
+        try:
+            it = self.crud_object.add_to_basket(
+                self.session, basket=basket, service=service, quantity=quantity
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"ADD-TO-BASKET - Cannot add to basket of client {obj_id}: {exc}",
+            )
+        body = schemas.Item.from_orm(it)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def remove_from_basket(self, obj_id: int, *, service_id: int) -> CommandResponse:
@@ -328,33 +323,32 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"REMOVE_FROM-BASKET - SQL or database error: {exc}",
             )
-        else:
-            if client_ is None or service is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"REMOVE_FROM-BASKET - Client {obj_id} or "
-                    f"service {service_id} not found.",
-                )
 
-            if not client_.is_active:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"REMOVE_FROM-BASKET - Client {client_.name} is inactive",
-                )
+        if client_ is None or service is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REMOVE_FROM-BASKET - Client {obj_id} or "
+                f"service {service_id} not found.",
+            )
 
-            basket = client_.basket
-            try:
-                id_ = self.crud_object.remove_from_basket(
-                    self.session, basket=basket, service=service
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"REMOVE_FROM-BASKET - Cannot remove {service.name} basket "
-                    f"of client {obj_id}: {exc}",
-                )
-            else:
-                return CommandResponse(CommandStatus.COMPLETED, body=id_)
+        if not client_.is_active:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"REMOVE_FROM-BASKET - Client {client_.name} is inactive",
+            )
+
+        basket = client_.basket
+        try:
+            id_ = self.crud_object.remove_from_basket(
+                self.session, basket=basket, service=service
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REMOVE_FROM-BASKET - Cannot remove {service.name} basket "
+                f"of client {obj_id}: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED, body=id_)
 
     @command
     def add_to_invoice(
@@ -368,42 +362,42 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"ADD-TO-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if invoice is None or service is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"ADD-TO-INVOICE - Invoice {invoice_id} or "
-                    f"service {service_id} not found.",
-                )
-            if invoice.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"ADD-TO-INVOICE - Invoice {invoice_id} is not owned "
-                    f"by client {obj_id}.",
-                )
-            if invoice.status is not InvoiceStatus.DRAFT:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    "ADD-TO-INVOICE - Cannot add items to a non-draft invoice.",
-                )
 
-            try:
-                it = crud.invoice.add_item(
-                    self.session, invoice_=invoice, service=service, quantity=quantity
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"ADD-TO-INVOICE - Cannot add to invoice {invoice_id}: {exc}",
-                )
-            else:
-                body = schemas.Item.from_orm(it)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if invoice is None or service is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"ADD-TO-INVOICE - Invoice {invoice_id} or "
+                f"service {service_id} not found.",
+            )
+        if invoice.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"ADD-TO-INVOICE - Invoice {invoice_id} is not owned "
+                f"by client {obj_id}.",
+            )
+        if invoice.status is not InvoiceStatus.DRAFT:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                "ADD-TO-INVOICE - Cannot add items to a non-draft invoice.",
+            )
+
+        try:
+            it = crud.invoice.add_item(
+                self.session, invoice_=invoice, service=service, quantity=quantity
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"ADD-TO-INVOICE - Cannot add to invoice {invoice_id}: {exc}",
+            )
+        body = schemas.Item.from_orm(it)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def update_item_quantity(
         self, obj_id: int, *, item_id: int, quantity: int
     ) -> CommandResponse:
+        # pylint: disable=too-many-return-statements
         if quantity <= 0:
             return CommandResponse(
                 CommandStatus.REJECTED,
@@ -417,48 +411,48 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"UPDATE-ITEM - SQL or database error: {exc}",
             )
-        else:
-            if item is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE-ITEM - Item {item_id} not found.",
-                )
 
-            basket = item.basket
-            if basket is not None and basket.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"UPDATE-ITEM - Item {item_id} is not part of the "
-                    f"basket of client {obj_id}.",
-                )
-            invoice = item.invoice
-            if invoice is not None and invoice.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"UPDATE-ITEM - Item {item_id} is not part of any "
-                    f"invoice of client {obj_id}.",
-                )
-            if invoice is not None and invoice.status != InvoiceStatus.DRAFT:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    "UPDATE-ITEM - Cannot change items of a non-draft invoice.",
-                )
+        if item is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE-ITEM - Item {item_id} not found.",
+            )
 
-            try:
-                self.crud_object.update_item_quantity(
-                    self.session, item=item, quantity=quantity
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE-ITEM - Cannot remove item {item_id}: {exc}",
-                )
-            else:
-                body = schemas.Item.from_orm(item)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        basket = item.basket
+        if basket is not None and basket.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"UPDATE-ITEM - Item {item_id} is not part of the "
+                f"basket of client {obj_id}.",
+            )
+        invoice = item.invoice
+        if invoice is not None and invoice.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"UPDATE-ITEM - Item {item_id} is not part of any "
+                f"invoice of client {obj_id}.",
+            )
+        if invoice is not None and invoice.status != InvoiceStatus.DRAFT:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                "UPDATE-ITEM - Cannot change items of a non-draft invoice.",
+            )
+
+        try:
+            self.crud_object.update_item_quantity(
+                self.session, item=item, quantity=quantity
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE-ITEM - Cannot remove item {item_id}: {exc}",
+            )
+        body = schemas.Item.from_orm(item)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def remove_item(self, obj_id: int, *, item_id: int) -> CommandResponse:
+        # pylint: disable=too-many-return-statements
         try:
             item = crud.item.get(self.session, item_id)
         except crud.CrudError as exc:
@@ -466,48 +460,47 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"REMOVE-ITEM - SQL or database error: {exc}",
             )
-        else:
-            if item is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"REMOVE-ITEM - Item {item_id} not found.",
-                )
 
-            basket = item.basket
-            if basket is not None and basket.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"REMOVE-ITEM - Item {item_id} is not part of the "
-                    f"basket of client {obj_id}.",
-                )
-            invoice = item.invoice
-            if invoice is not None and invoice.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"REMOVE-ITEM - Item {item_id} is not part of any "
-                    f"invoice of client {obj_id}.",
-                )
-            if invoice is not None and invoice.status != InvoiceStatus.DRAFT:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    "REMOVE-ITEM - Cannot remove items from a non-draft invoice.",
-                )
-            if basket is not None and invoice is not None:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    "REMOVE-ITEM - Cannot remove items used both by the basket "
-                    "and an invoice.",
-                )
+        if item is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REMOVE-ITEM - Item {item_id} not found.",
+            )
 
-            try:
-                self.crud_object.remove_item(self.session, item=item)
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"REMOVE-ITEM - Cannot remove item {item_id}: {exc}",
-                )
-            else:
-                return CommandResponse(CommandStatus.COMPLETED)
+        basket = item.basket
+        if basket is not None and basket.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"REMOVE-ITEM - Item {item_id} is not part of the "
+                f"basket of client {obj_id}.",
+            )
+        invoice = item.invoice
+        if invoice is not None and invoice.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"REMOVE-ITEM - Item {item_id} is not part of any "
+                f"invoice of client {obj_id}.",
+            )
+        if invoice is not None and invoice.status != InvoiceStatus.DRAFT:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                "REMOVE-ITEM - Cannot remove items from a non-draft invoice.",
+            )
+        if basket is not None and invoice is not None:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                "REMOVE-ITEM - Cannot remove items used both by the basket "
+                "and an invoice.",
+            )
+
+        try:
+            self.crud_object.remove_item(self.session, item=item)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REMOVE-ITEM - Cannot remove item {item_id}: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED)
 
     @command
     def clear_basket(self, obj_id: int) -> CommandResponse:
@@ -518,24 +511,22 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"CLEAR-BASKET - SQL or database error: {exc}",
             )
-        else:
-            if basket is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"CLEAR-BASKET - Basket of client {obj_id} not found.",
-                )
 
-            try:
-                self.crud_object.clear_basket(self.session, basket=basket)
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"CLEAR-BASKET - Cannot clear basket of client {obj_id}: {exc}",
-                )
-            else:
-                return CommandResponse(CommandStatus.COMPLETED)
+        if basket is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CLEAR-BASKET - Basket of client {obj_id} not found.",
+            )
 
-    # TODO:
+        try:
+            self.crud_object.clear_basket(self.session, basket=basket)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CLEAR-BASKET - Cannot clear basket of client {obj_id}: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED)
+
     # emit: send in pdf in an email (optional, check yagmail or sendgrid or sendinblue.
     # Examples on Real Python)
     # remind: send a reminder in an email (optional)
@@ -550,9 +541,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"CREATE-INVOICE - Cannot create an invoice for client {obj_id}: {exc}",
             )
-        else:
-            body = schemas.Invoice.from_orm(invoice)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = schemas.Invoice.from_orm(invoice)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def invoice_from_basket(
@@ -565,29 +555,28 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"CREATE-FROM-BASKET - SQL or database error: {exc}",
             )
-        else:
-            if basket is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"CREATE_FROM-BASKET - Basket of client {obj_id} not found.",
-                )
-            if len(basket.items) <= 0:
-                # No items in basket of client: create an empty invoice
-                return self.create_invoice(obj_id)
 
-            try:
-                invoice = crud.invoice.invoice_from_basket(
-                    self.session, basket, clear_basket=clear_basket
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"CREATE_FROM-BASKET - Cannot create invoice from basket of client "
-                    f"{obj_id}: {exc}",
-                )
-            else:
-                body = schemas.Invoice.from_orm(invoice)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if basket is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CREATE_FROM-BASKET - Basket of client {obj_id} not found.",
+            )
+        if len(basket.items) <= 0:
+            # No items in basket of client: create an empty invoice
+            return self.create_invoice(obj_id)
+
+        try:
+            invoice = crud.invoice.invoice_from_basket(
+                self.session, basket, clear_basket=clear_basket
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CREATE_FROM-BASKET - Cannot create invoice from basket of client "
+                f"{obj_id}: {exc}",
+            )
+        body = schemas.Invoice.from_orm(invoice)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def clear_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
@@ -608,37 +597,36 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"{action.upper()}-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if invoice is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"{action.upper()}-INVOICE - Invoice {invoice_id} not found.",
-                )
-            if invoice.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"{action.upper()}-INVOICE - Invoice {invoice_id} is not an "
-                    f"invoice of client {obj_id}.",
-                )
-            if invoice.status != InvoiceStatus.DRAFT:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"{action.upper()}-INVOICE - Cannot {action} a non-draft invoice.",
-                )
 
-            try:
-                if clear_only:
-                    crud.invoice.clear_invoice(self.session, invoice_=invoice)
-                else:
-                    crud.invoice.delete_invoice(self.session, invoice_=invoice)
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"{action.upper()}-INVOICE - Cannot {action} invoice {invoice_id} "
-                    f"of client {obj_id}: {exc}",
-                )
+        if invoice is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"{action.upper()}-INVOICE - Invoice {invoice_id} not found.",
+            )
+        if invoice.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"{action.upper()}-INVOICE - Invoice {invoice_id} is not an "
+                f"invoice of client {obj_id}.",
+            )
+        if invoice.status != InvoiceStatus.DRAFT:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"{action.upper()}-INVOICE - Cannot {action} a non-draft invoice.",
+            )
+
+        try:
+            if clear_only:
+                crud.invoice.clear_invoice(self.session, invoice_=invoice)
             else:
-                return CommandResponse(CommandStatus.COMPLETED)
+                crud.invoice.delete_invoice(self.session, invoice_=invoice)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"{action.upper()}-INVOICE - Cannot {action} invoice {invoice_id} "
+                f"of client {obj_id}: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED)
 
     @command
     def cancel_invoice(self, obj_id: int, *, invoice_id: int) -> CommandResponse:
@@ -688,45 +676,44 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"MARK_AS-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if invoice is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"MARK_AS-INVOICE - Invoice {invoice_id} not found.",
-                )
-            if invoice.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"MARK_AS-INVOICE - Invoice {invoice_id} is not an invoice of "
-                    f"client {obj_id}.",
-                )
-            valid_status = {
-                InvoiceStatus.EMITTED: (InvoiceStatus.DRAFT,),
-                InvoiceStatus.REMINDED: (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED),
-                InvoiceStatus.PAID: (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED),
-                InvoiceStatus.CANCELLED: (
-                    InvoiceStatus.EMITTED,
-                    InvoiceStatus.REMINDED,
-                ),
-            }
-            if invoice.status not in valid_status[status]:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"MARK_AS-INVOICE - Invoice status transition from "
-                    f"{invoice.status} to {status} is not allowed.",
-                )
 
-            try:
-                crud.invoice.mark_as(self.session, invoice_=invoice, status=status)
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"MARK_AS-INVOICE - Cannot mark invoice {invoice_id} of "
-                    f"client {obj_id} as {status}: {exc}",
-                )
-            else:
-                body = schemas.Invoice.from_orm(invoice)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if invoice is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"MARK_AS-INVOICE - Invoice {invoice_id} not found.",
+            )
+        if invoice.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"MARK_AS-INVOICE - Invoice {invoice_id} is not an invoice of "
+                f"client {obj_id}.",
+            )
+        valid_status = {
+            InvoiceStatus.EMITTED: (InvoiceStatus.DRAFT,),
+            InvoiceStatus.REMINDED: (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED),
+            InvoiceStatus.PAID: (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED),
+            InvoiceStatus.CANCELLED: (
+                InvoiceStatus.EMITTED,
+                InvoiceStatus.REMINDED,
+            ),
+        }
+        if invoice.status not in valid_status[status]:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"MARK_AS-INVOICE - Invoice status transition from "
+                f"{invoice.status} to {status} is not allowed.",
+            )
+
+        try:
+            crud.invoice.mark_as(self.session, invoice_=invoice, status=status)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"MARK_AS-INVOICE - Cannot mark invoice {invoice_id} of "
+                f"client {obj_id} as {status}: {exc}",
+            )
+        body = schemas.Invoice.from_orm(invoice)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_invoice_pathname(self, *, invoice_id: int, home: Path) -> CommandResponse:
@@ -737,30 +724,32 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"INVOICE-PATHNAME - SQL or database error: {exc}",
             )
-        else:
-            if orm_invoice is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"INVOICE-PATHNAME - Invoice {invoice_id} not found.",
-                )
-            invoice = schemas.Invoice.from_orm(orm_invoice)
-            destination = self.destination_naming_template.format(
-                invoice, kind=naming.TemplateType.DESTINATION
+
+        if orm_invoice is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"INVOICE-PATHNAME - Invoice {invoice_id} not found.",
             )
-            filename = self.invoice_naming_template.format(
-                invoice, kind=naming.TemplateType.INVOICE
-            )
-            if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
-                filename += "-REMIND"
-            folder = home / destination
-            folder.mkdir(parents=True, exist_ok=True)
-            pathname = (folder / filename).with_suffix(".pdf")
-            return CommandResponse(CommandStatus.COMPLETED, body=pathname)
+        invoice = schemas.Invoice.from_orm(orm_invoice)
+        destination = self.destination_naming_template.format(
+            invoice, kind=naming.TemplateType.DESTINATION
+        )
+        filename = self.invoice_naming_template.format(
+            invoice, kind=naming.TemplateType.INVOICE
+        )
+        if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
+            filename += "-REMIND"
+        folder = home / destination
+        folder.mkdir(parents=True, exist_ok=True)
+        pathname = (folder / filename).with_suffix(".pdf")
+        return CommandResponse(CommandStatus.COMPLETED, body=pathname)
 
     @command
     def preview_invoice(
         self, obj_id: int, *, invoice_id: int, mode: HtmlMode
     ) -> CommandResponse:
+        # pylint: disable=too-many-return-statements
+        # pylint: disable=line-too-long
         """
                     SHOW	                        ISSUE	                REMIND
         DRAFT
@@ -793,66 +782,67 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"PREVIEW-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if orm_client is None or orm_invoice is None or orm_company is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"PREVIEW-INVOICE - Client {obj_id} or invoice {invoice_id} "
-                    f" or current company not found.",
-                )
-            if orm_invoice.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"PREVIEW-INVOICE - Invoice {invoice_id} is not an invoice of "
-                    f"client {obj_id}.",
-                )
 
-            tpl_name = "invoice.html"
-            try:
-                templates_dir = Config.dfacto_settings.templates
-                template_dir = templates_dir / orm_company.home.name
-                if not template_dir.exists():
-                    template_dir = templates_dir / "default"
-                    tpl_name = (
-                        "invoice_no_vat.html" if orm_company.no_vat else "invoice.html"
-                    )
-                env = jinja.Environment(
-                    loader=jinja.FileSystemLoader(template_dir.as_posix())
-                )
-            except ValueError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"PREVIEW-INVOICE - HTML templates location not available: {exc}",
-                )
-            try:
-                template = env.get_template(tpl_name)
-            except jinja.TemplateNotFound as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"PREVIEW-INVOICE - HTML template not found: {exc}",
-                )
-            except jinja.TemplateSyntaxError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"PREVIEW-INVOICE - HTML template syntax error: {exc}",
-                )
-
-            context = self._build_context(
-                client_=schemas.Client.from_orm(orm_client),
-                invoice=schemas.Invoice.from_orm(orm_invoice),
-                company=schemas.Company.from_orm(orm_company),
-                mode=mode,
+        if orm_client is None or orm_invoice is None or orm_company is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"PREVIEW-INVOICE - Client {obj_id} or invoice {invoice_id} "
+                f" or current company not found.",
             )
-            try:
-                preview = template.render(context)
-            except (jinja.TemplateSyntaxError, jinja.TemplateRuntimeError) as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"PREVIEW-INVOICE - HTML template rendering error: {exc}",
+        if orm_invoice.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"PREVIEW-INVOICE - Invoice {invoice_id} is not an invoice of "
+                f"client {obj_id}.",
+            )
+
+        tpl_name = "invoice.html"
+        try:
+            templates_dir = Config.dfacto_settings.templates
+            template_dir = templates_dir / orm_company.home.name
+            if not template_dir.exists():
+                template_dir = templates_dir / "default"
+                tpl_name = (
+                    "invoice_no_vat.html" if orm_company.no_vat else "invoice.html"
                 )
-            return CommandResponse(CommandStatus.COMPLETED, body=preview)
+            env = jinja.Environment(
+                loader=jinja.FileSystemLoader(template_dir.as_posix())
+            )
+        except ValueError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"PREVIEW-INVOICE - HTML templates location not available: {exc}",
+            )
+        try:
+            template = env.get_template(tpl_name)
+        except jinja.TemplateNotFound as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"PREVIEW-INVOICE - HTML template not found: {exc}",
+            )
+        except jinja.TemplateSyntaxError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"PREVIEW-INVOICE - HTML template syntax error: {exc}",
+            )
+
+        context = self._build_context(
+            client_=schemas.Client.from_orm(orm_client),
+            invoice=schemas.Invoice.from_orm(orm_invoice),
+            company=schemas.Company.from_orm(orm_company),
+            mode=mode,
+        )
+        try:
+            preview = template.render(context)
+        except (jinja.TemplateSyntaxError, jinja.TemplateRuntimeError) as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"PREVIEW-INVOICE - HTML template rendering error: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED, body=preview)
 
     def _get_stamp(self, invoice: schemas.Invoice, mode: HtmlMode) -> tuple[str, str]:
+        # pylint: disable=too-many-return-statements
         status = invoice.status
 
         if mode in (self.HtmlMode.CREATE, self.HtmlMode.ISSUE):
@@ -871,30 +861,22 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             if status is InvoiceStatus.EMITTED:
                 changed_on = invoice.issued_on
                 assert changed_on is not None
-                date_ = format_date(
-                    changed_on.date(), format="long", locale="fr_FR"
-                )
+                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
                 return f"Emise le {date_}", "is-ok"
             if status is InvoiceStatus.REMINDED:
                 changed_on = invoice.reminded_on
                 assert changed_on is not None
-                date_ = format_date(
-                    changed_on.date(), format="long", locale="fr_FR"
-                )
+                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
                 return f"Rappel le {date_}", "is-bad"
             if status is InvoiceStatus.PAID:
                 changed_on = invoice.paid_on
                 assert changed_on is not None
-                date_ = format_date(
-                    changed_on.date(), format="long", locale="fr_FR"
-                )
+                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
                 return f"Payée le {date_}", "is-ok"
             if status is InvoiceStatus.CANCELLED:
                 changed_on = invoice.cancelled_on
                 assert changed_on is not None
-                date_ = format_date(
-                    changed_on.date(), format="long", locale="fr_FR"
-                )
+                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
                 return f"Annulée le {date_}", "is-bad"
 
         return "", ""
@@ -906,8 +888,14 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         company: schemas.Company,
         mode: HtmlMode,
     ) -> dict[str, Any]:
-        company_address = f"{company.address.address}\n{company.address.zip_code} {company.address.city}"
-        client_address = f"{client_.address.address}\n{client_.address.zip_code} {client_.address.city}"
+        company_address = (
+            f"{company.address.address}\n{company.address.zip_code} "
+            f"{company.address.city}"
+        )
+        client_address = (
+            f"{client_.address.address}\n{client_.address.zip_code} "
+            f"{client_.address.city}"
+        )
         if mode is self.HtmlMode.SHOW:
             date_ = (
                 invoice.created_on
@@ -986,32 +974,31 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"{action.upper()}_TO_BASKET-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if invoice is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"{action.upper()}_TO_BASKET-INVOICE - Invoice {invoice_id} not found.",
-                )
-            if invoice.client_id != obj_id:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"{action.upper()}_TO_BASKET-INVOICE - Invoice {invoice_id} is not "
-                    f"an invoice of client {obj_id}.",
-                )
 
-            try:
-                if move:
-                    crud.invoice.move_in_basket(self.session, invoice_=invoice)
-                else:
-                    crud.invoice.copy_in_basket(self.session, invoice_=invoice)
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"{action.upper()}_TO_BASKET-INVOICE - Cannot {action} "
-                    f"invoice {invoice_id} of client {obj_id}: {exc}",
-                )
+        if invoice is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"{action.upper()}_TO_BASKET-INVOICE - Invoice {invoice_id} not found.",
+            )
+        if invoice.client_id != obj_id:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"{action.upper()}_TO_BASKET-INVOICE - Invoice {invoice_id} is not "
+                f"an invoice of client {obj_id}.",
+            )
+
+        try:
+            if move:
+                crud.invoice.move_in_basket(self.session, invoice_=invoice)
             else:
-                return CommandResponse(CommandStatus.COMPLETED)
+                crud.invoice.copy_in_basket(self.session, invoice_=invoice)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"{action.upper()}_TO_BASKET-INVOICE - Cannot {action} "
+                f"invoice {invoice_id} of client {obj_id}: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED)
 
     @command
     def revert_invoice_status(self, *, invoice_id: int) -> CommandResponse:
@@ -1025,33 +1012,32 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"REVERT-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if invoice is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"REVERT-INVOICE - Invoice {invoice_id} not found.",
-                )
-            if len(status_log) < 2:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"REVERT-INVOICE - Invoice {invoice_id} is in DRAFT status.",
-                )
 
-            current_status = invoice.status
-            previous_status = status_log[-2].status
-            try:
-                crud.invoice.revert_status(
-                    self.session, invoice_=invoice, status=previous_status
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"REVERT-INVOICE - Cannot revert invoice {invoice_id} from "
-                    f"status {current_status.name} to {previous_status.name}: {exc}",
-                )
-            else:
-                body = schemas.Invoice.from_orm(invoice)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if invoice is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REVERT-INVOICE - Invoice {invoice_id} not found.",
+            )
+        if len(status_log) < 2:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REVERT-INVOICE - Invoice {invoice_id} is in DRAFT status.",
+            )
+
+        current_status = invoice.status
+        previous_status = status_log[-2].status
+        try:
+            crud.invoice.revert_status(
+                self.session, invoice_=invoice, status=previous_status
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"REVERT-INVOICE - Cannot revert invoice {invoice_id} from "
+                f"status {current_status.name} to {previous_status.name}: {exc}",
+            )
+        body = schemas.Invoice.from_orm(invoice)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def update_invoice_history(
@@ -1064,24 +1050,23 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 CommandStatus.FAILED,
                 f"UPDATE_HISTORY-INVOICE - SQL or database error: {exc}",
             )
-        else:
-            if invoice is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE_HISTORY-INVOICE - Invoice {invoice_id} not found.",
-                )
 
-            try:
-                crud.invoice.set_status_history(self.session, invoice_=invoice, log=log)
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE_HISTORY-INVOICE - Cannot update history "
-                    f"of invoice {invoice_id} : {exc}",
-                )
-            else:
-                body = schemas.Invoice.from_orm(invoice)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if invoice is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE_HISTORY-INVOICE - Invoice {invoice_id} not found.",
+            )
+
+        try:
+            crud.invoice.set_status_history(self.session, invoice_=invoice, log=log)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE_HISTORY-INVOICE - Cannot update history "
+                f"of invoice {invoice_id} : {exc}",
+            )
+        body = schemas.Invoice.from_orm(invoice)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
 
 client = ClientModel()

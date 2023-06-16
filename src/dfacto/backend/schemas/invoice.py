@@ -7,7 +7,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, cast
+from typing import Optional
 
 from dfacto.backend import models
 

@@ -17,7 +17,7 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, NamedTuple, Optional, overload, cast
+from typing import Any, NamedTuple, Optional, cast, overload
 
 from dfacto.util.basicpatterns import Singleton
 
@@ -33,7 +33,7 @@ class PathEncoder(json.JSONEncoder):
     an empty string if the path name is not defined.
     """
 
-    def default(self, obj: Any) -> Any:
+    def default(self, obj: Any) -> Any:  # pylint: disable=arguments-renamed
         """Overrides the JSONEncoder default encoding method.
 
         Non Path objects are passed to the JSONEncoder base class, raising a
@@ -54,10 +54,8 @@ class PathEncoder(json.JSONEncoder):
 class SettingsError(Exception):
     """Exception raised on settings saving error."""
 
-    pass
 
-
-class Settings(object, metaclass=Singleton):
+class Settings(metaclass=Singleton):
     """A base class to handle persistent application settings.
 
     Settings is a singleton: only one instance of settings may exist for an
@@ -100,8 +98,8 @@ class Settings(object, metaclass=Singleton):
                 keys = cast(dict[str, Any], json.load(fh))
             return keys
         except (FileNotFoundError, json.JSONDecodeError) as exc:
-            logger.debug(f"Cannot load the settings file: {exc}")
-            return dict()
+            logger.debug("Cannot load the settings file: %s", exc)
+            return {}
 
     def save(self) -> None:
         """Save the settings key/value pairs on a JSON file.
@@ -115,7 +113,7 @@ class Settings(object, metaclass=Singleton):
             with self._settings_file.open(mode="w") as fh:
                 json.dump(self._keys, fh, indent=4, cls=PathEncoder)
         except (OSError, TypeError) as e:
-            raise SettingsError(e)
+            raise SettingsError(e) from e
 
     def value(self, key: str, default_value: Any = None) -> Any:
         """Returns the value for setting key.
@@ -175,10 +173,10 @@ class Settings(object, metaclass=Singleton):
 
     def clear(self) -> None:
         """Removes all entries associated to this Settings object."""
-        self._keys = dict()
+        self._keys = {}
 
 
-class Setting(object):
+class Setting:
     """A data descriptor to simplify a key/value access in a Settings instance.
 
     The name of a Setting descriptor corrrespond to a key in the Settings
@@ -282,7 +280,7 @@ def get_app_dirs(app_name: str, roaming: bool = False) -> WinAppDirs:
         A WinAppDirs NamedTuple containing the user app directories paths.
     """
     folder: str | Path | None
-    key = roaming and "APPDATA" or "LOCALAPPDATA"
+    key = "APPDATA" if roaming else "LOCALAPPDATA"
     folder = os.environ.get(key)
 
     if folder is None:

@@ -16,6 +16,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class VatRate(BaseModel):
+    # pylint: disable=too-few-public-methods
     __tablename__ = "vat_rate"
 
     id: Mapped[intpk] = mapped_column(init=False)

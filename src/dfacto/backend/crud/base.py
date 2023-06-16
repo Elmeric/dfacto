@@ -13,8 +13,12 @@ from sqlalchemy.orm import Session
 from dfacto.backend import schemas
 from dfacto.backend.models import ModelType
 
-CreateSchemaType = TypeVar("CreateSchemaType", bound=schemas.BaseSchema)  # type: ignore[type-arg]
-UpdateSchemaType = TypeVar("UpdateSchemaType", bound=schemas.BaseSchema)  # type: ignore[type-arg]
+CreateSchemaType = TypeVar(  # pylint: disable=invalid-name
+    "CreateSchemaType", bound=schemas.BaseSchema  # type: ignore[type-arg]
+)
+UpdateSchemaType = TypeVar(  # pylint: disable=invalid-name
+    "UpdateSchemaType", bound=schemas.BaseSchema  # type: ignore[type-arg]
+)
 
 
 class CrudError(Exception):
@@ -35,8 +39,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             obj = dbsession.get(self.model, obj_id)
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return obj
+        return obj
 
     def get_multi(
         self, dbsession: Session, *, skip: int = 0, limit: int = 100
@@ -48,8 +51,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return obj_list
+        return obj_list
 
     def get_all(self, dbsession: Session) -> list[ModelType]:
         try:
@@ -58,8 +60,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             )
         except SQLAlchemyError as exc:
             raise CrudError from exc
-        else:
-            return obj_list
+        return obj_list
 
     def create(self, dbsession: Session, *, obj_in: CreateSchemaType) -> ModelType:
         obj_in_data = obj_in.flatten()
@@ -70,9 +71,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
-        else:
-            dbsession.refresh(db_obj)
-            return db_obj
+        dbsession.refresh(db_obj)
+        return db_obj
 
     def update(
         self,
@@ -105,9 +105,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             except SQLAlchemyError as exc:
                 dbsession.rollback()
                 raise CrudError() from exc
-            else:
-                dbsession.refresh(db_obj)
-                return db_obj
+            dbsession.refresh(db_obj)
+            return db_obj
         return db_obj
 
     def delete(self, dbsession: Session, *, db_obj: ModelType) -> None:

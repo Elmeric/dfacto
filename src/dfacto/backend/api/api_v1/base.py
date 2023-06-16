@@ -12,8 +12,12 @@ from sqlalchemy.orm import Session
 from dfacto.backend import crud, schemas
 from dfacto.backend.api.command import CommandResponse, CommandStatus, command
 
-CRUDObjectType = TypeVar("CRUDObjectType", bound=crud.CRUDBase)  # type: ignore[type-arg]
-SchemaType = TypeVar("SchemaType", bound=schemas.BaseSchema)  # type: ignore[type-arg]
+CRUDObjectType = TypeVar(  # pylint: disable=invalid-name
+    "CRUDObjectType", bound=crud.CRUDBase  # type: ignore[type-arg]
+)
+SchemaType = TypeVar(  # pylint: disable=invalid-name
+    "SchemaType", bound=schemas.BaseSchema  # type: ignore[type-arg]
+)
 
 
 @dataclass()
@@ -31,15 +35,13 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 CommandStatus.FAILED,
                 f"GET - SQL or database error: {exc}",
             )
-        else:
-            if db_obj is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"GET - Object {obj_id} not found.",
-                )
-            else:
-                body = self.schema.from_orm(db_obj)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if db_obj is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET - Object {obj_id} not found.",
+            )
+        body = self.schema.from_orm(db_obj)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_multi(self, *, skip: int = 0, limit: int = 10) -> CommandResponse:
@@ -50,9 +52,8 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 CommandStatus.FAILED,
                 f"GET-MULTI - SQL or database error: {exc}",
             )
-        else:
-            body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def get_all(self) -> CommandResponse:
@@ -63,9 +64,8 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 CommandStatus.FAILED,
                 f"GET-ALL - SQL or database error: {exc}",
             )
-        else:
-            body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = [self.schema.from_orm(db_obj) for db_obj in db_objs]
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def add(self, obj_in: crud.CreateSchemaType) -> CommandResponse:
@@ -76,9 +76,8 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 CommandStatus.FAILED,
                 f"ADD - Cannot add object: {exc}",
             )
-        else:
-            body = self.schema.from_orm(db_obj)
-            return CommandResponse(CommandStatus.COMPLETED, body=body)
+        body = self.schema.from_orm(db_obj)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def update(self, obj_id: int, *, obj_in: crud.UpdateSchemaType) -> CommandResponse:
@@ -89,25 +88,22 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 CommandStatus.FAILED,
                 f"UPDATE - SQL or database error: {exc}",
             )
-        else:
-            if db_obj is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE - Object {obj_id} not found.",
-                )
 
-            try:
-                db_obj = self.crud_object.update(
-                    self.session, db_obj=db_obj, obj_in=obj_in
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"UPDATE - Cannot update object {obj_id}: {exc}",
-                )
-            else:
-                body = self.schema.from_orm(db_obj)
-                return CommandResponse(CommandStatus.COMPLETED, body=body)
+        if db_obj is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE - Object {obj_id} not found.",
+            )
+
+        try:
+            db_obj = self.crud_object.update(self.session, db_obj=db_obj, obj_in=obj_in)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"UPDATE - Cannot update object {obj_id}: {exc}",
+            )
+        body = self.schema.from_orm(db_obj)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
     def delete(self, obj_id: int) -> CommandResponse:
@@ -118,25 +114,23 @@ class DFactoModel(Generic[CRUDObjectType, SchemaType]):
                 CommandStatus.FAILED,
                 f"DELETE - SQL or database error: {exc}",
             )
-        else:
-            if db_obj is None:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"DELETE - Object {obj_id} not found.",
-                )
 
-            try:
-                self.crud_object.delete(self.session, db_obj=db_obj)
-            except crud.CrudIntegrityError:
-                return CommandResponse(
-                    CommandStatus.REJECTED,
-                    f"DELETE - Object {obj_id}"
-                    f" is used by at least one other object.",
-                )
-            except crud.CrudError as exc:
-                return CommandResponse(
-                    CommandStatus.FAILED,
-                    f"DELETE - Cannot delete object {obj_id}: {exc}",
-                )
-            else:
-                return CommandResponse(CommandStatus.COMPLETED)
+        if db_obj is None:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"DELETE - Object {obj_id} not found.",
+            )
+
+        try:
+            self.crud_object.delete(self.session, db_obj=db_obj)
+        except crud.CrudIntegrityError:
+            return CommandResponse(
+                CommandStatus.REJECTED,
+                f"DELETE - Object {obj_id}" f" is used by at least one other object.",
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"DELETE - Cannot delete object {obj_id}: {exc}",
+            )
+        return CommandResponse(CommandStatus.COMPLETED)

@@ -268,7 +268,9 @@ class ClientSelector(QtUtil.QFramedWidget):
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
 
-        response = api.client.delete(client.id)
+        response = api.client.delete(
+            client.id,
+        )
 
         if response.status is CommandStatus.COMPLETED:
             with QtCore.QSignalBlocker(clients_lst.model()):
