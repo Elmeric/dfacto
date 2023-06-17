@@ -9,8 +9,7 @@ import pytest
 
 from dfacto.backend import api, crud, schemas
 from dfacto.backend.api.command import CommandStatus
-from tests.api.test_service import FakeORMService
-from tests.conftest import FakeORMServiceRevision, FakeORMVatRate
+from tests.conftest import FakeORMService, FakeORMVatRate
 
 pytestmark = pytest.mark.api
 
@@ -383,17 +382,14 @@ def test_cmd_delete_unknown(mock_vat_rate_model, mock_schema_from_orm):
 
 
 def test_cmd_delete_in_use(mock_vat_rate_model, mock_schema_from_orm):
-    service_revision = FakeORMServiceRevision(
-        id=1, name="Service 1", unit_price=Decimal("100.00")
-    )
-    service = FakeORMService(id=1, rev_id=1, revisions={1: service_revision})
+    service = FakeORMService(id=1)
     vat_rate = FakeORMVatRate(
         id=4,
         name="Rate",
         rate=Decimal("10.00"),
         is_default=False,
         is_preset=False,
-        services=[service_revision],
+        services=[service],
     )
     state, methods_called = mock_vat_rate_model
     state["raises"] = {"READ": False, "DELETE": False}
@@ -406,7 +402,7 @@ def test_cmd_delete_in_use(mock_vat_rate_model, mock_schema_from_orm):
     assert response.status is CommandStatus.REJECTED
     assert (
         response.reason
-        == "DELETE - VAT rate with id 4 is used by at least 'Service 1' service."
+        == "DELETE - VAT rate with id 4 is used by at least 'Service' service."
     )
     assert response.body is None
 

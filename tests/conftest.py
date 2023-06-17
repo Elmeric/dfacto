@@ -10,6 +10,7 @@ import dataclasses
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
+from random import randint
 from sqlite3 import Connection as SQLite3Connection
 from typing import Any, Optional, Union, cast
 
@@ -136,19 +137,35 @@ def mock_select(monkeypatch):
     return state, called
 
 
-FAKE_TIME = datetime(2023, 2, 22, 21, 54, 30)
+FAKE_TIME = datetime(2023, 2, 22, 0, 0, 0)
 
 
 @pytest.fixture
 def mock_datetime_now(monkeypatch):
     class mydatetime:
+        min: datetime = datetime.min
+
         @classmethod
         def now(cls):
             return FAKE_TIME
 
+        @classmethod
+        def combine(cls, date_, time_):
+            return datetime.combine(date_, time_)
+
     monkeypatch.setattr(
         sys.modules["dfacto.backend.crud.invoice"], "datetime", mydatetime
     )
+
+
+@pytest.fixture
+def mock_date_today(monkeypatch):
+    class mydate:
+        @classmethod
+        def today(cls):
+            return FAKE_TIME.date()
+
+    monkeypatch.setattr(sys.modules["dfacto.backend.crud.invoice"], "date", mydate)
 
 
 @pytest.fixture()
@@ -258,6 +275,86 @@ def mock_dfacto_model(monkeypatch):
     return state, methods_called
 
 
+@pytest.fixture()
+def mock_service_model(mock_dfacto_model, monkeypatch):
+    state, methods_called = mock_dfacto_model
+
+    def _get(_db, _id):
+        methods_called.append("GET")
+        exc = state["raises"]["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["read_value"]
+
+    def _get_all(_db, current_only):
+        methods_called.append("GET_ALL")
+        exc = state["raises"]["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["read_value"]
+
+    def _get_current(_db, _id):
+        methods_called.append("GET_CURRENT")
+        exc = state["raises"]["READ"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["read_value"]
+
+    def _create(_db, *, obj_in: schemas.ServiceCreate):
+        methods_called.append("CREATE")
+        exc = state["raises"]["CREATE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            obj_in.id = 1
+            return obj_in
+
+    def _update(_db, *, db_obj, obj_in: Union[schemas.ServiceUpdate, dict[str, Any]]):
+        methods_called.append("UPDATE")
+        exc = state["raises"]["UPDATE"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            if isinstance(obj_in, dict):
+                update_data = obj_in
+            else:
+                update_data = obj_in.flatten()
+            for field in ("name", "unit_price", "vat_rate_id"):
+                if (
+                    field in update_data
+                    and update_data[field] is not None
+                    and getattr(db_obj, field) != update_data[field]
+                ):
+                    pass
+                else:
+                    update_data[field] = getattr(db_obj, field)
+            update_data["id"] = db_obj.id
+            update_data["version"] = db_obj.version + 1
+            db_obj = FakeORMService(**update_data)
+            return db_obj
+
+    monkeypatch.setattr(crud.service, "get", _get)
+    monkeypatch.setattr(crud.service, "get_all", _get_all)
+    monkeypatch.setattr(crud.service, "get_current", _get_current)
+    monkeypatch.setattr(crud.service, "create", _create)
+    monkeypatch.setattr(crud.service, "update", _update)
+
+    return state, methods_called
+
+
 @dataclasses.dataclass
 class TestData:
     vat_rates: list[models.VatRate]
@@ -306,18 +403,14 @@ def init_data(dbsession: Session) -> TestData:
     )
     # Services
     for i in range(5):
-        service = models.Service()
-        dbsession.add(service)
-        dbsession.flush([service])
-        service_revision = models.ServiceRevision(
-            name=f"Service_{i + 1}",  # Service_1 to _5
-            unit_price=Decimal(100 + 10 * i),  # 100, 110, 120, 130, 140
-            vat_rate_id=i + 1,  # 1 to 5 (rates: 0, 2.1, 5.5, 10, 20)
-            service_id=service.id,
+        service = models.Service(
+            id=randint(1, 10000),
+            version=1,
+            name=f"Service_{i + 1}",
+            unit_price=Decimal(100 + 10 * i),
+            vat_rate_id=(i % 3) + 1,
         )
-        dbsession.add(service_revision)
-        dbsession.flush([service_revision])
-        service.rev_id = service_revision.id
+        dbsession.add(service)
     dbsession.commit()
     services = cast(
         list[models.Service], dbsession.scalars(select(models.Service)).all()
@@ -366,7 +459,7 @@ def init_data(dbsession: Session) -> TestData:
         quantity = i + 1
         item = models.Item(
             service_id=service.id,
-            service_rev_id=service.rev_id,
+            service_version=service.version,
             quantity=quantity,
         )
         if i < 10:
@@ -434,7 +527,7 @@ class FakeORMInvoice(FakeORMModel):
 @dataclasses.dataclass
 class FakeORMItem(FakeORMModel):
     service_id: int
-    service_rev_id: int
+    service_version: int
     quantity: int = 1
     service: "FakeORMServiceRevision" = None
     basket_id: Optional[int] = 1
@@ -445,21 +538,14 @@ class FakeORMItem(FakeORMModel):
 
 @dataclasses.dataclass
 class FakeORMService(FakeORMModel):
-    rev_id: int
-    vat_rate: "FakeORMVatRate" = None
-    revisions: dict[int, "FakeORMServiceRevision"] = dataclasses.field(
-        default_factory=dict
-    )
-
-
-@dataclasses.dataclass
-class FakeORMServiceRevision(FakeORMModel):
-    unit_price: Decimal
+    version: int = 1
     name: str = "Service"
+    unit_price: Decimal = Decimal("100.00")
+    from_: datetime = FAKE_TIME
+    to: datetime = datetime(9999, 12, 31, 23, 59, 59)
+    is_current: bool = True
     vat_rate_id: int = 1
-    service_id: int = 1
     vat_rate: "FakeORMVatRate" = None
-    service: "FakeORMService" = None
 
 
 @dataclasses.dataclass
@@ -468,4 +554,4 @@ class FakeORMVatRate(FakeORMModel):
     name: str = "Rate"
     is_default: bool = False
     is_preset: bool = False
-    services: list["FakeORMServiceRevision"] = dataclasses.field(default_factory=list)
+    services: list["FakeORMService"] = dataclasses.field(default_factory=list)

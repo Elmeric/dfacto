@@ -92,7 +92,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     @command
     def get_quantity_in_basket(
-        self, obj_id: int, *, service_id: int
+        self, obj_id: int, *, service_id: tuple[int, int]
     ) -> CommandResponse:
         try:
             basket = self.crud_object.get_basket(self.session, obj_id)
@@ -314,7 +314,9 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         return CommandResponse(CommandStatus.COMPLETED, body=body)
 
     @command
-    def remove_from_basket(self, obj_id: int, *, service_id: int) -> CommandResponse:
+    def remove_from_basket(
+        self, obj_id: int, *, service_id: tuple[int, int]
+    ) -> CommandResponse:
         try:
             client_ = self.crud_object.get(self.session, obj_id)
             service = crud.service.get(self.session, service_id)
@@ -352,7 +354,12 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     @command
     def add_to_invoice(
-        self, obj_id: int, *, invoice_id: int, service_id: int, quantity: int = 1
+        self,
+        obj_id: int,
+        *,
+        invoice_id: int,
+        service_id: tuple[int, int],
+        quantity: int = 1,
     ) -> CommandResponse:
         try:
             invoice = crud.invoice.get(self.session, invoice_id)

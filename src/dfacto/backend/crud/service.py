@@ -6,7 +6,7 @@
 
 from datetime import datetime
 from random import randint
-from typing import Any, Union, cast
+from typing import Any, Optional, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -20,6 +20,17 @@ from .base import CRUDBase, CrudError
 class CRUDService(
     CRUDBase[models.Service, schemas.ServiceCreate, schemas.ServiceUpdate]
 ):
+    def get(
+        self,
+        dbsession: Session,
+        obj_id: tuple[int, int],  # type: ignore[override]
+    ) -> Optional[models.Service]:
+        try:
+            obj = dbsession.get(self.model, obj_id)
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        return obj
+
     def get_all(
         self, dbsession: Session, current_only: bool = True
     ) -> list[models.Service]:

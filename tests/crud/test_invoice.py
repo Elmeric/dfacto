@@ -90,7 +90,7 @@ def test_crud_get_all_error(dbsession, init_data, mock_select):
         _invoices = crud.invoice.get_all(dbsession)
 
 
-def test_crud_create(dbsession, init_data, mock_datetime_now):
+def test_crud_create(dbsession, init_data, mock_datetime_now, mock_date_today):
     client = init_data.clients[1]
 
     invoice = crud.invoice.create(
@@ -153,7 +153,9 @@ def test_crud_create_error(dbsession, init_data, mock_commit):
 
 
 @pytest.mark.parametrize("clear", (True, False))
-def test_crud_invoice_from_basket(clear, dbsession, init_data, mock_datetime_now):
+def test_crud_invoice_from_basket(
+    clear, dbsession, init_data, mock_datetime_now, mock_date_today
+):
     client = init_data.clients[1]
     basket = client.basket
     items_count = len(basket.items)
@@ -227,7 +229,6 @@ def test_crud_add_item(dbsession, init_data):
     )
 
     assert item.service_id == service.id
-    assert item.service_rev_id == service.rev_id
     assert item.quantity == 2
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1
@@ -244,7 +245,6 @@ def test_crud_add_item_default_qty(dbsession, init_data):
     item = crud.invoice.add_item(dbsession, invoice_=invoice, service=service)
 
     assert item.service_id == service.id
-    assert item.service_rev_id == service.rev_id
     assert item.quantity == 1
     assert item.invoice_id == invoice.id
     assert len(invoice.items) == items_count + 1
@@ -500,7 +500,7 @@ def test_crud_delete_invoice_commit_error(dbsession, init_data, mock_commit):
     assert len(invoice.status_log) == logs_count
 
 
-def test_crud_cancel_invoice(dbsession, init_data, mock_datetime_now):
+def test_crud_cancel_invoice(dbsession, init_data, mock_datetime_now, mock_date_today):
     client = init_data.clients[1]
     invoice = client.invoices[0]
     invoice_id = invoice.id
@@ -587,7 +587,13 @@ def test_crud_cancel_invoice_commit_error(dbsession, init_data, mock_commit):
     ),
 )
 def test_crud_mark_as(
-    status, client_idx, prev_status, dbsession, init_data, mock_datetime_now
+    status,
+    client_idx,
+    prev_status,
+    dbsession,
+    init_data,
+    mock_datetime_now,
+    mock_date_today,
 ):
     client = init_data.clients[client_idx]
     invoice = client.invoices[0]

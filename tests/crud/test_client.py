@@ -6,6 +6,7 @@
 
 from datetime import date
 from decimal import Decimal
+from random import randint
 from typing import cast
 
 import pytest
@@ -45,19 +46,15 @@ def init_clients(dbsession: Session) -> list[models.Client]:
 @pytest.fixture
 def init_services(dbsession: Session) -> list[models.Service]:
     for i in range(5):
-        service = models.Service()
-        dbsession.add(service)
-        dbsession.flush([service])
-        service_revision = models.ServiceRevision(
+        service = models.Service(
+            id=randint(1, 10000),
+            version=1,
             name=f"Service_{i + 1}",
             unit_price=Decimal(100 + 10 * i),
             vat_rate_id=(i % 3) + 1,
-            service_id=service.id,
         )
-        dbsession.add(service_revision)
-        dbsession.flush([service_revision])
-        service.rev_id = service_revision.id
-        dbsession.commit()
+        dbsession.add(service)
+    dbsession.commit()
 
     services = cast(
         list[models.Service], dbsession.scalars(sa.select(models.Service)).all()
@@ -77,7 +74,7 @@ def init_items(
         quantity = i + 1
         item = models.Item(
             service_id=service.id,
-            service_rev_id=service.rev_id,
+            service_version=service.version,
             quantity=quantity,
         )
         basket = clients[i % 5].basket
@@ -501,9 +498,7 @@ def test_crud_delete(dbsession, init_data):
     basket_items_ids = [item.id for item in client.basket.items]
     invoices_ids = [invoice.id for invoice in client.invoices]
 
-    crud.client.delete(
-        dbsession,
-    )
+    crud.client.delete(dbsession, db_obj=client)
 
     assert dbsession.get(models.Client, client.id) is None
     for id_ in basket_items_ids:
@@ -520,9 +515,7 @@ def test_crud_delete_has_emitted_invoices(dbsession, init_data):
     with pytest.raises(
         AssertionError, match="Cannot delete client with non-draft invoices"
     ):
-        crud.client.delete(
-            dbsession,
-        )
+        crud.client.delete(dbsession, db_obj=client)
 
     cl = dbsession.get(models.Client, client.id)
     assert cl is not None
@@ -539,9 +532,7 @@ def test_crud_delete_error(dbsession, init_data, mock_commit):
     invoices_count = len(client.invoices)
 
     with pytest.raises(crud.CrudError):
-        crud.client.delete(
-            dbsession,
-        )
+        crud.client.delete(dbsession, db_obj=client)
 
     cl = dbsession.get(models.Client, client.id)
     assert cl is not None
@@ -558,7 +549,7 @@ def test_crud_add_to_basket(dbsession, init_clients, init_services):
     )
 
     assert item.service_id == service.id
-    assert item.service_rev_id == service.rev_id
+    assert item.service_version == service.version
     assert item.quantity == 2
     assert item.basket_id == client.basket.id
     assert len(client.basket.items) == 1
@@ -572,7 +563,7 @@ def test_crud_add_to_basket_default_qty(dbsession, init_clients, init_services):
     item = crud.client.add_to_basket(dbsession, basket=client.basket, service=service)
 
     assert item.service_id == service.id
-    assert item.service_rev_id == service.rev_id
+    assert item.service_version == service.version
     assert item.quantity == 1
     assert item.basket_id == client.basket.id
     assert len(client.basket.items) == 1
@@ -786,8 +777,5 @@ def test_item_from_orm(dbsession, init_data):
 
     assert from_db.id == item.id
     assert from_db.service_id == item.service_id
-    assert from_db.service_rev_id == item.service_rev_id
     assert from_db.quantity == item.quantity
-    assert from_db.service == schemas.Service.from_revision(
-        item.service, item.service_rev_id
-    )
+    assert from_db.service == schemas.Service.from_orm(item.service)
