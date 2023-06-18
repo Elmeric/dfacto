@@ -25,8 +25,8 @@ jobs:
       # Optional
       system_list: 'ubuntu windows macos'
       python_version: '3.11'
-      python_version_list: '3.8 3.9 3.10 3.11'
-      exclude_list: "windows:3.8 windows:3.9 windows:3.10 macos:3.8 macos:3.9 macos:3.10"
+      python_version_list: '3.9 3.10 3.11'
+      exclude_list: "windows:3.9 windows:3.10 macos:3.9 macos:3.10"
 
   CodeCheck:
     uses: Elmeric/my-gha-workflows/.github/workflows/CodeCheck.yml@dev
@@ -38,6 +38,10 @@ jobs:
       # Optional
       python_version: "3.11"
 
+# https://stackoverflow.com/questions/75549995/why-do-the-pyside6-qt-modules-cause-tox-to-fail-during-a-github-action:
+#      - name: Install dependencies
+#        run: |
+#          sudo apt update && sudo apt install -y libegl1-mesa-dev
   UnitTesting:
     uses: Elmeric/my-gha-workflows/.github/workflows/UnitTesting.yml@dev
     needs:

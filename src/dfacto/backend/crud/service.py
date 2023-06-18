@@ -5,7 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 from datetime import datetime
-from random import randint
+from random import getrandbits
 from typing import Any, Optional, Union, cast
 
 from sqlalchemy import select
@@ -75,7 +75,7 @@ class CRUDService(
         self, dbsession: Session, *, obj_in: schemas.ServiceCreate
     ) -> models.Service:
         obj_in_data = obj_in.flatten()
-        obj_in_data["id"] = randint(1, 100000)
+        obj_in_data["id"] = getrandbits(32)
         obj_in_data["version"] = 1
         db_obj = self.model(**obj_in_data)
         dbsession.add(db_obj)

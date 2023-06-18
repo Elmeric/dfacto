@@ -20,7 +20,7 @@ packages = [{include = "dfacto", from = "src"}]
 
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 sqlalchemy = "^2.0.0"
 jinja2 = "^3.1.2"
 babel = "^2.12.1"
@@ -53,7 +53,7 @@ invoke = "^2.0.0"
 
 
 [tool.black]
-target-version = ["py37", "py38", "py39", "py310", "py311"]
+target-version = ["py39", "py310", "py311"]
 
 [tool.isort]
 profile = "black"
