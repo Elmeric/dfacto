@@ -3,7 +3,7 @@
 [![pypi](https://img.shields.io/pypi/v/dfacto.svg)](https://pypi.org/project/dfacto/)
 [![python](https://img.shields.io/pypi/pyversions/dfacto.svg)](https://pypi.org/project/dfacto/)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests](https://github.com/Elmeric/dfacto/actions/workflows/test.yml/badge.svg)](https://github.com/Elmeric/dfacto/actions/workflows/test.yml)
+[![Tests](https://github.com/Elmeric/dfacto/actions/workflows/test.yml/badge.svg)](https://github.com/Elmeric/dfacto/actions/workflows/pipeline.yml)
 [![Coverage Status](https://coveralls.io/repos/github/Elmeric/dfacto/badge.svg)](https://coveralls.io/github/Elmeric/dfacto)
 [![license](https://img.shields.io/badge/license-BSD--3--Clause-green)](https://github.com/Elmeric/dfacto/blob/master/LICENSE)
 
