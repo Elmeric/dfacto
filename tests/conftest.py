@@ -10,7 +10,7 @@ import dataclasses
 import sys
 from datetime import datetime, timedelta
 from decimal import Decimal
-from random import randint
+from random import getrandbits
 from sqlite3 import Connection as SQLite3Connection
 from typing import Any, Optional, Union, cast
 
@@ -404,7 +404,7 @@ def init_data(dbsession: Session) -> TestData:
     # Services
     for i in range(5):
         service = models.Service(
-            id=randint(1, 10000),
+            id=getrandbits(32),
             version=1,
             name=f"Service_{i + 1}",
             unit_price=Decimal(100 + 10 * i),

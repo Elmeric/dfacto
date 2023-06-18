@@ -4,7 +4,7 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 from decimal import Decimal
-from random import randint
+from random import getrandbits
 from typing import cast
 
 import pytest
@@ -24,7 +24,7 @@ def init_services(dbsession: Session) -> list[models.Service]:
 
     for i in range(5):
         service = models.Service(
-            id=randint(1, 10000),
+            id=getrandbits(32),
             version=1,
             name=f"Service_{i + 1}",
             unit_price=Decimal(100 + 10 * i),

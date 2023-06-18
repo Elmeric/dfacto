@@ -6,7 +6,7 @@
 
 from datetime import date
 from decimal import Decimal
-from random import randint
+from random import getrandbits
 from typing import cast
 
 import pytest
@@ -47,7 +47,7 @@ def init_clients(dbsession: Session) -> list[models.Client]:
 def init_services(dbsession: Session) -> list[models.Service]:
     for i in range(5):
         service = models.Service(
-            id=randint(1, 10000),
+            id=getrandbits(32),
             version=1,
             name=f"Service_{i + 1}",
             unit_price=Decimal(100 + 10 * i),
