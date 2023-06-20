@@ -156,7 +156,8 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         templates_dir = Config.dfacto_settings.templates
         template_dir = templates_dir / company.home.name
         if not template_dir.exists():
-            template_dir = templates_dir / "default"
+            resources = Config.dfacto_settings.resources
+            template_dir = resources / "invoice_template"
 
         base_url = QtCore.QUrl.fromLocalFile(template_dir.as_posix() + "/")
         self.html_view.setHtml(html, base_url)

@@ -3,7 +3,10 @@
 The DfactoSettings model defines the dfacto application settings and make them
 accessible throughout the application by exposing a dfacto_settings instance.
 """
+
+import logging
 import os
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -15,6 +18,18 @@ if TYPE_CHECKING:
     from dfacto.util.settings import WinAppDirs
 
 __all__ = ["dfacto_settings"]
+
+logger = logging.getLogger(__name__)
+
+
+def is_frozen() -> bool:
+    if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+        print("running in a PyInstaller bundle")
+        logger.info("Running in a PyInstaller bundle")
+        return True
+    print("running in a normal Python process")
+    logger.info("Running in a normal Python process")
+    return False
 
 
 class DfactoSettings(settings.Settings):
@@ -78,7 +93,10 @@ class DfactoSettings(settings.Settings):
         super().__init__(app_dirs.user_data_dir / "settings")
 
         self.app_dirs = app_dirs
-        self.resources = Path(__file__).resolve().parent.parent.parent / "resources"
+        if is_frozen():
+            self.resources = Path(__file__).resolve().parent.parent / "resources"
+        else:
+            self.resources = Path(__file__).resolve().parent.parent.parent / "resources"
         templates_dir = app_dirs.user_config_dir / "templates"
         templates_dir.mkdir(parents=True, exist_ok=True)
         self.templates = templates_dir

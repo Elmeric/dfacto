@@ -51,6 +51,7 @@ htmlcov/
 nosetests.xml
 coverage.xml
 *.cover
+lcov.info
 .hypothesis/
 .pytest_cache/
 test/Data/
@@ -125,3 +126,7 @@ dmypy.json
 /workspace.xml
 /shelf/
 .idea/
+
+# Dfacto
+resources/
+installer/*.exe

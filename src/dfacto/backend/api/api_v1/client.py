@@ -757,6 +757,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     ) -> CommandResponse:
         # pylint: disable=too-many-return-statements
         # pylint: disable=line-too-long
+        # pylint: disable=too-many-locals
         """
                     SHOW	                        ISSUE	                REMIND
         DRAFT
@@ -803,15 +804,13 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 f"client {obj_id}.",
             )
 
-        tpl_name = "invoice.html"
+        tpl_name = "invoice_no_vat.html" if orm_company.no_vat else "invoice.html"
         try:
             templates_dir = Config.dfacto_settings.templates
             template_dir = templates_dir / orm_company.home.name
             if not template_dir.exists():
-                template_dir = templates_dir / "default"
-                tpl_name = (
-                    "invoice_no_vat.html" if orm_company.no_vat else "invoice.html"
-                )
+                resources = Config.dfacto_settings.resources
+                template_dir = resources / "invoice_template"
             env = jinja.Environment(
                 loader=jinja.FileSystemLoader(template_dir.as_posix())
             )
