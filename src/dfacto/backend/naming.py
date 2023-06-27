@@ -1,3 +1,9 @@
+# Copyright (c) 2023 Eric Lemoine
+# All rights reserved.
+#
+# This source code is licensed under the BSD-style license found in the
+# LICENSE file in the root directory of this source tree.
+
 import json
 import logging
 from dataclasses import dataclass, field
@@ -460,7 +466,10 @@ class NamingTemplates:
             with self._templates_file.open() as fh:
                 templates = json.load(fh, cls=NamingTemplateDecoder)
                 return templates["invoice"], templates["destination"]
-        except (FileNotFoundError, json.JSONDecodeError) as e:
+        except FileNotFoundError:
+            logger.info("No custom naming templates found: using defaults")
+            return {}, {}
+        except json.JSONDecodeError as e:
             logger.warning("Cannot load custom naming templates: %s", e)
             return {}, {}
 
