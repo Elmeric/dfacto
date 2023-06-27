@@ -27,7 +27,6 @@ from dfacto.backend.api.command import CommandStatus
 
 # Util
 from dfacto.util import qtutil as QtUtil
-from dfacto.util.logutil import LogConfig
 from dfacto.util.settings import SettingsError
 
 # Views
@@ -65,10 +64,7 @@ class QtMainView(QtWidgets.QMainWindow):
             the parent QMainWindow.
 
     Attributes:
-        _sourceManager: reference to the images' sources manager.
-        _splash: reference to the splash screen to show the main view initialization
-            progress.
-        _status: reference to the Main window status bar.
+        company_profile: reference to the selected company profile.
     """
 
     def __init__(
@@ -629,16 +625,6 @@ def qt_main() -> int:
     settings = Config.dfacto_settings
     resources = settings.resources
 
-    # Initialize and start the log server.
-    log_config = LogConfig(
-        settings.app_dirs.user_log_dir / "dfacto.log",
-        settings.log_level,
-        log_on_console=True,
-    )
-    log_config.init_logging()
-
-    logger.info("Dfacto is starting...")
-
     # QT_SCALE_FACTOR environment variable allow to zoom the HMI for better.
     # readability
     if "QT_SCALE_FACTOR" not in os.environ:
@@ -661,8 +647,6 @@ def qt_main() -> int:
     company_profile, is_new = _select_company_profile()
     if company_profile is None:
         logger.info(f"No company profile is selected: Dfacto is closing...")
-        # Stop the log server.
-        log_config.stop_logging()
         return 1
 
     logger.info("Connecting to database...")
@@ -679,8 +663,6 @@ def qt_main() -> int:
             f"Cannot create the {company_profile.name} company profile\n\nReason is:\n{response.reason}",
             QtWidgets.QMessageBox.StandardButton.Close,
         )
-        # Stop the log server.
-        log_config.stop_logging()
         return 1
     logger.info(f"Connected to {company_profile.home / 'dfacto.db'}")
     logger.info(f"Company profile {company_profile.name} is selected")
@@ -700,10 +682,6 @@ def qt_main() -> int:
 
     # Start the Qt main loop.
     app.exec()
-
-    logger.info("Dfacto is closing...")
-    # Stop the log server.
-    log_config.stop_logging()
 
     return 0
 
