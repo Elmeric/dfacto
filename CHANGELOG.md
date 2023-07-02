@@ -5,10 +5,6 @@ to [Semantic Versioning].
 
 ## [Unreleased]
 
-## [1.0.0] - 2023-06-20
-
-- First release.
-
 ### Fixed
 
 ### Changed
@@ -16,6 +12,11 @@ to [Semantic Versioning].
 ### Documentation
 
 ### Miscellaneous
+- Separate general initializations outside the gui modules
+
+## [1.0.0] - 2023-06-20
+
+- First release.
 
 
 [unreleased]: https://github.com/Elmeric/dfacto/compare/v1.0.0...HEAD

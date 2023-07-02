@@ -635,7 +635,7 @@ def qt_main() -> int:
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle(QtUtil.MyAppStyle())
     app.setStyleSheet("QSplitter::handle { background-color: gray }")
-    app.setApplicationName("Dfacto")
+    app.setApplicationName(__about__.__title__)
     app.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
     f = app.font()
     fSize = f.pointSize()
