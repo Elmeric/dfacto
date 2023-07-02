@@ -21,7 +21,6 @@ import sys
 from pathlib import Path
 from typing import Final
 
-from dfacto import __about__
 from dfacto.util.logutil import LogConfig
 
 logger = logging.getLogger(__name__)
@@ -43,7 +42,6 @@ def except_hook(exc_type, exc_value, _exc_traceback):  # type: ignore[no-untyped
 
 def run_main() -> None:
     """Program entry point."""
-    app_name = __about__.__title__
 
     # Handles exceptions not trapped earlier.
     sys.excepthook = except_hook
@@ -69,13 +67,17 @@ def run_main() -> None:
         locales_dir = Path(__file__).resolve().parent.parent.parent / "locales"
     locale_ = dfacto_settings.locale
     translations = gettext.translation(
-        app_name.lower(),
+        "dfacto",
         locales_dir,
         languages=[locale_],
         fallback=True,
     )
     translations.install()
 
+    # Import __about__ after translation is installed
+    from dfacto import __about__  # pylint: disable=import-outside-toplevel
+
+    app_name = __about__.__title__
     logger.info(_("%(app_name)s is starting..."), {"app_name": app_name})
     logger.info(_("Using preferred locale: %(locale)s"), {"locale": locale_})
 

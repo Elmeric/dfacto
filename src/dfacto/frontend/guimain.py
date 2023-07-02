@@ -77,7 +77,7 @@ class QtMainView(QtWidgets.QMainWindow):
         self.company_profile = company_profile
         super().__init__(*args, **kwargs)
 
-        splash.setProgress(10, "Create Gui objects...")
+        splash.setProgress(10, _("Create Gui objects..."))
         time.sleep(1)
 
         self._splash = splash
@@ -177,49 +177,49 @@ class QtMainView(QtWidgets.QMainWindow):
         # Build actions used in toolbars.
         edit_profile_action = QtUtil.createAction(
             self,
-            "&Edit your company profile",
+            _("Edit your company profile"),
             slot=self.do_edit_profile_action,
-            tip="Edit your company profile",
+            tip=_("Edit your company profile"),
             shortcut="Ctrl+E",
             icon=f"{resources}/edit.png",
         )
         select_profile_action = QtUtil.createAction(
             self,
-            "Select another company profile",
+            _("Select another company profile"),
             slot=self.do_select_profile_action,
-            tip="Select another company profile",
+            tip=_("Select another company profile"),
             shortcut="Alt+P",
             icon=f"{resources}/change.png",
         )
         new_profile_action = QtUtil.createAction(
             self,
-            "&New company profile",
+            _("New company profile"),
             slot=self.do_new_profile_action,
-            tip="Create a new company profile",
+            tip=_("Create a new company profile"),
             shortcut="Ctrl+N",
             icon=f"{resources}/add.png",
         )
         preferences_action = QtUtil.createAction(
             self,
-            "Se&ttings",
+            _("Settings"),
             slot=self.do_preferences_action,
+            tip=_("Adjust application settings"),
             shortcut="Ctrl+P",
             icon=f"{resources}/settings.png",
-            tip="Adjust application settings",
         )
         about_action = QtUtil.createAction(
             self,
-            "&About",
+            _("About %s") % __about__.__title__,
             slot=self.do_about_action,
-            tip="About the application",
+            tip=_("About %s") % __about__.__title__,
             shortcut="Ctrl+?",
             icon=f"{resources}/about.png",
         )
         quit_action = QtUtil.createAction(
             self,
-            "&Quit",
+            _("Quit"),
             slot=self.close,
-            tip="Close the application",
+            tip=_("Close the application"),
             shortcut="Ctrl+Q",
             icon=f"{resources}/close-window.png",
         )
@@ -296,7 +296,7 @@ class QtMainView(QtWidgets.QMainWindow):
 
         Called on an immediate timer once the main windows is built.
         """
-        self._splash.setProgress(70, "Loading database...")
+        self._splash.setProgress(70, _("Loading database..."))
         time.sleep(1)
 
         settings = Config.dfacto_settings
@@ -335,12 +335,13 @@ class QtMainView(QtWidgets.QMainWindow):
         response = api.company.get_current()
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
-                "Cannot edit your company profile - Reason is: %s", response.reason
+                _("Cannot edit your company profile - Reason is: %s"), response.reason
             )
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
-                f"Dfacto - Connection failed",
-                f"Cannot edit your company profile\n\nReason is:\n{response.reason}",
+                _("Dfacto - Connection failed"),
+                _("Cannot edit your company profile\n\nReason is:\n%s")
+                % response.reason,
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
@@ -360,14 +361,15 @@ class QtMainView(QtWidgets.QMainWindow):
         response = api.company.update(current_profile.name, obj_in=company)
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
-                "Cannot update the %s company profile - Reason is: %s",
+                _("Cannot update the %s company profile - Reason is: %s"),
                 current_profile.name,
                 response.reason,
             )
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
-                f"Dfacto - Connection failed",
-                f"Cannot update the {current_profile.name} company profile\n\nReason is:\n{response.reason}",
+                _("Dfacto - Connection failed"),
+                _("Cannot update the %s company profile\n\nReason is:\n%s")
+                % (current_profile.name, response.reason),
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
@@ -381,8 +383,10 @@ class QtMainView(QtWidgets.QMainWindow):
         if len(companies) <= 0:
             QtWidgets.QMessageBox.information(
                 None,  # type: ignore
-                f"Dfacto - Company profile selection",
-                f"No other company profiles available: use 'New company profile' to create one",
+                _("Dfacto - Company profile selection"),
+                _(
+                    "No other company profiles available: use 'New company profile' to create one"
+                ),
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
@@ -414,14 +418,15 @@ class QtMainView(QtWidgets.QMainWindow):
         response = api.company.add(company)
         if response.status is not CommandStatus.COMPLETED:
             logger.warning(
-                "Cannot create the %s company profile - Reason is: %s",
+                _("Cannot create the %s company profile - Reason is: %s"),
                 company.name,
                 response.reason,
             )
             QtWidgets.QMessageBox.warning(
                 None,  # type: ignore
-                f"Dfacto - Connection failed",
-                f"Cannot create the {company.name} company profile\n\nReason is:\n{response.reason}",
+                _("Dfacto - Connection failed"),
+                _("Cannot create the %s company profile\n\nReason is:\n%s")
+                % (company.name, response.reason),
                 QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
@@ -430,14 +435,15 @@ class QtMainView(QtWidgets.QMainWindow):
         self._select_profile(response.body, is_new=True)
 
     def _select_profile(self, company: schemas.Company, is_new: bool) -> None:
-        logger.info("Selecting the company profile...")
-        logger.info("Connecting to database...")
+        logger.info(_("Selecting the company profile..."))
+        logger.info(_("Connecting to database..."))
 
         response = api.company.select(company.name, is_new=is_new)
 
         if response.status is not CommandStatus.COMPLETED:
             QtUtil.raise_fatal_error(
-                f"Cannot select the {company.name} company profile\n\nReason is:\n{response.reason}"
+                _("Cannot select the %s company profile\n\nReason is:\n%s")
+                % (company.name, response.reason)
             )
 
         self.company_btn.setText(company.name)
@@ -448,19 +454,25 @@ class QtMainView(QtWidgets.QMainWindow):
         self.invoice_viewer.load_invoices()
         self.client_selector.load_clients()
 
-        logger.info(f"Connected to {company.home / 'dfacto.db'}")
-        logger.info(f"Company profile {company.name} is selected")
+        logger.info(_("Connected to %s"), company.home / "dfacto.db")
+        logger.info(_("Company profile %s is selected"), company.name)
 
     @QtCore.pyqtSlot(schemas.Amount)
     def do_set_pending_pmt(self, pmt: schemas.Amount) -> None:
         nbsp = "\u00A0"
         self._pending_payments = pmt
         if pmt == Decimal(0):
-            self.pending_payments_lbl.setText("No pending payments".replace(" ", nbsp))
+            self.pending_payments_lbl.setText(
+                _("No pending payments").replace(" ", nbsp)
+            )
             return
-        pending_str = format_currency(pmt.net, "EUR", locale="fr_FR").replace(" ", nbsp)
+        pending_str = format_currency(
+            pmt.net, "EUR", locale=Config.dfacto_settings.locale
+        ).replace(" ", nbsp)
         self.pending_payments_lbl.setText(
-            f"Pending{nbsp}payments:{nbsp}<strong>{pending_str}</strong>"
+            (_("Pending payments: <strong>%s</strong>") % pending_str).replace(
+                " ", nbsp
+            )
         )
 
     @QtCore.pyqtSlot(schemas.Amount)
@@ -469,11 +481,17 @@ class QtMainView(QtWidgets.QMainWindow):
         self._pending_payments += pmt
         new = self._pending_payments
         if new == Decimal(0):
-            self.pending_payments_lbl.setText("No pending payments".replace(" ", nbsp))
+            self.pending_payments_lbl.setText(
+                _("No pending payments").replace(" ", nbsp)
+            )
             return
-        pending_str = format_currency(new.net, "EUR", locale="fr_FR").replace(" ", nbsp)
+        pending_str = format_currency(
+            new.net, "EUR", locale=Config.dfacto_settings.locale
+        ).replace(" ", nbsp)
         self.pending_payments_lbl.setText(
-            f"Pending{nbsp}payments:{nbsp}<strong>{pending_str}</strong>"
+            (_("Pending payments: <strong>%s</strong>") % pending_str).replace(
+                " ", nbsp
+            )
         )
 
     @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
@@ -483,12 +501,14 @@ class QtMainView(QtWidgets.QMainWindow):
         nbsp = "\u00A0"
         self._last_quarter_sales = last
         self._current_quarter_sales = current
-        last_str = format_currency(last.net, "EUR", locale="fr_FR")
-        current_str = format_currency(current.net, "EUR", locale="fr_FR")
-        self.sales_summary_lbl.setText(
-            f"Last{nbsp}quarter{nbsp}sales:{nbsp}<strong>{last_str}</strong>\n"
-            f"Current{nbsp}quarter{nbsp}sales:{nbsp}<strong>{current_str}</strong>"
-        )
+        locale_ = Config.dfacto_settings.locale
+        last_str = format_currency(last.net, "EUR", locale=locale_)
+        current_str = format_currency(current.net, "EUR", locale=locale_)
+        lbl1 = _("Last quarter sales: ").replace(" ", nbsp)
+        lbl2 = _("Current quarter sales: ").replace(" ", nbsp)
+        summary = lbl1 + "<strong>%s</strong>\n" % last_str
+        summary += lbl2 + "<strong>%s</strong>" % current_str
+        self.sales_summary_lbl.setText(summary)
 
     @QtCore.pyqtSlot(schemas.Amount, schemas.Amount)
     def do_update_sales_summary(
@@ -497,14 +517,16 @@ class QtMainView(QtWidgets.QMainWindow):
         nbsp = "\u00A0"
         self._last_quarter_sales += last
         self._current_quarter_sales += current
-        last_str = format_currency(self._last_quarter_sales.net, "EUR", locale="fr_FR")
+        locale_ = Config.dfacto_settings.locale
+        last_str = format_currency(self._last_quarter_sales.net, "EUR", locale=locale_)
         current_str = format_currency(
-            self._current_quarter_sales.net, "EUR", locale="fr_FR"
+            self._current_quarter_sales.net, "EUR", locale=locale_
         )
-        self.sales_summary_lbl.setText(
-            f"Last{nbsp}quarter{nbsp}sales:{nbsp}<strong>{last_str}</strong>\n"
-            f"Current{nbsp}quarter{nbsp}sales:{nbsp}<strong>{current_str}</strong>"
-        )
+        lbl1 = _("Last quarter sales: ").replace(" ", nbsp)
+        lbl2 = _("Current quarter sales: ").replace(" ", nbsp)
+        summary = lbl1 + "<strong>%s</strong>\n" % last_str
+        summary += lbl2 + "<strong>%s</strong>" % current_str
+        self.sales_summary_lbl.setText(summary)
 
     @QtCore.pyqtSlot()
     def do_preferences_action(self) -> None:
@@ -513,7 +535,7 @@ class QtMainView(QtWidgets.QMainWindow):
 
         If dialog is accepted, the settings changes are saved.
         """
-        self.show_status_message("Preferences...")
+        self.show_status_message(_("Preferences..."))
         # form = SettingsView(parent=self)
         # if form.exec_():
         #     Config.dfacto_settings.save()
@@ -524,31 +546,36 @@ class QtMainView(QtWidgets.QMainWindow):
         pass
         resources = Config.dfacto_settings.resources
         app_name = __about__.__title__
+        designed = _("Designed and develop by")
+        license_ = _("Under %(license)s license") % {"license": __about__.__license__}
+        powered_by = _("Powered by")
+        and_ = _("and")
+        icons = _("Icons selection from")
         QtWidgets.QMessageBox.about(
             self,  # noqa
-            f"{app_name} - About",
+            _("%(app_name)s - About") % {"app_name": app_name},
             f"""
             <p><b>{app_name}</b> {__about__.__version__}</p>
             <p>{__about__.__summary__}.</p>
             <br>
             <p>
-            Designed and develop by {__about__.__author__}
+            {designed} {__about__.__author__}
             ({__about__.__email__})
             </p>
             <p>
-            Under {__about__.__license__} license - {__about__.__copyright__}
+            {license_} - {__about__.__copyright__}
             </p>
             <br>
             <p>
-            Powered by
+            {powered_by}
             <a href="https://www.python.org/">
             <img style="vertical-align:middle" src="{resources}/pythonlogo.svg" alt="Powered by Python" height="32"></a>
-             and
+             {and_}
             <a href="https://www.qt.io/">
             <img style="vertical-align:middle" src="{resources}/qtlogo.svg" alt="Powered by Qt" height="32"></a>
             </p>
             <p>
-            Icons selection from icons8.com <a href="https://icons8.com">
+            {icons} icons8.com <a href="https://icons8.com">
             <img style="vertical-align:middle" src="{resources}/icons8.png" alt="icons8.com" height="32"></a>
             </p>
             """,
@@ -589,10 +616,11 @@ class QtMainView(QtWidgets.QMainWindow):
         try:
             Config.dfacto_settings.save()
         except SettingsError as e:
+            app_name = __about__.__title__
             reply = QtWidgets.QMessageBox.question(
                 self,  # noqa
-                f"{QtWidgets.QApplication.applicationName()} - Exit confirmation",
-                f"Cannot save the settings file ({e}): quit anyway?",
+                _("%(app_name)s - Exit confirmation") % {"app_name": app_name},
+                _("Cannot save the settings file (%s): quit anyway?") % e,
                 QtWidgets.QMessageBox.StandardButton.Yes
                 | QtWidgets.QMessageBox.StandardButton.No,
             )
@@ -643,29 +671,34 @@ def qt_main() -> int:
     app.setFont(f)
 
     # Select a company profile
-    logger.info("Selecting a company profile...")
+    logger.info(_("Selecting a company profile..."))
     company_profile, is_new = _select_company_profile()
     if company_profile is None:
-        logger.info(f"No company profile is selected: Dfacto is closing...")
+        logger.info(_("No company profile is selected: Dfacto is closing..."))
         return 1
 
-    logger.info("Connecting to database...")
+    logger.info(_("Connecting to database..."))
     response = api.company.select(company_profile.name, is_new=is_new)
     if response.status is not CommandStatus.COMPLETED:
         logger.warning(
-            "Cannot select the %s company profile - Reason is: %s",
+            _("Cannot select the %s company profile - Reason is: %s"),
             company_profile.name,
             response.reason,
         )
         QtWidgets.QMessageBox.warning(
             None,  # type: ignore
-            f"Dfacto - Connection failed",
-            f"Cannot create the {company_profile.name} company profile\n\nReason is:\n{response.reason}",
+            _("Dfacto - Connection failed"),
+            _("Cannot create the %(profile)s company profile\n\nReason is:\n%(reason)s")
+            % {"profile": company_profile.name, "reason": response.reason},
             QtWidgets.QMessageBox.StandardButton.Close,
         )
         return 1
-    logger.info(f"Connected to {company_profile.home / 'dfacto.db'}")
-    logger.info(f"Company profile {company_profile.name} is selected")
+    logger.info(
+        _("Connected to %(database)s"), {"database": company_profile.home / "dfacto.db"}
+    )
+    logger.info(
+        _("Company profile %(profile)s is selected"), {"profile": company_profile.name}
+    )
 
     # Build and show the splash screen.
     splash = QtUtil.SplashScreen(
@@ -727,14 +760,14 @@ def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
     response = api.company.add(new_company)
     if response.status is not CommandStatus.COMPLETED:
         logger.warning(
-            "Cannot create the %s company profile - Reason is: %s",
-            new_company.name,
-            response.reason,
+            _("Cannot create the %(profile)s company profile - Reason is: %(reason)s"),
+            {"profile": new_company.name, "reason": response.reason},
         )
         QtWidgets.QMessageBox.warning(
             None,  # type: ignore
-            f"Dfacto - Connection failed",
-            f"Cannot create the {new_company.name} company profile\n\nReason is:\n{response.reason}",
+            _("Dfacto - Connection failed"),
+            _("Cannot create the %(profile)s company profile\n\nReason is:\n%(reason)s")
+            % {"profile": new_company.name, "reason": response.reason},
             QtWidgets.QMessageBox.StandardButton.Close,
         )
         return None, False

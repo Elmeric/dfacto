@@ -13,7 +13,7 @@ __all__ = [
 ]
 
 __title__ = "Dfacto"
-__summary__ = "Your invoicing assistant!"
+__summary__ = _("Your invoicing assistant!")
 __uri__ = "https://github.com/Elmeric/dfacto"
 
 __version__ = "1.0.0"
