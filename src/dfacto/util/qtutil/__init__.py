@@ -427,9 +427,9 @@ class UndeselectableSelectionModel(QtCore.QItemSelectionModel):
 def raise_fatal_error(msg: str) -> None:
     critical(
         None,  # type: ignore
-        f"Dfacto - Database error",
-        f"{msg}"
-        f"\n\nTry to restart Dfacto\nIf the problem persists, contact your admin",
+        _("Dfacto - Database error"),
+        _("%s\n\nTry to restart Dfacto\nIf the problem persists, contact your admin")
+        % msg,
     )
     getMainWindow().close()
     raise BackendError(msg)

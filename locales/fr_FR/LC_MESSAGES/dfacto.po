@@ -1,0 +1,396 @@
+# French (France) translations for Dfacto.
+# Copyright (C) 2023 ORGANIZATION
+# This file is distributed under the same license as the Dfacto project.
+# Eric Lemoine <erik.lemoine@gmail.com>, 2023.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version:  v1.0.0\n"
+"Report-Msgid-Bugs-To: erik.lemoine@gmail.com\n"
+"POT-Creation-Date: 2023-07-02 17:02+0200\n"
+"PO-Revision-Date: 2023-07-01 22:15+0200\n"
+"Last-Translator: Eric Lemoine <erik.lemoine@gmail.com>\n"
+"Language: fr_FR\n"
+"Language-Team: fr_FR <LL@li.org>\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.12.1\n"
+
+#: src/dfacto/__about__.py:16
+msgid "Your invoicing assistant!"
+msgstr "Votre assistant de facturation"
+
+#: src/dfacto/__init__.py:38 src/dfacto/__init__.py:99
+#, python-format
+msgid "%(app_name)s is closing..."
+msgstr "%(app_name)s s'arrête..."
+
+#: src/dfacto/__init__.py:81
+#, python-format
+msgid "%(app_name)s is starting..."
+msgstr "%(app_name)s démarre..."
+
+#: src/dfacto/__init__.py:82
+#, python-format
+msgid "Using preferred locale: %(locale)s"
+msgstr "Utilisation des paramètres régionaux préférés: %(locale)s"
+
+#: src/dfacto/__init__.py:86
+msgid "Running in a PyInstaller bundle"
+msgstr "Exécution dans un paquet PyInstaller"
+
+#: src/dfacto/__init__.py:88
+msgid "Running in a normal Python process"
+msgstr "Exécution dans un process Python standard"
+
+#: src/dfacto/__init__.py:90
+msgid "Running in Development mode"
+msgstr "Exécution en mode Développement"
+
+#: src/dfacto/__init__.py:92
+msgid "Running in Production mode"
+msgstr "Exécution en mode Production"
+
+#: src/dfacto/frontend/__init__.py:19
+#, python-format
+msgid "No selected company - Reason is: %s"
+msgstr "Pas de profil d'entreprise sélectionné - La raison est : %s"
+
+#: src/dfacto/frontend/guimain.py:80
+msgid "Create Gui objects..."
+msgstr "Création de l'interface utilisateur..."
+
+#: src/dfacto/frontend/guimain.py:180 src/dfacto/frontend/guimain.py:182
+msgid "Edit your company profile"
+msgstr "Modifier votre profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:188 src/dfacto/frontend/guimain.py:190
+msgid "Select another company profile"
+msgstr "Choisir un autre profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:196
+msgid "New company profile"
+msgstr "Nouveau profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:198
+msgid "Create a new company profile"
+msgstr "Créer un nouveau profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:204
+msgid "Settings"
+msgstr "Préférences"
+
+#: src/dfacto/frontend/guimain.py:206
+msgid "Adjust application settings"
+msgstr "Régler les paramètres de l'application"
+
+#: src/dfacto/frontend/guimain.py:212 src/dfacto/frontend/guimain.py:214
+#, python-format
+msgid "About %s"
+msgstr "À propos de %s"
+
+#: src/dfacto/frontend/guimain.py:220
+msgid "Quit"
+msgstr "Quitter"
+
+#: src/dfacto/frontend/guimain.py:222
+msgid "Close the application"
+msgstr "Fermer l'application"
+
+#: src/dfacto/frontend/guimain.py:299
+msgid "Loading database..."
+msgstr "Chargement de la base de données..."
+
+#: src/dfacto/frontend/guimain.py:338
+#, python-format
+msgid "Cannot edit your company profile - Reason is: %s"
+msgstr "Impossible de modifier le profil d'entreprise - La raison est : %s"
+
+#: src/dfacto/frontend/guimain.py:342 src/dfacto/frontend/guimain.py:369
+#: src/dfacto/frontend/guimain.py:424 src/dfacto/frontend/guimain.py:684
+#: src/dfacto/frontend/guimain.py:761
+msgid "Dfacto - Connection failed"
+msgstr "Dfacto - Échec de la connexion"
+
+#: src/dfacto/frontend/guimain.py:343
+#, python-format
+msgid ""
+"Cannot edit your company profile\n"
+"\n"
+"Reason is:\n"
+"%s"
+msgstr ""
+"Impossible de modifier votre profil d'entreprise\n"
+"\n"
+"La raison est :\n"
+"%s"
+
+#: src/dfacto/frontend/guimain.py:363
+#, python-format
+msgid "Cannot update the %s company profile - Reason is: %s"
+msgstr "Impossible de mettre à jour le profil d'entreprise %s - La raison est : %s"
+
+#: src/dfacto/frontend/guimain.py:370
+#, python-format
+msgid ""
+"Cannot update the %s company profile\n"
+"\n"
+"Reason is:\n"
+"%s"
+msgstr ""
+"Impossible de mettre à jour le profil d'entreprise %s\n"
+"\n"
+"La raison est :\n"
+"%s"
+
+#: src/dfacto/frontend/guimain.py:384
+msgid "Dfacto - Company profile selection"
+msgstr "Dfacto - Choix du profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:385
+msgid ""
+"No other company profiles available.\n"
+"Use 'New company profile' to create one."
+msgstr ""
+"Pas d'autres profils d'entreprise disponibles.\n"
+"Utiliser 'Nouveau profil d'entreprise' pour en créer un."
+
+#: src/dfacto/frontend/guimain.py:418
+#, python-format
+msgid "Cannot create the %s company profile - Reason is: %s"
+msgstr "Impossible de créer un nouveau profil d'entreprise %s - La raison est : %s"
+
+#: src/dfacto/frontend/guimain.py:425
+#, python-format
+msgid ""
+"Cannot create the %s company profile\n"
+"\n"
+"Reason is:\n"
+"%s"
+msgstr ""
+"Impossible de créer un nouveau profil d'entreprise %s\n"
+"\n"
+"La raison est :\n"
+"%s"
+
+#: src/dfacto/frontend/guimain.py:434
+msgid "Selecting the company profile..."
+msgstr "Choix du profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:435 src/dfacto/frontend/guimain.py:674
+msgid "Connecting to database..."
+msgstr "Connexion à la base de donnée..."
+
+#: src/dfacto/frontend/guimain.py:441
+#, python-format
+msgid ""
+"Cannot select the %s company profile\n"
+"\n"
+"Reason is:\n"
+"%s"
+msgstr ""
+"Impossible de charger le profil d'entreprise %s\n"
+"\n"
+"La raison est :\n"
+"%s"
+
+#: src/dfacto/frontend/guimain.py:453
+#, python-format
+msgid "Connected to %s"
+msgstr "Connecté à %s"
+
+#: src/dfacto/frontend/guimain.py:454
+#, python-format
+msgid "Company profile %s is selected"
+msgstr "Le profil d'entreprise choisi est %s"
+
+#: src/dfacto/frontend/guimain.py:462 src/dfacto/frontend/guimain.py:481
+msgid "No pending payments"
+msgstr "Pas de paiements en attente"
+
+#: src/dfacto/frontend/guimain.py:469 src/dfacto/frontend/guimain.py:488
+#, python-format
+msgid "Pending payments: <strong>%s</strong>"
+msgstr "Paiements en attente : <strong>%s</strong>"
+
+#: src/dfacto/frontend/guimain.py:503 src/dfacto/frontend/guimain.py:521
+msgid "Last quarter sales: "
+msgstr "Chiffre d'Affaire du dernier trimestre : "
+
+#: src/dfacto/frontend/guimain.py:504 src/dfacto/frontend/guimain.py:522
+msgid "Current quarter sales: "
+msgstr "Chiffre d'Affaire du trimestre en cours : "
+
+#: src/dfacto/frontend/guimain.py:534
+msgid "Preferences..."
+msgstr "Préférences..."
+
+#: src/dfacto/frontend/guimain.py:545
+msgid "Designed and develop by"
+msgstr "Conçu et développé par"
+
+#: src/dfacto/frontend/guimain.py:546
+#, python-format
+msgid "Under %(license)s license"
+msgstr "Sous license %(license)s"
+
+#: src/dfacto/frontend/guimain.py:547
+msgid "Powered by"
+msgstr "Propulsé par"
+
+#: src/dfacto/frontend/guimain.py:548
+msgid "and"
+msgstr "et"
+
+#: src/dfacto/frontend/guimain.py:549
+msgid "Icons selection from"
+msgstr "Séléction d'icones issus de"
+
+#: src/dfacto/frontend/guimain.py:552
+#, python-format
+msgid "%(app_name)s - About"
+msgstr "%(app_name)s  - À propos"
+
+#: src/dfacto/frontend/guimain.py:618
+#, python-format
+msgid "%(app_name)s - Exit confirmation"
+msgstr "%(app_name)s - Confirmation"
+
+#: src/dfacto/frontend/guimain.py:619
+#, python-format
+msgid "Cannot save the settings file (%s): quit anyway?"
+msgstr ""
+"Impossible de sauvegarder le fichier de péférences (%s) : quitter tout de"
+" même ?"
+
+#: src/dfacto/frontend/guimain.py:668
+msgid "Selecting a company profile..."
+msgstr "Choix d'un profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:671
+msgid "No company profile is selected: Dfacto is closing..."
+msgstr "Aucun profil d'entreprise choisi : Dfacto va s'arrêter..."
+
+#: src/dfacto/frontend/guimain.py:678
+#, python-format
+msgid "Cannot select the %s company profile - Reason is: %s"
+msgstr "Impossible de charger le profil d'entreprise %s - La raison est : %s"
+
+#: src/dfacto/frontend/guimain.py:685 src/dfacto/frontend/guimain.py:762
+#, python-format
+msgid ""
+"Cannot create the %(profile)s company profile\n"
+"\n"
+"Reason is:\n"
+"%(reason)s"
+msgstr ""
+"Impossible de créer le profil d'entreprise %(profile)s\n"
+"\n"
+"La raison est:\n"
+"%(reason)s"
+
+#: src/dfacto/frontend/guimain.py:690
+#, python-format
+msgid "Connected to %(database)s"
+msgstr "Connecté à %(database)s"
+
+#: src/dfacto/frontend/guimain.py:693
+#, python-format
+msgid "Company profile %(profile)s is selected"
+msgstr "Le profil d'entreprise choisi est %(profile)s"
+
+#: src/dfacto/frontend/guimain.py:756
+#, python-format
+msgid "Cannot create the %(profile)s company profile - Reason is: %(reason)s"
+msgstr ""
+"Impossible de créer le profil d'entreprise %(profile)s - La raison est : "
+"%(reason)s"
+
+#: src/dfacto/frontend/serviceselector.py:63
+msgid "Add to basket"
+msgstr "Ajouter au panier"
+
+#: src/dfacto/frontend/serviceselector.py:71
+msgid "Increase"
+msgstr "Augmenter"
+
+#: src/dfacto/frontend/serviceselector.py:77
+msgid "Decrease"
+msgstr "Diminuer"
+
+#: src/dfacto/frontend/serviceselector.py:233
+msgid "Create a new service"
+msgstr "Créer un nouveau service"
+
+#: src/dfacto/frontend/serviceselector.py:240
+msgid "Delete the selected service (Delete)"
+msgstr "Supprimer le service sélectionné (Suppr)"
+
+#: src/dfacto/frontend/serviceselector.py:247
+msgid "Edit the selected service"
+msgstr "Modifier le service sélectionné"
+
+#: src/dfacto/frontend/serviceselector.py:350
+msgid "Cannot load the services list"
+msgstr "Impossible de charger la liste des services disponibles"
+
+#: src/dfacto/frontend/serviceselector.py:351
+#: src/dfacto/frontend/serviceselector.py:440
+#: src/dfacto/frontend/serviceselector.py:519
+#: src/dfacto/frontend/serviceselector.py:544
+msgid "Reason is:"
+msgstr "La raison est :"
+
+#: src/dfacto/frontend/serviceselector.py:407
+msgid "Delete service"
+msgstr "Supprimer un service"
+
+#: src/dfacto/frontend/serviceselector.py:408
+msgid "Do you really want to delete this service permanently?"
+msgstr "Êtes-vous sûr de vouloir supprimer ce service définitivement ?"
+
+#: src/dfacto/frontend/serviceselector.py:439
+msgid "Cannot delete service"
+msgstr "Impossible de supprimer ce service"
+
+#: src/dfacto/frontend/serviceselector.py:518
+msgid "Cannot update the selected service"
+msgstr "Impossible de mettre à jour le service sélectionné"
+
+#: src/dfacto/frontend/serviceselector.py:543
+msgid "Cannot create the new service"
+msgstr "Impossible de créer le nouveau service"
+
+#: src/dfacto/util/qtutil/__init__.py:430
+msgid "Dfacto - Database error"
+msgstr "Dfactp - Erreur de la base de données"
+
+#: src/dfacto/util/qtutil/__init__.py:431
+#, python-format
+msgid ""
+"%s\n"
+"\n"
+"Try to restart Dfacto\n"
+"If the problem persists, contact your admin"
+msgstr ""
+"%s\n"
+"\n"
+"Essayer de redémarrer Dfacto\n"
+"Si le problème persiste, contacter votre administrateur"
+
+#: src/dfacto/util/qtutil/__init__.py:449
+#: src/dfacto/util/qtutil/__init__.py:464
+#: src/dfacto/util/qtutil/__init__.py:479
+msgid "Close"
+msgstr "Fermer"
+
+#: src/dfacto/util/qtutil/__init__.py:497
+msgid "Yes"
+msgstr "Oui"
+
+#: src/dfacto/util/qtutil/__init__.py:499
+msgid "No"
+msgstr "Non"
+

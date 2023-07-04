@@ -60,20 +60,23 @@ class BasketController(QtWidgets.QWidget):
         icon_size = QtCore.QSize(32, 32)
         self.basket_btn = QtWidgets.QPushButton(basket_icon, "")
         self.basket_btn.setIconSize(icon_size)
-        self.basket_btn.setToolTip("Add to basket")
-        self.basket_btn.setStatusTip("Add to basket")
+        tip = _("Add to basket")
+        self.basket_btn.setToolTip(tip)
+        self.basket_btn.setStatusTip(tip)
         self.basket_btn.setFlat(True)
 
         icon_size = QtCore.QSize(18, 18)
         self.add_btn = QtWidgets.QPushButton(add_icon, "")
         self.add_btn.setIconSize(icon_size)
-        self.add_btn.setToolTip("Increase")
-        self.add_btn.setStatusTip("Increase")
+        tip = _("Increase")
+        self.add_btn.setToolTip(tip)
+        self.add_btn.setStatusTip(tip)
         self.add_btn.setFlat(True)
         self.minus_btn = QtWidgets.QPushButton(minus_icon, "")
         self.minus_btn.setIconSize(icon_size)
-        self.minus_btn.setToolTip("Decrease")
-        self.minus_btn.setStatusTip("Decrease")
+        tip = _("Decrease")
+        self.minus_btn.setToolTip(tip)
+        self.minus_btn.setStatusTip(tip)
         self.minus_btn.setFlat(True)
 
         layout = QtWidgets.QHBoxLayout()
@@ -227,20 +230,23 @@ class ServiceSelector(QtUtil.QFramedWidget):
         icon_size = QtCore.QSize(32, 32)
         self.new_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/add.png"), "")
         self.new_btn.setIconSize(icon_size)
-        self.new_btn.setToolTip("Create a new service")
-        self.new_btn.setStatusTip("Create a new service")
+        tip = _("Create a new service")
+        self.new_btn.setToolTip(tip)
+        self.new_btn.setStatusTip(tip)
         self.new_btn.setFlat(True)
         self.delete_btn = QtWidgets.QPushButton(
             QtGui.QIcon(f"{resources}/remove.png"), ""
         )
-        self.delete_btn.setToolTip("Delete the selected service (Delete)")
-        self.delete_btn.setStatusTip("Delete the selected service (Delete)")
+        tip = _("Delete the selected service (Delete)")
+        self.delete_btn.setToolTip(tip)
+        self.delete_btn.setStatusTip(tip)
         self.delete_btn.setIconSize(icon_size)
         self.delete_btn.setFlat(True)
         self.edit_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/edit.png"), "")
         self.edit_btn.setIconSize(icon_size)
-        self.edit_btn.setToolTip("Edit the selected service")
-        self.edit_btn.setStatusTip("Edit the selected service")
+        tip = _("Edit the selected service")
+        self.edit_btn.setToolTip(tip)
+        self.edit_btn.setStatusTip(tip)
         self.edit_btn.setFlat(True)
 
         self.basket_controller = BasketController(
@@ -341,9 +347,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
         response = api.service.get_all(current_only=True)
 
         if response.status is not CommandStatus.COMPLETED:
-            QtUtil.raise_fatal_error(
-                f"Cannot load the services list - Reason is: {response.reason}"
-            )
+            msg = _("Cannot load the services list")
+            reason = _("Reason is:")
+            QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
         for service in response.body:
             self._add_item_from_service(service)
@@ -397,11 +403,14 @@ class ServiceSelector(QtUtil.QFramedWidget):
         service = self.current_service
         assert service is not None
 
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Delete service")
+        question = _("Do you really want to delete this service permanently?")
         reply = QtUtil.question(
             self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Delete service",
+            f"{app_name} - {action}",
             f"""
-            <p>Do you really want to delete this service permanently?</p>
+            <p>{question}</p>
             <p><strong>{service.name}</strong></p>
             """,
         )
@@ -427,21 +436,22 @@ class ServiceSelector(QtUtil.QFramedWidget):
                 self.services_lst.setFocus()
             return
 
+        msg = _("Cannot delete service")
+        reason = _("Reason is:")
         if response.status is CommandStatus.REJECTED:
             QtUtil.warning(
                 None,  # type: ignore
-                f"Dfacto - Delete service",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot delete service {service.name}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
+                <p>{msg} {service.name}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
                 """,
             )
             return
 
         if response.status is CommandStatus.FAILED:
             QtUtil.raise_fatal_error(
-                f"Cannot delete service {service.name}"
-                f" - Reason is: {response.reason}"
+                f"{msg} {service.name} - {reason} {response.reason}"
             )
 
     @QtCore.pyqtSlot(str)
@@ -505,10 +515,9 @@ class ServiceSelector(QtUtil.QFramedWidget):
             origin_service.id, obj_in=schemas.ServiceUpdate(**updated_data)
         )
         if response.status is not CommandStatus.COMPLETED:
-            QtUtil.raise_fatal_error(
-                f"Cannot update the selected service {old_name}"
-                f" - Reason is: {response.reason}"
-            )
+            msg = _("Cannot update the selected service")
+            reason = _("Reason is:")
+            QtUtil.raise_fatal_error(f"{msg} {old_name} - {reason} {response.reason}")
 
         updated_service: schemas.Service = response.body
 
@@ -531,9 +540,10 @@ class ServiceSelector(QtUtil.QFramedWidget):
         response = api.service.add(obj_in=schemas.ServiceCreate(*service))
 
         if response.status is not CommandStatus.COMPLETED:
+            msg = _("Cannot create the new service")
+            reason = _("Reason is:")
             QtUtil.raise_fatal_error(
-                f"Cannot create the new service {service.name}"
-                f" - Reason is: {response.reason}"
+                f"{msg} {service.name} - {reason} {response.reason}"
             )
 
         item = self._add_item_from_service(response.body)
