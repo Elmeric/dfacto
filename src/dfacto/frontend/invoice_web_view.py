@@ -273,13 +273,12 @@ class InvoiceWebViewer(QtWidgets.QDialog):
                 self.done(InvoiceWebViewer.Action.REMIND)
             return
 
-        QtWidgets.QMessageBox.warning(
+        QtUtil.warning(
             None,  # type: ignore
             f"Dfacto - Save invoice to PDF",
             f"""
             <p>Error when saving your invoice {file_path}</p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):

@@ -840,15 +840,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         invoice_table = self._invoice_table
         invoice = invoice_table.selected_invoice()
 
-        reply = QtWidgets.QMessageBox.warning(
+        reply = QtUtil.question(
             self,  # noqa
             f"{QtWidgets.QApplication.applicationName()} - Delete invoice",
             f"""
             <p>Do you really want to delete this invoice permanently?</p>
             <p><strong>{invoice[CODE]}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -856,14 +854,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         report = invoice_table.source_model().delete_invoice(invoice[ID])
 
         if report.status is not CommandStatus.COMPLETED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"{QtWidgets.QApplication.applicationName()} - Delete invoice",
                 f"""
                 <p>Cannot delete invoice {invoice[ID]} of client {invoice[CLIENT_NAME]}</p>
                 <p><strong>Reason is: {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     @QtCore.pyqtSlot()
@@ -901,14 +898,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if report.status is CommandStatus.COMPLETED:
             self._enable_buttons(status=status)
         else:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"{QtWidgets.QApplication.applicationName()} - Revert invoice status",
                 f"""
                 <p>Cannot revert invoice {invoice[CODE]} to its previous status</p>
                 <p><strong>Reason is: {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     @QtCore.pyqtSlot(object)
@@ -1115,14 +1111,12 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
     @QtCore.pyqtSlot()
     def check_if_paid(self):
-        reply = QtWidgets.QMessageBox.question(
+        reply = QtUtil.question(
             self,  # noqa
             f"{QtWidgets.QApplication.applicationName()} - Payment reminder",
             f"""
             <p>Some invoices should be paid: do you want to ckeck them?</p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -1206,14 +1200,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self.invoice_html_view.open()
             return
 
-        QtWidgets.QMessageBox.warning(
+        QtUtil.warning(
             None,  # type: ignore
             f"{QtWidgets.QApplication.applicationName()} - Invoice view",
             f"""
             <p>Cannot show invoice {invoice[CODE]} of client {invoice[CLIENT_NAME]}</p>
             <p><strong>Reason is: {report.reason}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
 
     def _mark_invoice_as(self, status: InvoiceStatus, confirm: bool = False) -> None:
@@ -1222,15 +1215,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         status_txt = status.name.lower()
 
         if confirm:
-            reply = QtWidgets.QMessageBox.warning(
+            reply = QtUtil.question(
                 self,  # noqa
                 f"{QtWidgets.QApplication.applicationName()} - Mark invoice as {status_txt}",
                 f"""
                 <p>Do you really want to mark permanently this invoice as {status_txt}?</p>
                 <p><strong>{invoice[CODE]}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return
@@ -1241,14 +1232,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             invoice_table.select_invoice(invoice[ID])
             return
 
-        QtWidgets.QMessageBox.warning(
+        QtUtil.warning(
             None,  # type: ignore
             f"{QtWidgets.QApplication.applicationName()} - Mark invoice as {status_txt}",
             f"""
             <p>Cannot mark invoice {invoice[ID]} as {status_txt}</p>
             <p><strong>Reason is: {report.reason}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
 
     def _move_in_basket(self, invoice: InvoiceItem):
@@ -1259,14 +1249,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if report.status is CommandStatus.COMPLETED:
             self.basket_updated.emit(invoice[CLIENT_ID])
         else:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"{QtWidgets.QApplication.applicationName()} - Move invoice in basket",
                 f"""
                 <p>Cannot move invoice {invoice[CODE]} in basket of client {invoice[CLIENT_NAME]}</p>
                 <p><strong>Reason is: {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     def _copy_in_basket(self, invoice: InvoiceItem):
@@ -1277,14 +1266,13 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if report.status is CommandStatus.COMPLETED:
             self.basket_updated.emit(invoice[CLIENT_ID])
         else:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"{QtWidgets.QApplication.applicationName()} - Copy invoice in basket",
                 f"""
                 <p>Cannot copy invoice {invoice[CODE]} in basket of client {invoice[CLIENT_NAME]}</p>
                 <p><strong>Reason is: {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
 

@@ -69,14 +69,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             return self._update_basket(client_id)
 
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"Dfacto - Add to basket",
                 f"""
                 <p>Cannot add service to basket of client {self._basket.client.name}</p>
                 <p><strong>Reason is: {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
@@ -95,14 +94,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             return self._update_basket(client_id)
 
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"Dfacto - Remove item from basket",
                 f"""
                 <p>Cannot remove service from basket of client {self._basket.client.name}</p>
                 <p><strong>Reason is: {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
@@ -123,14 +121,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             return self._update_basket(client_id)
 
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"Dfacto - Update basket",
                 f"""
                 <p>Cannot update basket of client {self._basket.client.name}</p>
                 <p><strong>Reason is: {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
@@ -149,14 +146,13 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             return self._update_basket(client_id)
 
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"Dfacto - Update basket",
                 f"""
                 <p>Cannot update basket of client {self._basket.client.name}</p>
                 <p><strong>Reason is: {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
@@ -575,15 +571,13 @@ class BasketViewer(QtUtil.QFramedWidget):
 
     @QtCore.pyqtSlot()
     def clear_basket(self) -> None:
-        reply = QtWidgets.QMessageBox.warning(
+        reply = QtUtil.question(
             self,  # noqa
             f"{QtWidgets.QApplication.applicationName()} - Clear basket",
             f"""
             <p>Do you really want to empty the basket for this client?</p>
             <p><strong>{self._current_client.name}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -618,15 +612,13 @@ class BasketViewer(QtUtil.QFramedWidget):
         if current_client.id != client_id:
             basket = self._basket_table.source_model().get_basket_of_client(client_id)
             client = basket.client
-            reply = QtWidgets.QMessageBox.warning(
+            reply = QtUtil.question(
                 self,  # noqa
                 f"{QtWidgets.QApplication.applicationName()} - Basket update",
                 f"""
                 <p>Basket content of the following client has changed. Do you want to see it?</p>
                 <p><strong>{client.name}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return

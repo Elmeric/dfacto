@@ -255,15 +255,13 @@ class ClientSelector(QtUtil.QFramedWidget):
         clients_lst = self.clients_lst
         row = clients_lst.currentRow()
 
-        reply = QtWidgets.QMessageBox.warning(
+        reply = QtUtil.question(
             self,  # noqa
             f"{QtWidgets.QApplication.applicationName()} - Delete client",
             f"""
             <p>Do you really want to delete this client permanently?</p>
             <p><strong>{client.name}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -293,14 +291,13 @@ class ClientSelector(QtUtil.QFramedWidget):
                 f"Cannot delete client {client.name} - Reason is: {response.reason}"
             )
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"Dfacto - Delete client",
                 f"""
                 <p>Cannot delete client {client.name}</p>
                 <p><strong>Reason is: {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     @QtCore.pyqtSlot()
@@ -311,15 +308,13 @@ class ClientSelector(QtUtil.QFramedWidget):
         row = clients_lst.currentRow()
 
         if client.is_active:
-            reply = QtWidgets.QMessageBox.warning(
+            reply = QtUtil.question(
                 self,  # noqa
                 f"{QtWidgets.QApplication.applicationName()} - De-activate client",
                 f"""
                 <p>Do you really want to de-activate this client: its basket will be emptied?</p>
                 <p><strong>{client.name}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 self.activate_btn.setChecked(True)

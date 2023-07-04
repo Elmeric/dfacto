@@ -337,12 +337,11 @@ class QtMainView(QtWidgets.QMainWindow):
             logger.warning(
                 _("Cannot edit your company profile - Reason is: %s"), response.reason
             )
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 _("Dfacto - Connection failed"),
                 _("Cannot edit your company profile\n\nReason is:\n%s")
                 % response.reason,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
         current_profile = response.body
@@ -365,12 +364,11 @@ class QtMainView(QtWidgets.QMainWindow):
                 current_profile.name,
                 response.reason,
             )
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 _("Dfacto - Connection failed"),
                 _("Cannot update the %s company profile\n\nReason is:\n%s")
                 % (current_profile.name, response.reason),
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
 
@@ -381,13 +379,12 @@ class QtMainView(QtWidgets.QMainWindow):
         companies = api.company.get_others().body
 
         if len(companies) <= 0:
-            QtWidgets.QMessageBox.information(
+            QtUtil.information(
                 None,  # type: ignore
                 _("Dfacto - Company profile selection"),
                 _(
-                    "No other company profiles available: use 'New company profile' to create one"
+                    "No other company profiles available.\nUse 'New company profile' to create one."
                 ),
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
 
@@ -422,12 +419,11 @@ class QtMainView(QtWidgets.QMainWindow):
                 company.name,
                 response.reason,
             )
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 _("Dfacto - Connection failed"),
                 _("Cannot create the %s company profile\n\nReason is:\n%s")
                 % (company.name, response.reason),
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
 
@@ -617,12 +613,10 @@ class QtMainView(QtWidgets.QMainWindow):
             Config.dfacto_settings.save()
         except SettingsError as e:
             app_name = __about__.__title__
-            reply = QtWidgets.QMessageBox.question(
+            reply = QtUtil.question(
                 self,  # noqa
                 _("%(app_name)s - Exit confirmation") % {"app_name": app_name},
                 _("Cannot save the settings file (%s): quit anyway?") % e,
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 # reject dialog close event
@@ -685,12 +679,11 @@ def qt_main() -> int:
             company_profile.name,
             response.reason,
         )
-        QtWidgets.QMessageBox.warning(
+        QtUtil.warning(
             None,  # type: ignore
             _("Dfacto - Connection failed"),
             _("Cannot create the %(profile)s company profile\n\nReason is:\n%(reason)s")
             % {"profile": company_profile.name, "reason": response.reason},
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
         return 1
     logger.info(
@@ -763,12 +756,11 @@ def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
             _("Cannot create the %(profile)s company profile - Reason is: %(reason)s"),
             {"profile": new_company.name, "reason": response.reason},
         )
-        QtWidgets.QMessageBox.warning(
+        QtUtil.warning(
             None,  # type: ignore
             _("Dfacto - Connection failed"),
             _("Cannot create the %(profile)s company profile\n\nReason is:\n%(reason)s")
             % {"profile": new_company.name, "reason": response.reason},
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
         return None, False
 

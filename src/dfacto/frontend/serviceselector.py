@@ -397,15 +397,13 @@ class ServiceSelector(QtUtil.QFramedWidget):
         service = self.current_service
         assert service is not None
 
-        reply = QtWidgets.QMessageBox.warning(
+        reply = QtUtil.question(
             self,  # noqa
             f"{QtWidgets.QApplication.applicationName()} - Delete service",
             f"""
             <p>Do you really want to delete this service permanently?</p>
             <p><strong>{service.name}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -430,14 +428,13 @@ class ServiceSelector(QtUtil.QFramedWidget):
             return
 
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
                 f"Dfacto - Delete service",
                 f"""
                 <p>Cannot delete service {service.name}</p>
                 <p><strong>Reason is: {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return
 
