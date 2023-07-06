@@ -61,9 +61,9 @@ class AddCompanyDialog(QtWidgets.QDialog):
         intro_layout.addStretch()
         intro_widget.setLayout(intro_layout)
 
-        name_lbl = QtWidgets.QLabel("Name:")
+        name_lbl = QtWidgets.QLabel(_("Name:"))
         self.name_text = QtUtil.FittedLineEdit()
-        self.name_text.setPlaceholderText("Company name")
+        self.name_text.setPlaceholderText(_("Company name"))
         self.name_text.setValidator(
             QtGui.QRegularExpressionValidator(
                 QtCore.QRegularExpression("[A-Z][A-Za-z0-9_ ]*")
@@ -78,52 +78,52 @@ class AddCompanyDialog(QtWidgets.QDialog):
             f"{Config.dfacto_settings.resources}/browse-folder.png"
         )
         self.home_dir_selector = QtUtil.DirectorySelector(
-            label="Dfacto data location:",
-            placeHolder="Absolute path to your Dfacto data",
+            label=_("Dfacto data location:"),
+            placeHolder=_("Absolute path to your Dfacto data"),
             selectIcon=select_icon,
-            tip="Select where to store your company's Dfacto data",
+            tip=_("Select where to store your company's Dfacto data"),
             directoryGetter=lambda: str(Config.dfacto_settings.default_company_folder),
             parent=self,
         )
         self.home_dir_selector.pathSelected.connect(self.check_home)
 
-        self.vat_ckb = QtWidgets.QCheckBox("No VAT obligation")
+        self.vat_ckb = QtWidgets.QCheckBox(_("No VAT obligation"))
 
         self.extension_widget = QtWidgets.QWidget()
 
         self.address_text = QtUtil.FittedLineEdit()
-        self.address_text.setPlaceholderText("Company address")
+        self.address_text.setPlaceholderText(_("Company address"))
         self.zipcode_text = QtUtil.FittedLineEdit()
-        self.zipcode_text.setPlaceholderText("Company zip code")
+        self.zipcode_text.setPlaceholderText(_("Company zip code"))
         self.zipcode_text.setInputMask("99999;_")
         self.zipcode_text.setValidator(
             QtGui.QRegularExpressionValidator(QtCore.QRegularExpression(r"[0-9_]{5}"))
         )
         self.zipcode_text.setCursorPosition(0)
         self.city_text = QtUtil.FittedLineEdit()
-        self.city_text.setPlaceholderText("Company city")
+        self.city_text.setPlaceholderText(_("Company city"))
         self.phone_text = QtUtil.FittedLineEdit()
-        self.phone_text.setPlaceholderText("Company phone number")
+        self.phone_text.setPlaceholderText(_("Company phone number"))
         self.phone_text.setInputMask("+33 9 99 99 99 99;_")
         self.email_text = QtUtil.FittedLineEdit()
-        self.email_text.setPlaceholderText("Company email")
+        self.email_text.setPlaceholderText(_("Company email"))
         self.siret_text = QtUtil.FittedLineEdit()
-        self.siret_text.setPlaceholderText("Company siret")
+        self.siret_text.setPlaceholderText(_("Company siret"))
         self.rcs_text = QtUtil.FittedLineEdit()
-        self.rcs_text.setPlaceholderText("Company RCS")
+        self.rcs_text.setPlaceholderText(_("Company RCS"))
 
         extension_layout = QtWidgets.QFormLayout()
         extension_layout.setContentsMargins(10, 0, 0, 0)
-        extension_layout.addRow("Address:", self.address_text)
-        extension_layout.addRow("Zip code:", self.zipcode_text)
-        extension_layout.addRow("City:", self.city_text)
-        extension_layout.addRow("Phone:", self.phone_text)
-        extension_layout.addRow("Email:", self.email_text)
-        extension_layout.addRow("Siret:", self.siret_text)
-        extension_layout.addRow("RCS:", self.rcs_text)
+        extension_layout.addRow(_("Address:"), self.address_text)
+        extension_layout.addRow(_("Zip code:"), self.zipcode_text)
+        extension_layout.addRow(_("City:"), self.city_text)
+        extension_layout.addRow(_("Phone:"), self.phone_text)
+        extension_layout.addRow(_("Email:"), self.email_text)
+        extension_layout.addRow(_("Siret:"), self.siret_text)
+        extension_layout.addRow(_("RCS:"), self.rcs_text)
         self.extension_widget.setLayout(extension_layout)
 
-        self.details_btn = QtWidgets.QPushButton("Details...")
+        self.details_btn = QtWidgets.QPushButton(_("Details..."))
         self.details_btn.setCheckable(True)
         self.details_btn.toggled.connect(self.toggle_details)
         self.details_lbl = QtWidgets.QLabel()
@@ -142,6 +142,12 @@ class AddCompanyDialog(QtWidgets.QDialog):
             QtCore.Qt.Orientation.Horizontal,
             self,
         )
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText(
+            _("OK")
+        )
+        self.button_box.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        ).setText(_("Cancel"))
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
@@ -256,51 +262,39 @@ class AddCompanyDialog(QtWidgets.QDialog):
 
     def set_mode(self, mode: Mode) -> None:
         self.mode = mode
+        app_name = "<strong>Dfacto</strong>"
+        intro2 = _("Before starting, we need some information about you...")
+        details = _(
+            "Detailed information is not mandatory, you can edit your company profile later on."
+        )
         if mode is AddCompanyDialog.Mode.NEW:
-            # intro_lbl.setText(
-            #     """
-            #     <p>Bienvenue sur <strong>Dfacto</strong>, votre assistant de facturation !</p>
-            #     <p>Avant de commencer, il nous faut quelques informations vous concernant...</p>
-            #     """
-            # )
+            intro1 = _("Welcome to %s, your invoicing companion!") % app_name
             self.intro_lbl.setText(
-                """
-                <p>Welcome to <strong>Dfacto</strong>, your invoicing companion!</p>
-                <p>Before starting, we need some information about you...</p>
+                f"""
+                <p>{intro1}</p>
+                <p>{intro2}</p>
                 """
             )
             self.vat_ckb.setEnabled(True)
-            self.details_lbl.setText(
-                """
-                <p><small>(Detailed information is not mandatory,
-                you can edit your company profile later on.)</small></p>
-                """
-            )
-            self.setWindowTitle("Create your first company profile")
+            self.details_lbl.setText(f"<p><small>({details})</small></p>")
+            self.setWindowTitle(_("Create your first company profile"))
         elif mode is AddCompanyDialog.Mode.ADD:
+            intro1 = _("%s is happy to host your new company!") % app_name
             self.intro_lbl.setText(
-                """
-                <p><strong>Dfacto</strong> is happy to host your new company!</p>
-                <p>Before starting, we need some information about you...</p>
+                f"""
+                <p>{intro1}</p>
+                <p>{intro2}</p>
                 """
             )
             self.vat_ckb.setEnabled(True)
-            self.details_lbl.setText(
-                """
-                <p><small>(Detailed information is not mandatory,
-                you can edit your company profile later on.)</small></p>
-                """
-            )
-            self.setWindowTitle("Add a new company profile")
+            self.details_lbl.setText(f"<p><small>({details})</small></p>")
+            self.setWindowTitle(_("Add a new company profile"))
         else:
-            self.intro_lbl.setText(
-                """
-                <p>The world is changing: update your company profile here...</p>
-                """
-            )
+            intro1 = _("The world is changing: update your company profile here...")
+            self.intro_lbl.setText(f"<p>{intro1}</p>")
             self.vat_ckb.setEnabled(False)
             self.details_lbl.clear()
-            self.setWindowTitle("Edit your company profile")
+            self.setWindowTitle(_("Edit your company profile"))
 
     def edit_profile(self, profile: schemas.Company) -> None:
         self.origin_profile = profile
@@ -357,10 +351,13 @@ class SelectCompanyDialog(QtWidgets.QDialog):
         self.intro_lbl.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.intro_lbl.setFixedWidth(400)
         self.intro_lbl.setWordWrap(True)
+        app_name = "<strong>Dfacto</strong>"
+        intro1 = _("Welcome back to %s, your invoicing companion!") % app_name
+        intro2 = _("Select a company profile to start with...")
         self.intro_lbl.setText(
-            """
-            <p>Welcome back to <strong>Dfacto</strong>, your invoicing companion!</p>
-            <p>Select a company profile to start with...</p>
+            f"""
+            <p>{intro1}</p>
+            <p>{intro2}</p>
             """
         )
         intro_layout = QtWidgets.QHBoxLayout()
@@ -378,14 +375,11 @@ class SelectCompanyDialog(QtWidgets.QDialog):
 
         self.home_lbl = QtWidgets.QLabel()
 
-        self.create_btn = QtWidgets.QPushButton("New...")
+        self.create_btn = QtWidgets.QPushButton(_("New..."))
         self.create_btn.clicked.connect(self.new)
         self.create_lbl = QtWidgets.QLabel()
-        self.create_lbl.setText(
-            """
-            <p>Your company is not in the list: create yours!</p>
-            """
-        )
+        msg = _("Your company is not in the list: create yours!")
+        self.create_lbl.setText(f"<p>{msg}</p>")
         create_layout = QtWidgets.QHBoxLayout()
         create_layout.addWidget(self.create_lbl)
         create_layout.addWidget(self.create_btn)
@@ -397,6 +391,12 @@ class SelectCompanyDialog(QtWidgets.QDialog):
             QtCore.Qt.Orientation.Horizontal,
             self,
         )
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText(
+            _("OK")
+        )
+        self.button_box.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        ).setText(_("Cancel"))
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
