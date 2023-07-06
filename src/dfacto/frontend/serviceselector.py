@@ -222,7 +222,7 @@ class ServiceSelector(QtUtil.QFramedWidget):
 
         resources = Config.dfacto_settings.resources
 
-        header_lbl = QtWidgets.QLabel("SERVICES LIST")
+        header_lbl = QtWidgets.QLabel(_("SERVICES LIST"))
         header_lbl.setMaximumHeight(32)
 
         self.service_editor = ServiceEditor()
