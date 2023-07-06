@@ -43,21 +43,23 @@ class ServiceEditor(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Maximum
         )
 
-        header_lbl = QtWidgets.QLabel("SERVICE INFO")
+        header_lbl = QtWidgets.QLabel(_("SERVICE INFO"))
         header_lbl.setMaximumHeight(32)
 
         icon_size = QtCore.QSize(32, 32)
         self.ok_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/ok.png"), "")
         self.ok_btn.setIconSize(icon_size)
-        self.ok_btn.setToolTip("Confirm service edition (Alt+Enter)")
-        self.ok_btn.setStatusTip("Confirm service edition (Alt+Enter)")
+        tip = _("Confirm service edition (Alt+Enter)")
+        self.ok_btn.setToolTip(tip)
+        self.ok_btn.setStatusTip(tip)
         self.ok_btn.setFlat(True)
         self.cancel_btn = QtWidgets.QPushButton(
             QtGui.QIcon(f"{resources}/cancel.png"), ""
         )
         self.cancel_btn.setIconSize(icon_size)
-        self.cancel_btn.setToolTip("Cancel service edition (Esc)")
-        self.cancel_btn.setStatusTip("Cancel service edition (Esc)")
+        tip = _("Cancel service edition (Esc)")
+        self.cancel_btn.setToolTip(tip)
+        self.cancel_btn.setStatusTip(tip)
         self.cancel_btn.setFlat(True)
 
         self.name_text = QtUtil.FittedLineEdit()
@@ -66,7 +68,9 @@ class ServiceEditor(QtWidgets.QWidget):
                 QtCore.QRegularExpression("[A-Z][A-Za-z0-9_ ]*")
             )
         )
-        name_tip = "Service designation, shall be a unique alphanumeric sentence starting with an uppercase letter"
+        name_tip = _(
+            "Service designation, shall be a unique alphanumeric sentence starting with an uppercase letter"
+        )
         self.name_text.setToolTip(name_tip)
         self.name_text.setStatusTip(name_tip)
 
@@ -75,7 +79,7 @@ class ServiceEditor(QtWidgets.QWidget):
         self.price_spin.setPrefix("€ ")
         self.price_spin.setAccelerated(True)
         self.price_spin.setGroupSeparatorShown(True)
-        price_tip = "Service unit price, in euros, limited to 10 000 €"
+        price_tip = _("Service unit price, in euros, limited to 10 000 €")
         self.price_spin.setToolTip(price_tip)
         self.price_spin.setStatusTip(price_tip)
 
@@ -114,9 +118,9 @@ class ServiceEditor(QtWidgets.QWidget):
         self.service_layout = QtWidgets.QFormLayout()
         self.service_layout.setContentsMargins(5, 5, 5, 5)
         self.service_layout.setSpacing(5)
-        self.service_layout.addRow("Service:", self.name_text)
-        self.service_layout.addRow("Unit price:", self.price_spin)
-        self.service_layout.addRow("VAT rate:", self.vat_cmb)
+        self.service_layout.addRow(_("Service:"), self.name_text)
+        self.service_layout.addRow(_("Unit price:"), self.price_spin)
+        self.service_layout.addRow(_("VAT rate:"), self.vat_cmb)
 
         editor_widget = QtWidgets.QWidget()
         editor_widget.setSizePolicy(
@@ -149,9 +153,9 @@ class ServiceEditor(QtWidgets.QWidget):
         response = api.vat_rate.get_all()
 
         if response.status is not CommandStatus.COMPLETED:
-            QtUtil.raise_fatal_error(
-                f"Cannot retrieve the VAT rates" f" - Reason is: {response.reason}"
-            )
+            msg = _("Cannot retrieve the VAT rates")
+            reason = _("Reason is:")
+            QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
         vat_rates: list[schemas.VatRate] = response.body
 
