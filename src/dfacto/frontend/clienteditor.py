@@ -39,7 +39,7 @@ class ClientEditor(QtWidgets.QWidget):
             QtWidgets.QSizePolicy.Policy.Preferred, QtWidgets.QSizePolicy.Policy.Maximum
         )
 
-        header_lbl = QtWidgets.QLabel("CLIENT INFO")
+        header_lbl = QtWidgets.QLabel(_("CLIENT INFO"))
         header_lbl.setMaximumHeight(32)
         self.active_pix = QtWidgets.QLabel()
         self.active_pix.setPixmap(
@@ -57,15 +57,17 @@ class ClientEditor(QtWidgets.QWidget):
         icon_size = QtCore.QSize(32, 32)
         self.ok_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/ok.png"), "")
         self.ok_btn.setIconSize(icon_size)
-        self.ok_btn.setToolTip("Confirm service edition (Alt+Enter)")
-        self.ok_btn.setStatusTip("Confirm service edition (Alt+Enter)")
+        tip = _("Confirm client edition (Alt+Enter)")
+        self.ok_btn.setToolTip(tip)
+        self.ok_btn.setStatusTip(tip)
         self.ok_btn.setFlat(True)
         self.cancel_btn = QtWidgets.QPushButton(
             QtGui.QIcon(f"{resources}/cancel.png"), ""
         )
         self.cancel_btn.setIconSize(icon_size)
-        self.cancel_btn.setToolTip("Cancel service edition (Esc)")
-        self.cancel_btn.setStatusTip("Cancel service edition (Esc)")
+        tip = _("Cancel client edition (Esc)")
+        self.cancel_btn.setToolTip(tip)
+        self.cancel_btn.setStatusTip(tip)
         self.cancel_btn.setFlat(True)
 
         self.name_text = QtUtil.FittedLineEdit()
@@ -74,20 +76,20 @@ class ClientEditor(QtWidgets.QWidget):
                 QtCore.QRegularExpression("[A-Z][A-Za-z0-9_ ]*")
             )
         )
-        name_tip = (
-            "Service designation, shall be a unique alphanumeric sentence "
+        name_tip = _(
+            "Client name, shall be a unique alphanumeric sentence "
             "starting with an uppercase letter"
         )
         self.name_text.setToolTip(name_tip)
         self.name_text.setStatusTip(name_tip)
 
         self.address_text = QtUtil.FittedLineEdit()
-        address_tip = "Client address: building num, street"
+        address_tip = _("Client address: building num, street")
         self.address_text.setToolTip(address_tip)
         self.address_text.setStatusTip(address_tip)
 
         self.zipcode_text = QtUtil.FittedLineEdit()
-        zipcode_tip = "Client address: zip code (five digit)"
+        zipcode_tip = _("Client address: zip code (five digit)")
         self.zipcode_text.setToolTip(zipcode_tip)
         self.zipcode_text.setStatusTip(zipcode_tip)
         self.zipcode_text.setValidator(
@@ -96,12 +98,12 @@ class ClientEditor(QtWidgets.QWidget):
         self.zipcode_text.setCursorPosition(0)
 
         self.city_text = QtUtil.FittedLineEdit()
-        city_tip = "Client address: city"
+        city_tip = _("Client address: city")
         self.city_text.setToolTip(city_tip)
         self.city_text.setStatusTip(city_tip)
 
         self.email_text = QtUtil.FittedLineEdit()
-        email_tip = "Client email"
+        email_tip = _("Client email")
         self.email_text.setToolTip(email_tip)
         self.email_text.setStatusTip(email_tip)
 
@@ -140,11 +142,11 @@ class ClientEditor(QtWidgets.QWidget):
         service_layout = QtWidgets.QFormLayout()
         service_layout.setContentsMargins(5, 5, 5, 5)
         service_layout.setSpacing(5)
-        service_layout.addRow("Client:", self.name_text)
-        service_layout.addRow("Addresse:", self.address_text)
-        service_layout.addRow("Zip code:", self.zipcode_text)
-        service_layout.addRow("City:", self.city_text)
-        service_layout.addRow("Email:", self.email_text)
+        service_layout.addRow(_("Client:"), self.name_text)
+        service_layout.addRow(_("Address:"), self.address_text)
+        service_layout.addRow(_("Zip code:"), self.zipcode_text)
+        service_layout.addRow(_("City:"), self.city_text)
+        service_layout.addRow(_("Email:"), self.email_text)
 
         editor_widget = QtWidgets.QWidget()
         editor_widget.setSizePolicy(
