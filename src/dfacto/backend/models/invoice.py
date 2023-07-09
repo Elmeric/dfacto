@@ -25,6 +25,15 @@ class InvoiceStatus(enum.Enum):
     PAID = 4
     CANCELLED = 5
 
+    def as_string(self) -> str:
+        return {
+            InvoiceStatus.DRAFT: _("Draft"),
+            InvoiceStatus.EMITTED: _("Emitted"),
+            InvoiceStatus.REMINDED: _("Reminded"),
+            InvoiceStatus.PAID: _("Paid"),
+            InvoiceStatus.CANCELLED: _("Cancelled"),
+        }.get(self, "")
+
 
 class Invoice(BaseModel):
     # pylint: disable=too-few-public-methods

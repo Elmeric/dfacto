@@ -111,10 +111,35 @@ class PeriodFilter(enum.Enum):
         method = f"from_{self.name.lower()}"
         return cast(Period, getattr(Period, method)())
 
+    def as_string(self) -> str:
+        return {
+            PeriodFilter.CURRENT_MONTH: _("Current month"),
+            PeriodFilter.CURRENT_QUARTER: _("Current quarter"),
+            PeriodFilter.CURRENT_YEAR: _("Current year"),
+            PeriodFilter.LAST_MONTH: _("Last month"),
+            PeriodFilter.LAST_QUARTER: _("Last quarter"),
+            PeriodFilter.LAST_YEAR: _("Last year"),
+        }.get(self, "")
+
+    @staticmethod
+    def ordered() -> list[PeriodFilter]:
+        return [
+            PeriodFilter.CURRENT_MONTH,
+            PeriodFilter.CURRENT_QUARTER,
+            PeriodFilter.CURRENT_YEAR,
+            PeriodFilter.LAST_MONTH,
+            PeriodFilter.LAST_QUARTER,
+            PeriodFilter.LAST_YEAR,
+        ]
+
 
 if __name__ == "__main__":
+
+    def _(a_string: str) -> str:
+        return a_string
+
     for f in PeriodFilter:
-        print(f.name, f.as_period())
+        print(f.name, f.as_string(), f.as_period())
     for q in range(4):
         print(Period.from_quarter(2023, q + 1))
     print(date(2023, 2, 11) in Period.from_last_quarter())

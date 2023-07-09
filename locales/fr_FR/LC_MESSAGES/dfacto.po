@@ -53,12 +53,57 @@ msgstr "Exécution en mode Développement"
 msgid "Running in Production mode"
 msgstr "Exécution en mode Production"
 
+#: src/dfacto/backend/util.py:116
+msgid "Current month"
+msgstr "Mois en cours"
+
+#: src/dfacto/backend/util.py:117
+msgid "Current quarter"
+msgstr "Trimestre en cours"
+
+#: src/dfacto/backend/util.py:118
+msgid "Current year"
+msgstr "Année en cours"
+
+#: src/dfacto/backend/util.py:119
+msgid "Last month"
+msgstr "Mois précédent"
+
+#: src/dfacto/backend/util.py:120
+msgid "Last quarter"
+msgstr "Trimestre précédent"
+
+#: src/dfacto/backend/util.py:121
+msgid "Last year"
+msgstr "Année précédente"
+
+#: src/dfacto/backend/models/invoice.py:30
+msgid "Draft"
+msgstr "Brouillon"
+
+#: src/dfacto/backend/models/invoice.py:31
+msgid "Emitted"
+msgstr "Emis"
+
+#: src/dfacto/backend/models/invoice.py:32
+msgid "Reminded"
+msgstr "Relancé"
+
+#: src/dfacto/backend/models/invoice.py:33
+msgid "Paid"
+msgstr "Payé"
+
+#: src/dfacto/backend/models/invoice.py:34
+msgid "Cancelled"
+msgstr "Annulé"
+
 #: src/dfacto/frontend/__init__.py:19
 #, python-format
 msgid "No selected company - Reason is: %s"
 msgstr "Pas de profil d'entreprise sélectionné - La raison est : %s"
 
 #: src/dfacto/frontend/basketviewer.py:37
+#: src/dfacto/frontend/invoiceviewer.py:91
 msgid "Id"
 msgstr "Id"
 
@@ -75,6 +120,7 @@ msgid "Quantity"
 msgstr "Quantité"
 
 #: src/dfacto/frontend/basketviewer.py:41
+#: src/dfacto/frontend/invoiceviewer.py:96
 msgid "Amount"
 msgstr "Montant"
 
@@ -83,10 +129,12 @@ msgid "VAT rate"
 msgstr "Taux de TVA"
 
 #: src/dfacto/frontend/basketviewer.py:43
+#: src/dfacto/frontend/invoiceviewer.py:97
 msgid "VAT"
 msgstr "TVA"
 
 #: src/dfacto/frontend/basketviewer.py:44
+#: src/dfacto/frontend/invoiceviewer.py:98
 msgid "Net amount"
 msgstr "Montant net"
 
@@ -111,6 +159,22 @@ msgstr "Impossible d'ajouter un service au panier du client"
 #: src/dfacto/frontend/clientselector.py:361
 #: src/dfacto/frontend/clientselector.py:463
 #: src/dfacto/frontend/clientselector.py:486
+#: src/dfacto/frontend/invoiceviewer.py:119
+#: src/dfacto/frontend/invoiceviewer.py:130
+#: src/dfacto/frontend/invoiceviewer.py:144
+#: src/dfacto/frontend/invoiceviewer.py:160
+#: src/dfacto/frontend/invoiceviewer.py:213
+#: src/dfacto/frontend/invoiceviewer.py:227
+#: src/dfacto/frontend/invoiceviewer.py:271
+#: src/dfacto/frontend/invoiceviewer.py:281
+#: src/dfacto/frontend/invoiceviewer.py:308
+#: src/dfacto/frontend/invoiceviewer.py:585
+#: src/dfacto/frontend/invoiceviewer.py:878
+#: src/dfacto/frontend/invoiceviewer.py:926
+#: src/dfacto/frontend/invoiceviewer.py:1240
+#: src/dfacto/frontend/invoiceviewer.py:1283
+#: src/dfacto/frontend/invoiceviewer.py:1307
+#: src/dfacto/frontend/invoiceviewer.py:1331
 #: src/dfacto/frontend/serviceeditor.py:157
 #: src/dfacto/frontend/serviceselector.py:351
 #: src/dfacto/frontend/serviceselector.py:440
@@ -133,7 +197,9 @@ msgstr "Mettre à jour cet article (quantité) dans le panier"
 
 #: src/dfacto/frontend/basketviewer.py:126
 msgid "Cannot update item quantity in basket of client"
-msgstr "Impossible de mettre à jour cet article (quantité) dans le panier du client"
+msgstr ""
+"Impossible de mettre à jour cet article (quantité) dans le panier du "
+"client"
 
 #: src/dfacto/frontend/basketviewer.py:151
 msgid "Update service in basket"
@@ -152,7 +218,6 @@ msgid "Select 'Quantity' field to edit"
 msgstr "Sélectionner le champ 'Quantité' pour la modifier"
 
 #: src/dfacto/frontend/basketviewer.py:414
-
 msgid "Cannot retrieve the basket of client"
 msgstr "Impossible de chaarger le panier du client"
 
@@ -722,6 +787,241 @@ msgstr ""
 "Impossible de créer le profil d'entreprise %(profile)s - La raison est : "
 "%(reason)s"
 
+#: src/dfacto/frontend/invoiceviewer.py:92
+msgid "Client Id"
+msgstr "Id Client"
+
+#: src/dfacto/frontend/invoiceviewer.py:93
+msgid "Client name"
+msgstr "Nom du client"
+
+#: src/dfacto/frontend/invoiceviewer.py:94
+msgid "Code"
+msgstr "Code"
+
+#: src/dfacto/frontend/invoiceviewer.py:95
+msgid "Date"
+msgstr "Date"
+
+#: src/dfacto/frontend/invoiceviewer.py:99
+msgid "Status"
+msgstr "État"
+
+#: src/dfacto/frontend/invoiceviewer.py:100
+msgid "Late ?"
+msgstr "En retard ?"
+
+#: src/dfacto/frontend/invoiceviewer.py:101
+msgid "Changed on"
+msgstr "Modifié le"
+
+#: src/dfacto/frontend/invoiceviewer.py:118
+msgid "Cannot retrieve invoices"
+msgstr "Impossible de charger les factures"
+
+#: src/dfacto/frontend/invoiceviewer.py:129
+msgid "Cannot get invoice"
+msgstr "Impossible de charger la facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:143
+msgid "Cannot get HTML preview"
+msgstr "Impossible de générer la pré-visualisation HTML"
+
+#: src/dfacto/frontend/invoiceviewer.py:159
+msgid "Cannot delete invoice"
+msgstr "Impossible de supprimer cette facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:173
+#: src/dfacto/frontend/invoiceviewer.py:212
+#, python-format
+msgid "Cannot mark invoice as %s"
+msgstr "Impossible de marquer la facture comme %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:226
+msgid "Cannot move invoice in basket"
+msgstr "Impossible de déplacer la facture dans le panier"
+
+#: src/dfacto/frontend/invoiceviewer.py:270
+#, python-format
+msgid "Cannot update history of invoice %s"
+msgstr "Impossible de modifier l'historique de la facture %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:280
+msgid "Cannot copy invoice in basket"
+msgstr "Impossible de copier la facture dans le panier"
+
+#: src/dfacto/frontend/invoiceviewer.py:307
+msgid "Cannot revert invoice to its previous status"
+msgstr "Impossible de rétablir l'état antérieur de la facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:584
+#, python-format
+msgid "Cannot get client of invoice %s"
+msgstr "Impossible de retrouver le client associé à la facture %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:607
+msgid "INVOICES"
+msgstr "FACTURES"
+
+#: src/dfacto/frontend/invoiceviewer.py:621
+msgid "Show invoices of all clients"
+msgstr "Montrer les factures de tous les clients"
+
+#: src/dfacto/frontend/invoiceviewer.py:625
+msgid "Filter on emitted date"
+msgstr "Filtrer selon la date d'émission"
+
+#: src/dfacto/frontend/invoiceviewer.py:629
+msgid "Status filter "
+msgstr "Filtre d'état "
+
+#: src/dfacto/frontend/invoiceviewer.py:630
+msgid "Filter on status"
+msgstr "Filtrer selon l'état"
+
+#: src/dfacto/frontend/invoiceviewer.py:641
+msgid "Show only invoice to be checked for payment"
+msgstr "Montrer seulement les factures dont le paiement doit être vérifié"
+
+#: src/dfacto/frontend/invoiceviewer.py:648
+msgid "Reset to default filters"
+msgstr "Revenir aux filtres par défaut"
+
+#: src/dfacto/frontend/invoiceviewer.py:656
+msgid "Put invoice items in basket"
+msgstr "Mettre les articles de la facture dans le panier"
+
+#: src/dfacto/frontend/invoiceviewer.py:663
+msgid "Delete the selected invoice"
+msgstr "Supprimer la facture sélectionnée"
+
+#: src/dfacto/frontend/invoiceviewer.py:670
+msgid "Preview the selected invoice"
+msgstr "Pré-visualiser la facture sélectionnée"
+
+#: src/dfacto/frontend/invoiceviewer.py:677
+msgid "Emit the selected invoice"
+msgstr "Émettre la facture sélectionnée"
+
+#: src/dfacto/frontend/invoiceviewer.py:684
+msgid "Remind the selected invoice"
+msgstr "Relancer la facture sélectionnée"
+
+#: src/dfacto/frontend/invoiceviewer.py:691
+msgid "Mark the selected invoice as paid"
+msgstr "Marquer la facture sélectionnée comme payée"
+
+#: src/dfacto/frontend/invoiceviewer.py:698
+msgid "Mark the selected invoice as cancelled"
+msgstr "Marquer la facture sélectionnée comme annuléé"
+
+#: src/dfacto/frontend/invoiceviewer.py:705
+msgid "Revert invoice to its previous status"
+msgstr "Rétablir l'état antérieur de la facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:712
+msgid "Show invoice history"
+msgstr "Montrer l'historique de la facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:783
+#: src/dfacto/frontend/invoiceviewer.py:1075
+msgid "All dates"
+msgstr "Toutes les dates"
+
+#. Translators: "All" stands for "All statuses"
+#. Translators: "All" stands for "All clients"
+#: src/dfacto/frontend/invoiceviewer.py:790
+#: src/dfacto/frontend/invoiceviewer.py:1006
+#: src/dfacto/frontend/invoiceviewer.py:1071
+msgid "All"
+msgstr "Tous"
+
+#: src/dfacto/frontend/invoiceviewer.py:858
+msgid "Delete invoice"
+msgstr "Supprimer une facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:859
+msgid "Do you really want to delete this invoice permanently?"
+msgstr "Êtes-vous sûr de vouloir supprimer cette facture définitivement ?"
+
+#: src/dfacto/frontend/invoiceviewer.py:874
+#, python-format
+msgid "Cannot delete invoice %s of client %s"
+msgstr "Impossible de supprimer la facture %s du client %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:924
+msgid "Revert invoice status"
+msgstr "Rétablir l'état antérieur de la facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:925
+#, python-format
+msgid "Cannot revert invoice %s to its previous status"
+msgstr "Impossible de rétablir l'état antérieur de la facture %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:943
+msgid "No client exists or all clients are hidden, disable invoices interactions"
+msgstr "Aucun client actif trouvé, la liste des factures est désactivée"
+
+#: src/dfacto/frontend/invoiceviewer.py:955
+#, python-format
+msgid "Show invoices of client: %s"
+msgstr "Lister les factures pour le client : %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:1143
+msgid "Payment reminder"
+msgstr "Relance de paiement"
+
+#: src/dfacto/frontend/invoiceviewer.py:1144
+msgid "Some invoices should be paid: do you want to ckeck them?"
+msgstr "Des factures devraient avoir été payées : souhaitez-vous les vérifier ?"
+
+#: src/dfacto/frontend/invoiceviewer.py:1235
+msgid "Invoice view"
+msgstr "Aperçu de la facture"
+
+#: src/dfacto/frontend/invoiceviewer.py:1236
+#, python-format
+msgid "Cannot show invoice %s of client %s"
+msgstr "Impossible générer l'aperçu de la facture %s pour le client %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:1256
+#, python-format
+msgid "Mark invoice as %s"
+msgstr "Marquer la facture comme %se"
+
+#: src/dfacto/frontend/invoiceviewer.py:1259
+#, python-format
+msgid "Do you really want to mark permanently this invoice as %s?"
+msgstr "Êtes-vous sûr de vouloir marquer définitivement cette facture comme %se ?"
+
+#: src/dfacto/frontend/invoiceviewer.py:1279
+#, python-format
+msgid "Cannot mark invoice %(id)s as %(status)"
+msgstr "Impossible de marquer la facture %(id)s comme %(status)"
+
+#: src/dfacto/frontend/invoiceviewer.py:1302
+msgid "Move invoice in basket"
+msgstr "Déplacer la facture vers le panier"
+
+#: src/dfacto/frontend/invoiceviewer.py:1303
+#, python-format
+msgid "Cannot move invoice %s in basket of client %s"
+msgstr "Impossible de déplacer la facture %s vers le panier du client %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:1326
+msgid "Copy invoice in basket"
+msgstr "Copier la facture vers le panier"
+
+#: src/dfacto/frontend/invoiceviewer.py:1327
+#, python-format
+msgid "Cannot copy invoice %s in basket of client %s"
+msgstr "Impossible de copier la facture %s vers le panier du client %s"
+
+#: src/dfacto/frontend/invoiceviewer.py:1472
+#: src/dfacto/frontend/invoiceviewer.py:1558
+msgid "Not cancelled"
+msgstr "Tous sauf annulé"
+
 #: src/dfacto/frontend/serviceeditor.py:46
 msgid "SERVICE INFO"
 msgstr "INFO SERVICE"
@@ -840,4 +1140,7 @@ msgstr "Oui"
 #: src/dfacto/util/qtutil/__init__.py:499
 msgid "No"
 msgstr "Non"
+
+#~ msgid "Cannot mark invoice %s as"
+#~ msgstr "Impossible de marquer la facture %s comme"
 
