@@ -159,6 +159,7 @@ msgstr "Impossible d'ajouter un service au panier du client"
 #: src/dfacto/frontend/clientselector.py:361
 #: src/dfacto/frontend/clientselector.py:463
 #: src/dfacto/frontend/clientselector.py:486
+#: src/dfacto/frontend/invoice_web_view.py:189
 #: src/dfacto/frontend/invoiceviewer.py:119
 #: src/dfacto/frontend/invoiceviewer.py:130
 #: src/dfacto/frontend/invoiceviewer.py:144
@@ -816,6 +817,80 @@ msgstr "Payée le"
 msgid "Cancelled on"
 msgstr "Annulée le"
 
+#: src/dfacto/frontend/invoice_web_view.py:53
+msgid "Invoice preview"
+msgstr "Aperçu de la facture"
+
+#: src/dfacto/frontend/invoice_web_view.py:65
+#: src/dfacto/frontend/invoiceviewer.py:656
+msgid "Put invoice items in basket"
+msgstr "Mettre les articles de la facture dans le panier"
+
+#: src/dfacto/frontend/invoice_web_view.py:72
+#: src/dfacto/frontend/invoiceviewer.py:663
+msgid "Delete the selected invoice"
+msgstr "Supprimer la facture sélectionnée"
+
+#: src/dfacto/frontend/invoice_web_view.py:79
+#: src/dfacto/frontend/invoiceviewer.py:677
+msgid "Emit the selected invoice"
+msgstr "Émettre la facture sélectionnée"
+
+#: src/dfacto/frontend/invoice_web_view.py:86
+#: src/dfacto/frontend/invoiceviewer.py:691
+msgid "Mark the selected invoice as paid"
+msgstr "Marquer la facture sélectionnée comme payée"
+
+#: src/dfacto/frontend/invoice_web_view.py:93
+#: src/dfacto/frontend/invoiceviewer.py:698
+msgid "Mark the selected invoice as cancelled"
+msgstr "Marquer la facture sélectionnée comme annulée"
+
+#: src/dfacto/frontend/invoice_web_view.py:100
+msgid "Confirm invoice emission (Alt+Enter)"
+msgstr "Confirmer l'émission de la facture (Alt+Entrée)"
+
+#: src/dfacto/frontend/invoice_web_view.py:107
+msgid "Close invoice viewer (Esc)"
+msgstr "Fermer l'aperçu de la facture (Echap)"
+
+#: src/dfacto/frontend/invoice_web_view.py:188
+msgid "Cannot get invoice pathname"
+msgstr "Impossible de contruire le chemin de sauvegarde de la facture"
+
+#: src/dfacto/frontend/invoice_web_view.py:230
+msgid "Save invoice to PDF"
+msgstr "Sauvegarder la facture au format PDF"
+
+#: src/dfacto/frontend/invoice_web_view.py:234
+#, python-format
+msgid "Your invoice is saved in:"
+msgstr "Votre facture est sauvegardée dans:"
+
+#: src/dfacto/frontend/invoice_web_view.py:241
+msgid "You can open it in a PDF viewer or in the Explorer"
+msgstr "Vous pourrez l'ouvrir dans une visionneuse PDF ou dans l'explorateur de fichiers"
+
+#: src/dfacto/frontend/invoice_web_view.py:246
+msgid "Open"
+msgstr "Ouvrir"
+
+#: src/dfacto/frontend/invoice_web_view.py:249
+msgid "Show in Explorer"
+msgstr "Montrer dans l'explorateur de fichiers"
+
+#: src/dfacto/frontend/invoice_web_view.py:252
+msgid "Send by email"
+msgstr "Envoyer par courrier électronique"
+
+#: src/dfacto/frontend/invoice_web_view.py:255
+msgid "Send by email is not yet implemented"
+msgstr "L'envoi par courrier électronique n'est pas ecore disponible"
+
+#: src/dfacto/frontend/invoice_web_view.py:285
+msgid "Error when saving your invoice"
+msgstr "Une erreur est survenue lors de la sauvegarde de votre facture"
+
 #: src/dfacto/frontend/invoiceviewer.py:92
 msgid "Client Id"
 msgstr "Id Client"
@@ -916,33 +991,13 @@ msgstr "Montrer seulement les factures dont le paiement doit être vérifié"
 msgid "Reset to default filters"
 msgstr "Revenir aux filtres par défaut"
 
-#: src/dfacto/frontend/invoiceviewer.py:656
-msgid "Put invoice items in basket"
-msgstr "Mettre les articles de la facture dans le panier"
-
-#: src/dfacto/frontend/invoiceviewer.py:663
-msgid "Delete the selected invoice"
-msgstr "Supprimer la facture sélectionnée"
-
 #: src/dfacto/frontend/invoiceviewer.py:670
 msgid "Preview the selected invoice"
 msgstr "Pré-visualiser la facture sélectionnée"
 
-#: src/dfacto/frontend/invoiceviewer.py:677
-msgid "Emit the selected invoice"
-msgstr "Émettre la facture sélectionnée"
-
 #: src/dfacto/frontend/invoiceviewer.py:684
 msgid "Remind the selected invoice"
 msgstr "Relancer la facture sélectionnée"
-
-#: src/dfacto/frontend/invoiceviewer.py:691
-msgid "Mark the selected invoice as paid"
-msgstr "Marquer la facture sélectionnée comme payée"
-
-#: src/dfacto/frontend/invoiceviewer.py:698
-msgid "Mark the selected invoice as cancelled"
-msgstr "Marquer la facture sélectionnée comme annuléé"
 
 #: src/dfacto/frontend/invoiceviewer.py:705
 msgid "Revert invoice to its previous status"
