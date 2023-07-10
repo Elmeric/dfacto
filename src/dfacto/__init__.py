@@ -32,6 +32,8 @@ DEV_MODE: Final[bool] = os.environ.get("DFACTO_DEV", "0") != "0"
 
 
 def except_hook(exc_type, exc_value, _exc_traceback):  # type: ignore[no-untyped-def]
+    from dfacto import __about__  # pylint: disable=import-outside-toplevel
+
     error_msg = f"{exc_type.__name__}: {exc_value}"
     logger.fatal("%s", error_msg, exc_info=False)
     sys.stderr.write(f"\ndfacto - {str(error_msg)}\n\n")

@@ -22,34 +22,34 @@ msgstr ""
 msgid "Your invoicing assistant!"
 msgstr "Votre assistant de facturation"
 
-#: src/dfacto/__init__.py:38 src/dfacto/__init__.py:99
+#: src/dfacto/__init__.py:40 src/dfacto/__init__.py:101
 #, python-format
 msgid "%(app_name)s is closing..."
 msgstr "%(app_name)s s'arrête..."
 
-#: src/dfacto/__init__.py:81
+#: src/dfacto/__init__.py:83
 #, python-format
 msgid "%(app_name)s is starting..."
 msgstr "%(app_name)s démarre..."
 
-#: src/dfacto/__init__.py:82
+#: src/dfacto/__init__.py:84
 #, python-format
 msgid "Using preferred locale: %(locale)s"
 msgstr "Utilisation des paramètres régionaux préférés: %(locale)s"
 
-#: src/dfacto/__init__.py:86
+#: src/dfacto/__init__.py:88
 msgid "Running in a PyInstaller bundle"
 msgstr "Exécution dans un paquet PyInstaller"
 
-#: src/dfacto/__init__.py:88
+#: src/dfacto/__init__.py:90
 msgid "Running in a normal Python process"
 msgstr "Exécution dans un process Python standard"
 
-#: src/dfacto/__init__.py:90
+#: src/dfacto/__init__.py:92
 msgid "Running in Development mode"
 msgstr "Exécution en mode Développement"
 
-#: src/dfacto/__init__.py:92
+#: src/dfacto/__init__.py:94
 msgid "Running in Production mode"
 msgstr "Exécution en mode Production"
 
@@ -786,6 +786,35 @@ msgid "Cannot create the %(profile)s company profile - Reason is: %(reason)s"
 msgstr ""
 "Impossible de créer le profil d'entreprise %(profile)s - La raison est : "
 "%(reason)s"
+
+#: src/dfacto/frontend/invoice_log_view.py:53
+#, python-format
+msgid "History of invoice %s"
+msgstr "Historique de la facture %s"
+
+#: src/dfacto/frontend/invoice_log_view.py:54
+msgid "Each date can be edited to fix datation errors"
+msgstr "Chaque date peut être modifiée pour corriger une erreur de datation"
+
+#: src/dfacto/frontend/invoice_log_view.py:79
+msgid "Created on"
+msgstr "Créée le"
+
+#: src/dfacto/frontend/invoice_log_view.py:80
+msgid "Issued on"
+msgstr "Émise le"
+
+#: src/dfacto/frontend/invoice_log_view.py:81
+msgid "Reminded on"
+msgstr "Relancée le"
+
+#: src/dfacto/frontend/invoice_log_view.py:82
+msgid "Paid on"
+msgstr "Payée le"
+
+#: src/dfacto/frontend/invoice_log_view.py:83
+msgid "Cancelled on"
+msgstr "Annulée le"
 
 #: src/dfacto/frontend/invoiceviewer.py:92
 msgid "Client Id"
