@@ -13,6 +13,7 @@ from typing import Optional
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
+from babel.numbers import format_currency
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
@@ -74,12 +75,15 @@ class ServiceEditor(QtWidgets.QWidget):
         self.name_text.setToolTip(name_tip)
         self.name_text.setStatusTip(name_tip)
 
+        locale = Config.dfacto_settings.locale
         self.price_spin = QtWidgets.QDoubleSpinBox()
+        self.price_spin.setLocale(QtCore.QLocale(locale))
         self.price_spin.setMaximum(10000.00)
         self.price_spin.setPrefix("€ ")
         self.price_spin.setAccelerated(True)
         self.price_spin.setGroupSeparatorShown(True)
-        price_tip = _("Service unit price, in euros, limited to 10 000 €")
+        max_price = format_currency(10000.00, "EUR", locale=locale)
+        price_tip = _("Service unit price, in euros, limited to %s") % max_price
         self.price_spin.setToolTip(price_tip)
         self.price_spin.setStatusTip(price_tip)
 

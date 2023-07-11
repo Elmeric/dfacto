@@ -862,27 +862,28 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             return "", "is-empty"
 
         if mode is self.HtmlMode.SHOW:
+            locale = Config.dfacto_settings.locale
             if status is InvoiceStatus.DRAFT:
                 return "DRAFT", "is-draft"
             if status is InvoiceStatus.EMITTED:
                 changed_on = invoice.issued_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
                 return f"Emise le {date_}", "is-ok"
             if status is InvoiceStatus.REMINDED:
                 changed_on = invoice.reminded_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
                 return f"Rappel le {date_}", "is-bad"
             if status is InvoiceStatus.PAID:
                 changed_on = invoice.paid_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
                 return f"Payée le {date_}", "is-ok"
             if status is InvoiceStatus.CANCELLED:
                 changed_on = invoice.cancelled_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
                 return f"Annulée le {date_}", "is-bad"
 
         return "", ""
@@ -920,6 +921,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         )
         stamp, tag = self._get_stamp(invoice, mode)
 
+        locale = Config.dfacto_settings.locale
         return {
             "company": {
                 "name": company.name,
@@ -936,10 +938,10 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             },
             "invoice": {
                 "code": invoice.code,
-                "date": format_date(date_.date(), format="long", locale="fr_FR"),
+                "date": format_date(date_.date(), format="long", locale=locale),
                 "due_date": None
                 if due_date is None
-                else format_date(due_date.date(), format="long", locale="fr_FR"),
+                else format_date(due_date.date(), format="long", locale=locale),
                 "raw_amount": invoice.amount.raw,
                 "vat": invoice.amount.vat,
                 "net_amount": invoice.amount.net,

@@ -14,6 +14,7 @@ import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
 from babel.dates import format_date
+from babel.numbers import format_currency
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
@@ -503,14 +504,19 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 ):
                     if column == CREATED_ON:
                         datetime_ = cast(datetime, item[column])
+                        locale = Config.dfacto_settings.locale
                         return format_date(
-                            datetime_.date(), format="short", locale="fr_FR"
+                            datetime_.date(), format="short", locale=locale
                         )
                     if column == STATUS:
                         status = cast(InvoiceStatus, item[column])
                         return status.as_string().upper()
                     if column == IS_LATE:
                         return None
+                    if column in (RAW_AMOUNT, VAT, NET_AMOUNT):
+                        return format_currency(
+                            item[column], "EUR", locale=Config.dfacto_settings.locale
+                        )
                     if 0 <= column < len(item):
                         return str(item[column])
 
@@ -538,8 +544,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                     if column == STATUS:
                         status = cast(InvoiceStatus, item[STATUS])
                         status_changed_on = cast(datetime, item[CHANGED_ON]).date()
+                        locale = Config.dfacto_settings.locale
                         changed_date = format_date(
-                            status_changed_on, format="short", locale="fr_FR"
+                            status_changed_on, format="short", locale=locale
                         )
                         return "%(status)s on %(date)s" % {
                             "status": status.name.title(),

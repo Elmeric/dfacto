@@ -11,6 +11,7 @@ from typing import Any, Optional, cast
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
+from babel.numbers import format_currency
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
@@ -354,6 +355,12 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                     QtCore.Qt.ItemDataRole.DisplayRole,
                     QtCore.Qt.ItemDataRole.EditRole,
                 ):
+                    if column in (UNIT_PRICE, RAW_AMOUNT, VAT, NET_AMOUNT):
+                        return format_currency(
+                            item[column], "EUR", locale=Config.dfacto_settings.locale
+                        )
+                    if column == VAT_RATE:
+                        return f"{item[column]} %"
                     if 0 <= column < len(item):
                         return str(item[column])
 
