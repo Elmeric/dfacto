@@ -96,7 +96,7 @@ def run_main() -> None:
     # Import the main UI (it will import backend modules) and launch it.
     from dfacto.frontend import guimain  # pylint: disable=import-outside-toplevel
 
-    ret = guimain.qt_main()
+    ret = guimain.qt_main(translations)
 
     logger.info(_("%(app_name)s is closing..."), {"app_name": app_name})
     # Stop the log server.

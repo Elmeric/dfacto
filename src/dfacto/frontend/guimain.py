@@ -71,6 +71,7 @@ class QtMainView(QtWidgets.QMainWindow):
         self,
         company_profile: schemas.Company,
         splash: QtUtil.SplashScreen,
+        translations,
         *args: Any,
         **kwargs: Any,
     ) -> None:
@@ -93,7 +94,7 @@ class QtMainView(QtWidgets.QMainWindow):
         basket_model = BasketTableModel()
         self.basket_viewer = BasketViewer(basket_model)
         invoice_model = InvoiceTableModel()
-        self.invoice_viewer = InvoiceViewer(invoice_model)
+        self.invoice_viewer = InvoiceViewer(invoice_model, translations)
         self.service_selector = ServiceSelector(basket_model)
         self.pending_payments_lbl = QtWidgets.QLabel()
         self.pending_payments_lbl.setMargin(5)
@@ -635,7 +636,7 @@ class QtMainView(QtWidgets.QMainWindow):
         return super().eventFilter(obj, event)
 
 
-def qt_main() -> int:
+def qt_main(translations) -> int:
     """Main Graphical Interface entry point.
 
     Retrieves settings, initiatizes the whole application logging. Then initializes
@@ -702,7 +703,7 @@ def qt_main() -> int:
     splash.show()
 
     # Build and show the main view after the splash screen delay.
-    mainView = QtMainView(company_profile, splash)
+    mainView = QtMainView(company_profile, splash, translations)
     splash.finish(mainView)
     mainView.show()
 

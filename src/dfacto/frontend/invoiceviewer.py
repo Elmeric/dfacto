@@ -132,10 +132,13 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         QtUtil.raise_fatal_error(f"{msg} {invoice_id} - {reason} {response.reason}")
 
     def get_html_preview(
-        self, invoice_id: int, mode: api.client.HtmlMode
+        self, invoice_id: int, mode: api.client.HtmlMode, translations
     ) -> tuple[Optional[str], CommandReport]:
         response = api.client.preview_invoice(
-            self._get_client_id_of_invoice(invoice_id), invoice_id=invoice_id, mode=mode
+            self._get_client_id_of_invoice(invoice_id),
+            invoice_id=invoice_id,
+            mode=mode,
+            translations=translations,
         )
 
         if response.status is not CommandStatus.FAILED:
@@ -596,8 +599,12 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
 class InvoiceViewer(QtUtil.QFramedWidget):
     basket_updated = QtCore.pyqtSignal(int)  # client id
 
-    def __init__(self, invoice_model: InvoiceTableModel, parent=None) -> None:
+    def __init__(
+        self, invoice_model: InvoiceTableModel, translations, parent=None
+    ) -> None:
         super().__init__(parent=parent)
+
+        self.translations = translations
 
         resources = Config.dfacto_settings.resources
 
@@ -1227,7 +1234,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         invoice_id = invoice[ID]
 
         html, report = invoice_table.source_model().get_html_preview(
-            invoice_id, mode=mode
+            invoice_id, mode=mode, translations=self.translations
         )
 
         if html is not None:
