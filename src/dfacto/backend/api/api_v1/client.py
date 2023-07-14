@@ -11,11 +11,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional, Type
 
 import jinja2 as jinja
 from babel.dates import format_date
-from babel.numbers import format_currency
+from babel.numbers import format_currency, format_percent
 
 from dfacto import settings as Config
 from dfacto.backend import crud, naming, schemas
@@ -24,6 +24,11 @@ from dfacto.backend.models import InvoiceStatus
 from dfacto.backend.util import DatetimeRange, Period, PeriodFilter
 
 from .base import DFactoModel
+
+if TYPE_CHECKING:
+
+    def _(_text: str) -> str:
+        ...
 
 
 @dataclass
@@ -932,6 +937,14 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         stamp, tag = self._get_stamp(invoice, mode)
 
         locale = Config.dfacto_settings.locale
+        penalty_rate = format_percent(
+            float(company.penalty_rate) / 100, locale=locale, decimal_quantization=False
+        )
+        discount_rate = format_percent(
+            float(company.discount_rate) / 100,
+            locale=locale,
+            decimal_quantization=False,
+        )
         return {
             "company": {
                 "name": company.name,
@@ -940,6 +953,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 "email": company.email,
                 "siret": company.siret,
                 "rcs": company.rcs,
+                "penalty": penalty_rate,
+                "discount": discount_rate,
             },
             "client": {
                 "name": client_.name,

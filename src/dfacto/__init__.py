@@ -19,9 +19,15 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
 from dfacto.util.logutil import LogConfig
+
+if TYPE_CHECKING:
+
+    def _(_text: str) -> str:
+        ...
+
 
 logger = logging.getLogger(__name__)
 

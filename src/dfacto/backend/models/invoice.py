@@ -17,6 +17,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import Client
     from .item import Item
 
+    def _(_text: str) -> str:
+        ...
+
 
 class InvoiceStatus(enum.Enum):
     DRAFT = 1

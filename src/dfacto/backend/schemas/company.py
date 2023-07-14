@@ -27,6 +27,8 @@ class _CompanyDefaultsBase:
     siret: Optional[str] = None
     rcs: Optional[str] = None
     no_vat: bool = False
+    penalty_rate: str = "12.00"
+    discount_rate: str = "1.50"
 
 
 @dataclass
@@ -37,6 +39,8 @@ class CompanyCreate(_CompanyBase):
     siret: Optional[str] = None
     rcs: Optional[str] = None
     no_vat: Optional[bool] = None
+    penalty_rate: Optional[str] = None
+    discount_rate: Optional[str] = None
 
     def flatten(self) -> dict[str, Any]:
         address: Optional[str]
@@ -59,6 +63,8 @@ class CompanyCreate(_CompanyBase):
             "siret": self.siret,
             "rcs": self.rcs,
             "no_vat": self.no_vat,
+            "penalty_rate": self.penalty_rate,
+            "discount_rate": self.discount_rate,
         }
 
 
@@ -81,6 +87,8 @@ class CompanyUpdate(_CompanyDefaultsBase):
             "siret": self.siret,
             "rcs": self.rcs,
             "no_vat": self.no_vat,
+            "penalty_rate": self.penalty_rate,
+            "discount_rate": self.discount_rate,
         }
 
 
@@ -92,6 +100,8 @@ class _CompanyInDBBase(_CompanyBase):
     siret: str
     rcs: str
     no_vat: bool
+    penalty_rate: str
+    discount_rate: str
 
 
 # Additional properties to return from DB
@@ -111,6 +121,8 @@ class Company(_CompanyInDBBase):
             siret=orm_obj.siret,
             rcs=orm_obj.rcs,
             no_vat=orm_obj.no_vat,
+            penalty_rate=orm_obj.penalty_rate,
+            discount_rate=orm_obj.discount_rate,
         )
 
 

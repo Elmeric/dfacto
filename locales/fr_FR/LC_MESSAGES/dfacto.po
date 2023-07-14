@@ -100,38 +100,38 @@ msgstr "SIRET :"
 msgid "RCS :"
 msgstr "RCS :"
 
-#: src/dfacto/__about__.py:16
+#: src/dfacto/__about__.py:25
 msgid "Your invoicing assistant!"
 msgstr "Votre assistant de facturation"
 
-#: src/dfacto/__init__.py:40 src/dfacto/__init__.py:101
+#: src/dfacto/__init__.py:46 src/dfacto/__init__.py:107
 #, python-format
 msgid "%(app_name)s is closing..."
 msgstr "%(app_name)s s'arrête..."
 
-#: src/dfacto/__init__.py:83
+#: src/dfacto/__init__.py:89
 #, python-format
 msgid "%(app_name)s is starting..."
 msgstr "%(app_name)s démarre..."
 
-#: src/dfacto/__init__.py:84
+#: src/dfacto/__init__.py:90
 #, python-format
 msgid "Using preferred locale: %(locale)s"
 msgstr "Utilisation des paramètres régionaux préférés: %(locale)s"
 
-#: src/dfacto/__init__.py:88
+#: src/dfacto/__init__.py:94
 msgid "Running in a PyInstaller bundle"
 msgstr "Exécution dans un paquet PyInstaller"
 
-#: src/dfacto/__init__.py:90
+#: src/dfacto/__init__.py:96
 msgid "Running in a normal Python process"
 msgstr "Exécution dans un process Python standard"
 
-#: src/dfacto/__init__.py:92
+#: src/dfacto/__init__.py:98
 msgid "Running in Development mode"
 msgstr "Exécution en mode Développement"
 
-#: src/dfacto/__init__.py:94
+#: src/dfacto/__init__.py:100
 msgid "Running in Production mode"
 msgstr "Exécution en mode Production"
 
@@ -159,55 +159,55 @@ msgstr "Trimestre précédent"
 msgid "Last year"
 msgstr "Année précédente"
 
-#: src/dfacto/backend/api/api_v1/client.py:862
+#: src/dfacto/backend/api/api_v1/client.py:874
 msgid "Reminder"
 msgstr "Rappel"
 
-#: src/dfacto/backend/api/api_v1/client.py:864
+#: src/dfacto/backend/api/api_v1/client.py:876
 msgid "Second Reminder"
 msgstr "Second Rappel"
 
-#: src/dfacto/backend/api/api_v1/client.py:870
+#: src/dfacto/backend/api/api_v1/client.py:882
 msgid "DRAFT"
 msgstr "BROUILLON"
 
-#: src/dfacto/backend/api/api_v1/client.py:875
+#: src/dfacto/backend/api/api_v1/client.py:887
 #, python-format
 msgid "Issued on %s"
 msgstr "Émise le %s"
 
-#: src/dfacto/backend/api/api_v1/client.py:880
+#: src/dfacto/backend/api/api_v1/client.py:892
 #, python-format
 msgid "Reminded on %s"
 msgstr "Rappel le %s"
 
-#: src/dfacto/backend/api/api_v1/client.py:885
+#: src/dfacto/backend/api/api_v1/client.py:897
 #, python-format
 msgid "Paid on %s"
 msgstr "Payée le %s"
 
-#: src/dfacto/backend/api/api_v1/client.py:890
+#: src/dfacto/backend/api/api_v1/client.py:902
 #, python-format
 msgid "Cancelled on %s"
 msgstr "Annulée le %s"
 
-#: src/dfacto/backend/models/invoice.py:30
+#: src/dfacto/backend/models/invoice.py:33
 msgid "Draft"
 msgstr "Brouillon"
 
-#: src/dfacto/backend/models/invoice.py:31
+#: src/dfacto/backend/models/invoice.py:34
 msgid "Emitted"
 msgstr "Emis"
 
-#: src/dfacto/backend/models/invoice.py:32
+#: src/dfacto/backend/models/invoice.py:35
 msgid "Reminded"
 msgstr "Relancé"
 
-#: src/dfacto/backend/models/invoice.py:33
+#: src/dfacto/backend/models/invoice.py:36
 msgid "Paid"
 msgstr "Payé"
 
-#: src/dfacto/backend/models/invoice.py:34
+#: src/dfacto/backend/models/invoice.py:37
 msgid "Cancelled"
 msgstr "Annulé"
 
@@ -442,22 +442,22 @@ msgid "Client:"
 msgstr "Client :"
 
 #: src/dfacto/frontend/clienteditor.py:146
-#: src/dfacto/frontend/companydialogs.py:117
+#: src/dfacto/frontend/companydialogs.py:134
 msgid "Address:"
 msgstr "Adresse :"
 
 #: src/dfacto/frontend/clienteditor.py:147
-#: src/dfacto/frontend/companydialogs.py:118
+#: src/dfacto/frontend/companydialogs.py:135
 msgid "Zip code:"
 msgstr "Code Postal :"
 
 #: src/dfacto/frontend/clienteditor.py:148
-#: src/dfacto/frontend/companydialogs.py:119
+#: src/dfacto/frontend/companydialogs.py:136
 msgid "City:"
 msgstr "Ville :"
 
 #: src/dfacto/frontend/clienteditor.py:149
-#: src/dfacto/frontend/companydialogs.py:121
+#: src/dfacto/frontend/companydialogs.py:138
 msgid "Email:"
 msgstr "Email :"
 
@@ -575,36 +575,52 @@ msgid "Company RCS"
 msgstr "RCS de l'entreprise"
 
 #: src/dfacto/frontend/companydialogs.py:120
+msgid "Late payment penalty (annual rate)"
+msgstr "Pénalité pour retard de paiement (taux annuel)"
+
+#: src/dfacto/frontend/companydialogs.py:128
+msgid "Discount for early payment"
+msgstr "Escompte pour paiement anticipé"
+
+#: src/dfacto/frontend/companydialogs.py:137
 msgid "Phone:"
 msgstr "Téléphone :"
 
-#: src/dfacto/frontend/companydialogs.py:122
+#: src/dfacto/frontend/companydialogs.py:139
 msgid "Siret:"
 msgstr "Siret :"
 
-#: src/dfacto/frontend/companydialogs.py:123
+#: src/dfacto/frontend/companydialogs.py:140
 msgid "RCS:"
 msgstr "RCS :"
 
-#: src/dfacto/frontend/companydialogs.py:126
+#: src/dfacto/frontend/companydialogs.py:141
+msgid "Penalty:"
+msgstr "Pénalité"
+
+#: src/dfacto/frontend/companydialogs.py:142
+msgid "Discount:"
+msgstr "Escompte"
+
+#: src/dfacto/frontend/companydialogs.py:145
 msgid "Details..."
 msgstr "Détails..."
 
-#: src/dfacto/frontend/companydialogs.py:146
-#: src/dfacto/frontend/companydialogs.py:395
+#: src/dfacto/frontend/companydialogs.py:165
+#: src/dfacto/frontend/companydialogs.py:429
 msgid "OK"
 msgstr "Valider"
 
-#: src/dfacto/frontend/companydialogs.py:150
-#: src/dfacto/frontend/companydialogs.py:399
+#: src/dfacto/frontend/companydialogs.py:169
+#: src/dfacto/frontend/companydialogs.py:433
 msgid "Cancel"
 msgstr "Annuler"
 
-#: src/dfacto/frontend/companydialogs.py:266
+#: src/dfacto/frontend/companydialogs.py:298
 msgid "Before starting, we need some information about you..."
 msgstr "Avant de commencer, il nous faut quelques informations vous concernant..."
 
-#: src/dfacto/frontend/companydialogs.py:267
+#: src/dfacto/frontend/companydialogs.py:299
 msgid ""
 "Detailed information is not mandatory, you can edit your company profile "
 "later on."
@@ -612,47 +628,47 @@ msgstr ""
 "Ces informations détaillées ne sont pas requises ici, vous pourrez "
 "compléter le profil de votre entreprise plus tard."
 
-#: src/dfacto/frontend/companydialogs.py:271
+#: src/dfacto/frontend/companydialogs.py:303
 #, python-format
 msgid "Welcome to %s, your invoicing companion!"
 msgstr "Bienvenue sur %s, votre assistant de facturation !"
 
-#: src/dfacto/frontend/companydialogs.py:280
+#: src/dfacto/frontend/companydialogs.py:312
 msgid "Create your first company profile"
 msgstr "Créer votre premier profil d'entreprise"
 
-#: src/dfacto/frontend/companydialogs.py:282
+#: src/dfacto/frontend/companydialogs.py:314
 #, python-format
 msgid "%s is happy to host your new company!"
 msgstr "%s est heureux d'accueillir votre nouvelle entreprise !"
 
-#: src/dfacto/frontend/companydialogs.py:291
+#: src/dfacto/frontend/companydialogs.py:323
 msgid "Add a new company profile"
 msgstr "Créer un nouveau profil d'entreprise"
 
-#: src/dfacto/frontend/companydialogs.py:293
+#: src/dfacto/frontend/companydialogs.py:325
 msgid "The world is changing: update your company profile here..."
 msgstr "Le monde évolue : modifier votre profil d'entreprise ici..."
 
-#: src/dfacto/frontend/companydialogs.py:297 src/dfacto/frontend/guimain.py:181
+#: src/dfacto/frontend/companydialogs.py:329 src/dfacto/frontend/guimain.py:181
 #: src/dfacto/frontend/guimain.py:183
 msgid "Edit your company profile"
 msgstr "Modifier votre profil d'entreprise"
 
-#: src/dfacto/frontend/companydialogs.py:355
+#: src/dfacto/frontend/companydialogs.py:389
 #, python-format
 msgid "Welcome back to %s, your invoicing companion!"
 msgstr "Heureux de vous retrouver sur %s, votre assistant de facturation !"
 
-#: src/dfacto/frontend/companydialogs.py:356
+#: src/dfacto/frontend/companydialogs.py:390
 msgid "Select a company profile to start with..."
 msgstr "Choisisser un profil d'entreprise pour commencer..."
 
-#: src/dfacto/frontend/companydialogs.py:378
+#: src/dfacto/frontend/companydialogs.py:412
 msgid "New..."
 msgstr "Ajouter..."
 
-#: src/dfacto/frontend/companydialogs.py:381
+#: src/dfacto/frontend/companydialogs.py:415
 msgid "Your company is not in the list: create yours!"
 msgstr "Votre entreprise n'est pas dans la liste, ajouter la !"
 

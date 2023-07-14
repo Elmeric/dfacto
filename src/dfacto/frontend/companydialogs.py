@@ -111,6 +111,23 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.siret_text.setPlaceholderText(_("Company siret"))
         self.rcs_text = QtUtil.FittedLineEdit()
         self.rcs_text.setPlaceholderText(_("Company RCS"))
+        locale = QtCore.QLocale(Config.dfacto_settings.locale)
+        self.penalty_spin = QtWidgets.QDoubleSpinBox()
+        self.penalty_spin.setLocale(locale)
+        self.penalty_spin.setMaximum(100.00)
+        self.penalty_spin.setSuffix("%")
+        self.penalty_spin.setAccelerated(True)
+        tip = _("Late payment penalty (annual rate)")
+        self.penalty_spin.setToolTip(tip)
+        self.penalty_spin.setStatusTip(tip)
+        self.discount_spin = QtWidgets.QDoubleSpinBox()
+        self.discount_spin.setLocale(locale)
+        self.discount_spin.setMaximum(100.00)
+        self.discount_spin.setSuffix("%")
+        self.discount_spin.setAccelerated(True)
+        tip = _("Discount for early payment")
+        self.discount_spin.setToolTip(tip)
+        self.discount_spin.setStatusTip(tip)
 
         extension_layout = QtWidgets.QFormLayout()
         extension_layout.setContentsMargins(10, 0, 0, 0)
@@ -121,6 +138,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
         extension_layout.addRow(_("Email:"), self.email_text)
         extension_layout.addRow(_("Siret:"), self.siret_text)
         extension_layout.addRow(_("RCS:"), self.rcs_text)
+        extension_layout.addRow(_("Penalty:"), self.penalty_spin)
+        extension_layout.addRow(_("Discount:"), self.discount_spin)
         self.extension_widget.setLayout(extension_layout)
 
         self.details_btn = QtWidgets.QPushButton(_("Details..."))
@@ -167,6 +186,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
 
         self.set_mode(mode)
         self.vat_ckb.setChecked(True)
+        self.penalty_spin.setValue(12.0)
+        self.discount_spin.setValue(1.5)
         self.extension_widget.hide()
         self._enable_buttons(self.is_valid)
         self.name_text.setFocus()
@@ -186,6 +207,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
             siret=self.siret_text.text(),
             rcs=self.rcs_text.text(),
             no_vat=self.vat_ckb.isChecked(),
+            penalty_rate=str(self.penalty_spin.value()),
+            discount_rate=str(self.discount_spin.value()),
         )
 
     @property
@@ -220,6 +243,13 @@ class AddCompanyDialog(QtWidgets.QDialog):
         no_vat = self.vat_ckb.isChecked()
         if no_vat != self.origin_profile.no_vat:
             updated_profile["no_vat"] = no_vat
+
+        penalty = str(self.penalty_spin.value())
+        if penalty != self.origin_profile.penalty_rate:
+            updated_profile["penalty_rate"] = penalty
+        discount = str(self.discount_spin.value())
+        if discount != self.origin_profile.discount_rate:
+            updated_profile["discount_rate"] = discount
 
         return schemas.CompanyUpdate(**updated_profile)
 
@@ -257,6 +287,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.siret_text.clear()
         self.rcs_text.clear()
         self.vat_ckb.setChecked(False)
+        self.penalty_spin.setValue(12.0)
+        self.discount_spin.setValue(1.5)
         self.set_mode(AddCompanyDialog.Mode.ADD)
         self._enable_buttons(self.is_valid)
 
@@ -310,6 +342,8 @@ class AddCompanyDialog(QtWidgets.QDialog):
         self.siret_text.setText(profile.siret)
         self.rcs_text.setText(profile.rcs)
         self.vat_ckb.setChecked(profile.no_vat)
+        self.penalty_spin.setValue(float(profile.penalty_rate))
+        self.discount_spin.setValue(float(profile.discount_rate))
         self.set_mode(AddCompanyDialog.Mode.EDIT)
         self.details_btn.setChecked(True)
         self._enable_buttons(self.is_valid)
