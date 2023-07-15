@@ -50,7 +50,7 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.setWindowFlags(
             QtCore.Qt.WindowType.Dialog | QtCore.Qt.WindowType.WindowTitleHint
         )
-        self.setWindowTitle("Invoice preview")
+        self.setWindowTitle(_("Invoice preview"))
         self.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
 
         self.html_view = QtWeb.QWebEngineView()
@@ -62,44 +62,51 @@ class InvoiceWebViewer(QtWidgets.QDialog):
         self.basket_btn.setFlat(True)
         self.basket_btn.setIconSize(icon_size)
         self.basket_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-to-basket.png"))
-        self.basket_btn.setToolTip("Put invoice items in basket")
-        self.basket_btn.setStatusTip("Put invoice items in basket")
+        tip = _("Put invoice items in basket")
+        self.basket_btn.setToolTip(tip)
+        self.basket_btn.setStatusTip(tip)
         self.delete_btn = QtWidgets.QPushButton()
         self.delete_btn.setFlat(True)
         self.delete_btn.setIconSize(icon_size)
         self.delete_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-delete.png"))
-        self.delete_btn.setToolTip("Delete the selected invoice")
-        self.delete_btn.setStatusTip("Delete the selected invoice")
+        tip = _("Delete the selected invoice")
+        self.delete_btn.setToolTip(tip)
+        self.delete_btn.setStatusTip(tip)
         self.emit_btn = QtWidgets.QPushButton()
         self.emit_btn.setFlat(True)
         self.emit_btn.setIconSize(icon_size)
         self.emit_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-emit.png"))
-        self.emit_btn.setToolTip("Emit the selected invoice")
-        self.emit_btn.setStatusTip("Emit the selected invoice")
+        tip = _("Emit the selected invoice")
+        self.emit_btn.setToolTip(tip)
+        self.emit_btn.setStatusTip(tip)
         self.paid_btn = QtWidgets.QPushButton()
         self.paid_btn.setFlat(True)
         self.paid_btn.setIconSize(icon_size)
         self.paid_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-paid.png"))
-        self.paid_btn.setToolTip("Mark the selected invoice as paid")
-        self.paid_btn.setStatusTip("Mark the selected invoice as paid")
+        tip = _("Mark the selected invoice as paid")
+        self.paid_btn.setToolTip(tip)
+        self.paid_btn.setStatusTip(tip)
         self.cancel_btn = QtWidgets.QPushButton()
         self.cancel_btn.setFlat(True)
         self.cancel_btn.setIconSize(icon_size)
         self.cancel_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-cancel.png"))
-        self.cancel_btn.setToolTip("Mark the selected invoice as cancelled")
-        self.cancel_btn.setStatusTip("Mark the selected invoice as cancelled")
+        tip = _("Mark the selected invoice as cancelled")
+        self.cancel_btn.setToolTip(tip)
+        self.cancel_btn.setStatusTip(tip)
         self.ok_btn = QtWidgets.QPushButton()
         self.ok_btn.setFlat(True)
         self.ok_btn.setIconSize(icon_size)
         self.ok_btn.setIcon(QtGui.QIcon(f"{resources}/ok.png"))
-        self.ok_btn.setToolTip("Confirm invoice emission (Alt+Enter)")
-        self.ok_btn.setStatusTip("Confirm invoice emission (Alt+Enter)")
+        tip = _("Confirm invoice emission (Alt+Enter)")
+        self.ok_btn.setToolTip(tip)
+        self.ok_btn.setStatusTip(tip)
         self.quit_btn = QtWidgets.QPushButton()
         self.quit_btn.setFlat(True)
         self.quit_btn.setIconSize(icon_size)
         self.quit_btn.setIcon(QtGui.QIcon(f"{resources}/cancel.png"))
-        self.quit_btn.setToolTip("Close invoice viewer (Esc)")
-        self.quit_btn.setStatusTip("Close invoice viewer (Esc)")
+        tip = _("Close invoice viewer (Esc)")
+        self.quit_btn.setToolTip(tip)
+        self.quit_btn.setStatusTip(tip)
         self.progress_bar = QtWidgets.QProgressBar()
 
         tool_layout = QtWidgets.QHBoxLayout()
@@ -178,9 +185,9 @@ class InvoiceWebViewer(QtWidgets.QDialog):
             pathname: Path = response.body
             return pathname
 
-        QtUtil.raise_fatal_error(
-            f"Cannot get invoice pathname - Reason is: {response.reason}"
-        )
+        msg = _("Cannot get invoice pathname")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     @QtCore.pyqtSlot()
     def paid(self) -> None:
@@ -219,31 +226,33 @@ class InvoiceWebViewer(QtWidgets.QDialog):
 
     @QtCore.pyqtSlot(str, bool)
     def on_pdf_print_finished(self, file_path: str, success: bool) -> None:
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Save invoice to PDF")
         if success:
             msg_box = QtWidgets.QMessageBox()
-            msg_box.setWindowTitle("Dfacto - Save invoice to PDF")
+            msg_box.setWindowTitle(f"{app_name} - {action}")
+            lbl1 = _("Your invoice is saved in:")
             msg_box.setText(
                 f"""
-                <p>Your invoice is saved in:</p>
+                <p>{lbl1}</p>
                 <p><strong>{file_path}</strong></p>
                 """
             )
-            msg_box.setInformativeText(
-                "You can open it in a PDF viewer or in the Explorer"
-            )
+            lbl2 = _("You can open it in a PDF viewer or in the Explorer")
+            msg_box.setInformativeText(lbl2)
             msg_box.setIcon(QtWidgets.QMessageBox.Icon.Information)
             msg_box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Close)
             open_btn = msg_box.addButton(
-                "Open", QtWidgets.QMessageBox.ButtonRole.ActionRole
+                _("Open"), QtWidgets.QMessageBox.ButtonRole.ActionRole
             )
             explore_btn = msg_box.addButton(
-                "Show in Explorer", QtWidgets.QMessageBox.ButtonRole.ActionRole
+                _("Show in Explorer"), QtWidgets.QMessageBox.ButtonRole.ActionRole
             )
             mail_btn = msg_box.addButton(
-                "Send by email", QtWidgets.QMessageBox.ButtonRole.ActionRole
+                _("Send by email"), QtWidgets.QMessageBox.ButtonRole.ActionRole
             )
             mail_btn.setEnabled(False)
-            mail_btn.setToolTip("Send by email is not yet implemented")
+            mail_btn.setToolTip(_("Send by email is not yet implemented"))
             # mail_lbl = QtWidgets.QLabel(msg_box)
             # mail_lbl.setText(
             #     f"<a href='mailto:erik.lemoine@gmail.com?subject=Facture du ...&body=Please, receive your invoice'>"
@@ -273,13 +282,13 @@ class InvoiceWebViewer(QtWidgets.QDialog):
                 self.done(InvoiceWebViewer.Action.REMIND)
             return
 
-        QtWidgets.QMessageBox.warning(
+        msg = _("Error when saving your invoice")
+        QtUtil.warning(
             None,  # type: ignore
-            f"Dfacto - Save invoice to PDF",
+            f"{app_name} - {action}",
             f"""
-            <p>Error when saving your invoice {file_path}</p>
+            <p>{msg} {file_path}</p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):

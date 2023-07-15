@@ -14,6 +14,7 @@ import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
 from babel.dates import format_date
+from babel.numbers import format_currency
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
@@ -88,17 +89,17 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
     def __init__(self) -> None:
         super().__init__()
         self._headers = [
-            "Id",
-            "Client Id",
-            "Client name",
-            "Code",
-            "Date",
-            "Amount",
-            "VAT",
-            "Net amount",
-            "Status",
-            "Late ?",
-            "Changed on",
+            _("Id"),
+            _("Client Id"),
+            _("Client name"),
+            _("Code"),
+            _("Date"),
+            _("Amount"),
+            _("VAT"),
+            _("Net amount"),
+            _("Status"),
+            _("Late ?"),
+            _("Changed on"),
         ]
         self._client_id: int = -1
         self._invoices: dict[int, InvoiceItem] = {}
@@ -115,9 +116,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             self.add_invoices(invoices)
             return
 
-        QtUtil.raise_fatal_error(
-            f"Cannot retrieve invoices - Reason is: {response.reason}"
-        )
+        msg = _("Cannot retrieve invoices")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def get_invoice(self, invoice_id: int) -> schemas.Invoice:
         response = api.client.get_invoice(invoice_id=invoice_id)
@@ -126,23 +127,26 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             invoice = cast(schemas.Invoice, response.body)
             return invoice
 
-        QtUtil.raise_fatal_error(
-            f"Cannot get invoice {invoice_id} - Reason is: {response.reason}"
-        )
+        msg = _("Cannot get invoice")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} {invoice_id} - {reason} {response.reason}")
 
     def get_html_preview(
-        self, invoice_id: int, mode: api.client.HtmlMode
+        self, invoice_id: int, mode: api.client.HtmlMode, translations
     ) -> tuple[Optional[str], CommandReport]:
         response = api.client.preview_invoice(
-            self._get_client_id_of_invoice(invoice_id), invoice_id=invoice_id, mode=mode
+            self._get_client_id_of_invoice(invoice_id),
+            invoice_id=invoice_id,
+            mode=mode,
+            translations=translations,
         )
 
         if response.status is not CommandStatus.FAILED:
             return response.body, response.report
 
-        QtUtil.raise_fatal_error(
-            f"Cannot get HTML preview - Reason is: {response.reason}"
-        )
+        msg = _("Cannot get HTML preview")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def delete_invoice(self, invoice_id: int) -> CommandReport:
         response = api.client.delete_invoice(
@@ -156,9 +160,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         if response.status is CommandStatus.REJECTED:
             return response.report
 
-        QtUtil.raise_fatal_error(
-            f"Cannot delete invoice - Reason is: {response.reason}"
-        )
+        msg = _("Cannot delete invoice")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def mark_invoice_as(self, invoice_id: int, status: InvoiceStatus) -> CommandReport:
         if status is InvoiceStatus.EMITTED:
@@ -170,7 +174,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         elif status is InvoiceStatus.CANCELLED:
             action = api.client.mark_as_cancelled
         else:
-            raise ValueError(f"Cannot mark invoice as {status.name}")
+            raise ValueError(_("Cannot mark invoice as %s") % status.name)
 
         # match status:
         #     case InvoiceStatus.EMITTED:
@@ -209,9 +213,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         if response.status is CommandStatus.REJECTED:
             return response.report
 
-        QtUtil.raise_fatal_error(
-            f"Cannot mark invoice as {status.name} - Reason is: {response.reason}"
-        )
+        msg = _("Cannot mark invoice as %s") % status.name
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def move_in_basket(self, client_id: int, invoice_id: int) -> CommandReport:
         response = api.client.move_in_basket(client_id, invoice_id=invoice_id)
@@ -223,9 +227,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         if response.status is CommandStatus.REJECTED:
             return response.report
 
-        QtUtil.raise_fatal_error(
-            f"Cannot move invoice in basket - Reason is: {response.reason}"
-        )
+        msg = _("Cannot move invoice in basket")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def update_invoice_history(
         self, invoice_id: int, log: dict[InvoiceStatus, DatetimeRange]
@@ -267,10 +271,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                         pass
             return response.report
 
-        QtUtil.raise_fatal_error(
-            f"Cannot update history of invoice {invoice_id}"
-            f" - Reason is: {response.reason}"
-        )
+        msg = _("Cannot update history of invoice %s") % invoice_id
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def copy_in_basket(self, client_id: int, invoice_id: int) -> CommandReport:
         response = api.client.copy_in_basket(client_id, invoice_id=invoice_id)
@@ -278,9 +281,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         if response.status is not CommandStatus.FAILED:
             return response.report
 
-        QtUtil.raise_fatal_error(
-            f"Cannot copy invoice in basket - Reason is: {response.reason}"
-        )
+        msg = _("Cannot copy invoice in basket")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def revert_to_previous_status(
         self, invoice_id: int
@@ -305,9 +308,9 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                     self.sales_summary_changed.emit(schemas.Amount(), -invoice.amount)
             return response.report, status
 
-        QtUtil.raise_fatal_error(
-            f"Cannot revert invoice to its previous status - Reason is: {response.reason}"
-        )
+        msg = _("Cannot revert invoice to its previous status")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     def invoice_from_index(self, index: QtCore.QModelIndex) -> Optional[InvoiceItem]:
         invoice_id = self._invoice_id_from_index(index)
@@ -504,14 +507,19 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 ):
                     if column == CREATED_ON:
                         datetime_ = cast(datetime, item[column])
+                        locale = Config.dfacto_settings.locale
                         return format_date(
-                            datetime_.date(), format="short", locale="fr_FR"
+                            datetime_.date(), format="short", locale=locale
                         )
                     if column == STATUS:
                         status = cast(InvoiceStatus, item[column])
-                        return status.name
+                        return status.as_string().upper()
                     if column == IS_LATE:
                         return None
+                    if column in (RAW_AMOUNT, VAT, NET_AMOUNT):
+                        return format_currency(
+                            item[column], "EUR", locale=Config.dfacto_settings.locale
+                        )
                     if 0 <= column < len(item):
                         return str(item[column])
 
@@ -539,10 +547,14 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                     if column == STATUS:
                         status = cast(InvoiceStatus, item[STATUS])
                         status_changed_on = cast(datetime, item[CHANGED_ON]).date()
+                        locale = Config.dfacto_settings.locale
                         changed_date = format_date(
-                            status_changed_on, format="short", locale="fr_FR"
+                            status_changed_on, format="short", locale=locale
                         )
-                        return f"{status.name.title()} on {changed_date}"
+                        return "%(status)s on %(date)s" % {
+                            "status": status.name.title(),
+                            "date": changed_date,
+                        }
 
                 if role == InvoiceTableModel.UserRoles.DateRole:
                     return cast(datetime, item[CREATED_ON]).date()
@@ -579,16 +591,20 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             client: schemas.Client = response.body
             return client
 
-        QtUtil.raise_fatal_error(
-            f"Cannot get client of invoice {invoice_id} - Reason is: {response.reason}"
-        )
+        msg = _("Cannot get client of invoice %s") % invoice_id
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
 
 class InvoiceViewer(QtUtil.QFramedWidget):
     basket_updated = QtCore.pyqtSignal(int)  # client id
 
-    def __init__(self, invoice_model: InvoiceTableModel, parent=None) -> None:
+    def __init__(
+        self, invoice_model: InvoiceTableModel, translations, parent=None
+    ) -> None:
         super().__init__(parent=parent)
+
+        self.translations = translations
 
         resources = Config.dfacto_settings.resources
 
@@ -602,7 +618,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             24, QtCore.Qt.TransformationMode.SmoothTransformation
         )
 
-        self.header_lbl = QtWidgets.QLabel("INVOICES")
+        self.header_lbl = QtWidgets.QLabel(_("INVOICES"))
         self.header_lbl.setMaximumHeight(32)
         self.client_pix = QtWidgets.QLabel()
         self.client_pix.setPixmap(self.active_pix)
@@ -616,15 +632,18 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.all_btn.setFlat(True)
         self.all_btn.setIconSize(small_icon_size)
         self.all_btn.setIcon(QtGui.QIcon(f"{resources}/client-all.png"))
-        self.all_btn.setToolTip("Show invoices of all clients")
-        self.all_btn.setStatusTip("Show invoices of all clients")
+        tip = _("Show invoices of all clients")
+        self.all_btn.setToolTip(tip)
+        self.all_btn.setStatusTip(tip)
         self.period_cmb = QtWidgets.QComboBox()
-        self.period_cmb.setToolTip("Filter on emitted date")
-        self.period_cmb.setStatusTip("Filter on emitted date")
+        tip = _("Filter on emitted date")
+        self.period_cmb.setToolTip(tip)
+        self.period_cmb.setStatusTip(tip)
         self.status_btn = QtWidgets.QToolButton()
-        self.status_btn.setText("Status filter ")
-        self.status_btn.setToolTip("Filter on status")
-        self.status_btn.setStatusTip("Filter on status")
+        self.status_btn.setText(_("Status filter "))
+        tip = _("Filter on status")
+        self.status_btn.setToolTip(tip)
+        self.status_btn.setStatusTip(tip)
         self.status_btn.setPopupMode(
             QtWidgets.QToolButton.ToolButtonPopupMode.InstantPopup
         )
@@ -633,69 +652,80 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         self.late_btn.setFlat(True)
         self.late_btn.setIconSize(small_icon_size)
         self.late_btn.setIcon(QtGui.QIcon(f"{resources}/alarm.png"))
-        self.late_btn.setToolTip("Show only invoice to be checked for payment")
-        self.late_btn.setStatusTip("Show only invoice to be checked for payment")
+        tip = _("Show only invoice to be checked for payment")
+        self.late_btn.setToolTip(tip)
+        self.late_btn.setStatusTip(tip)
         self.reset_btn = QtWidgets.QPushButton()
         self.reset_btn.setFlat(True)
         self.reset_btn.setIconSize(small_icon_size)
         self.reset_btn.setIcon(QtGui.QIcon(f"{resources}/reload.png"))
-        self.reset_btn.setToolTip("Reset to default filters")
-        self.reset_btn.setStatusTip("Reset to default filters")
+        tip = _("Reset to default filters")
+        self.reset_btn.setToolTip(tip)
+        self.reset_btn.setStatusTip(tip)
 
         self.basket_btn = QtWidgets.QPushButton()
         self.basket_btn.setFlat(True)
         self.basket_btn.setIconSize(icon_size)
         self.basket_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-to-basket.png"))
-        self.basket_btn.setToolTip("Put invoice items in basket")
-        self.basket_btn.setStatusTip("Put invoice items in basket")
+        tip = _("Put invoice items in basket")
+        self.basket_btn.setToolTip(tip)
+        self.basket_btn.setStatusTip(tip)
         self.delete_btn = QtWidgets.QPushButton()
         self.delete_btn.setFlat(True)
         self.delete_btn.setIconSize(icon_size)
         self.delete_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-delete.png"))
-        self.delete_btn.setToolTip("Delete the selected invoice")
-        self.delete_btn.setStatusTip("Delete the selected invoice")
+        tip = _("Delete the selected invoice")
+        self.delete_btn.setToolTip(tip)
+        self.delete_btn.setStatusTip(tip)
         self.show_btn = QtWidgets.QPushButton()
         self.show_btn.setFlat(True)
         self.show_btn.setIconSize(icon_size)
         self.show_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-preview.png"))
-        self.show_btn.setToolTip("Preview the selected invoice")
-        self.show_btn.setStatusTip("Preview the selected invoice")
+        tip = _("Preview the selected invoice")
+        self.show_btn.setToolTip(tip)
+        self.show_btn.setStatusTip(tip)
         self.emit_btn = QtWidgets.QPushButton()
         self.emit_btn.setFlat(True)
         self.emit_btn.setIconSize(icon_size)
         self.emit_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-emit.png"))
-        self.emit_btn.setToolTip("Emit the selected invoice")
-        self.emit_btn.setStatusTip("Emit the selected invoice")
+        tip = _("Emit the selected invoice")
+        self.emit_btn.setToolTip(tip)
+        self.emit_btn.setStatusTip(tip)
         self.remind_btn = QtWidgets.QPushButton()
         self.remind_btn.setFlat(True)
         self.remind_btn.setIconSize(icon_size)
         self.remind_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-remind.png"))
-        self.remind_btn.setToolTip("Remind the selected invoice")
-        self.remind_btn.setStatusTip("Remind the selected invoice")
+        tip = _("Remind the selected invoice")
+        self.remind_btn.setToolTip(tip)
+        self.remind_btn.setStatusTip(tip)
         self.paid_btn = QtWidgets.QPushButton()
         self.paid_btn.setFlat(True)
         self.paid_btn.setIconSize(icon_size)
         self.paid_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-paid.png"))
-        self.paid_btn.setToolTip("Mark the selected invoice as paid")
-        self.paid_btn.setStatusTip("Mark the selected invoice as paid")
+        tip = _("Mark the selected invoice as paid")
+        self.paid_btn.setToolTip(tip)
+        self.paid_btn.setStatusTip(tip)
         self.cancel_btn = QtWidgets.QPushButton()
         self.cancel_btn.setFlat(True)
         self.cancel_btn.setIconSize(icon_size)
         self.cancel_btn.setIcon(QtGui.QIcon(f"{resources}/invoice-cancel.png"))
-        self.cancel_btn.setToolTip("Mark the selected invoice as cancelled")
-        self.cancel_btn.setStatusTip("Mark the selected invoice as cancelled")
+        tip = _("Mark the selected invoice as cancelled")
+        self.cancel_btn.setToolTip(tip)
+        self.cancel_btn.setStatusTip(tip)
         self.undo_btn = QtWidgets.QPushButton()
         self.undo_btn.setFlat(True)
         self.undo_btn.setIconSize(icon_size)
         self.undo_btn.setIcon(QtGui.QIcon(f"{resources}/undo.png"))
-        self.undo_btn.setToolTip("Revert invoice to its previous status")
-        self.undo_btn.setStatusTip("Revert invoice to its previous status")
+        tip = _("Revert invoice to its previous status")
+        self.undo_btn.setToolTip(tip)
+        self.undo_btn.setStatusTip(tip)
         self.history_btn = QtWidgets.QPushButton()
         self.history_btn.setFlat(True)
         self.history_btn.setIconSize(icon_size)
         self.history_btn.setIcon(QtGui.QIcon(f"{resources}/history.png"))
-        self.history_btn.setToolTip("Show invoice history")
-        self.history_btn.setStatusTip("Show invoice history")
+        tip = _("Show invoice history")
+        self.history_btn.setToolTip(tip)
+        self.history_btn.setStatusTip(tip)
 
         self._invoice_table = InvoiceTable(invoice_model)
 
@@ -764,16 +794,14 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         main_layout.addWidget(self._invoice_table)
         self.setLayout(main_layout)
 
-        for filter_ in PeriodFilter:
-            self.period_cmb.addItem(
-                filter_.name.title().replace("_", " "), userData=filter_.as_period()
-            )
-        self.period_cmb.addItem("All Dates", userData=Period())
-        self.period_cmb.model().sort(0)
+        self.period_cmb.addItem(_("All dates"), userData=Period())
+        for filter_ in PeriodFilter.ordered():
+            self.period_cmb.addItem(filter_.as_string(), userData=filter_.as_period())
 
         self.status_menu = QtWidgets.QMenu(self)
         self.status_actions: dict[str, QtWidgets.QCheckBox] = dict()
-        action_ckb = QtWidgets.QCheckBox("All", self.status_menu)
+        # Translators: "All" stands for "All statuses"
+        action_ckb = QtWidgets.QCheckBox(_("All"), self.status_menu)
         ckb_action = QtWidgets.QWidgetAction(self.status_menu)
         ckb_action.setDefaultWidget(action_ckb)
         self.status_menu.addAction(ckb_action)
@@ -781,7 +809,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         action_ckb.stateChanged.connect(self.on_all_selected)
         self.status_actions["all"] = action_ckb
         for status in InvoiceStatus:
-            action_ckb = QtWidgets.QCheckBox(status.name.title(), self.status_menu)
+            action_ckb = QtWidgets.QCheckBox(status.as_string(), self.status_menu)
             ckb_action = QtWidgets.QWidgetAction(self.status_menu)
             ckb_action.setDefaultWidget(action_ckb)
             self.status_menu.addAction(ckb_action)
@@ -840,15 +868,16 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         invoice_table = self._invoice_table
         invoice = invoice_table.selected_invoice()
 
-        reply = QtWidgets.QMessageBox.warning(
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Delete invoice")
+        question = _("Do you really want to delete this invoice permanently?")
+        reply = QtUtil.question(
             self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Delete invoice",
+            f"{app_name} - {action}",
             f"""
-            <p>Do you really want to delete this invoice permanently?</p>
+            <p>{question}</p>
             <p><strong>{invoice[CODE]}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -856,14 +885,18 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         report = invoice_table.source_model().delete_invoice(invoice[ID])
 
         if report.status is not CommandStatus.COMPLETED:
-            QtWidgets.QMessageBox.warning(
+            msg = _("Cannot delete invoice %s of client %s") % (
+                invoice[ID],
+                invoice[CLIENT_NAME],
+            )
+            reason = _("Reason is:")
+            QtUtil.warning(
                 None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Delete invoice",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot delete invoice {invoice[ID]} of client {invoice[CLIENT_NAME]}</p>
-                <p><strong>Reason is: {report.reason}</strong></p>
+                <p>{msg}</p>
+                <p><strong>{reason} {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     @QtCore.pyqtSlot()
@@ -901,14 +934,17 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if report.status is CommandStatus.COMPLETED:
             self._enable_buttons(status=status)
         else:
-            QtWidgets.QMessageBox.warning(
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("Revert invoice status")
+            msg = _("Cannot revert invoice %s to its previous status") % invoice[CODE]
+            reason = _("Reason is:")
+            QtUtil.warning(
                 None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Revert invoice status",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot revert invoice {invoice[CODE]} to its previous status</p>
-                <p><strong>Reason is: {report.reason}</strong></p>
+                <p>{msg}</p>
+                <p><strong>{reason} {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     @QtCore.pyqtSlot(object)
@@ -918,7 +954,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         if client is None:
             logger.info(
-                "No client exists or all clients are hidden, disable invoices interactions"
+                _(
+                    "No client exists or all clients are hidden, disable invoices interactions"
+                )
             )
             self.client_lbl.clear()
             self.client_pix.clear()
@@ -928,7 +966,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             return
 
         # A client is selected and it is visible
-        logger.info(f"Show invoices of client: %s", client.name)
+        logger.info(_("Show invoices of client: %s"), client.name)
         self._enable_filters(True)
         self.client_lbl.setText(f"{client.name}")
         self.client_pix.setPixmap(
@@ -961,10 +999,9 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             )
 
         with QtCore.QSignalBlocker(self.period_cmb):
-            self.period_cmb.setCurrentText("Current Quarter")
+            self.period_cmb.setCurrentText(PeriodFilter.CURRENT_QUARTER.as_string())
 
-        for ckb in self.status_actions.values():
-            status = ckb.text().lower()
+        for status, ckb in self.status_actions.items():
             with QtCore.QSignalBlocker(ckb):
                 ckb.setChecked(status != "all" and status != "cancelled")
 
@@ -979,7 +1016,8 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         proxy.set_are_all_invoices_visible(checked)
 
         if checked:
-            self.client_lbl.setText("All")
+            # Translators: "All" stands for "All clients"
+            self.client_lbl.setText(_("All"))
             self.client_pix.setPixmap(self.all_pix)
         else:
             client = self._current_client
@@ -1043,14 +1081,14 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             with QtCore.QSignalBlocker(self.all_btn):
                 self.all_btn.setChecked(True)
 
-            self.client_lbl.setText("All")
+            # Translators: "All" stands for "All clients"
+            self.client_lbl.setText(_("All"))
             self.client_pix.setPixmap(self.all_pix)
 
             with QtCore.QSignalBlocker(self.period_cmb):
-                self.period_cmb.setCurrentText("All Dates")
+                self.period_cmb.setCurrentText(_("All dates"))
 
-            for ckb in self.status_actions.values():
-                status = ckb.text().lower()
+            for status, ckb in self.status_actions.items():
                 with QtCore.QSignalBlocker(ckb):
                     ckb.setChecked(status == "emitted" or status == "reminded")
 
@@ -1115,14 +1153,15 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
     @QtCore.pyqtSlot()
     def check_if_paid(self):
-        reply = QtWidgets.QMessageBox.question(
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Payment reminder")
+        question = _("Some invoices should be paid: do you want to ckeck them?")
+        reply = QtUtil.question(
             self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Payment reminder",
+            f"{app_name} - {action}",
             f"""
-            <p>Some invoices should be paid: do you want to ckeck them?</p>
+            <p>{question}</p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -1195,7 +1234,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         invoice_id = invoice[ID]
 
         html, report = invoice_table.source_model().get_html_preview(
-            invoice_id, mode=mode
+            invoice_id, mode=mode, translations=self.translations
         )
 
         if html is not None:
@@ -1206,31 +1245,41 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self.invoice_html_view.open()
             return
 
-        QtWidgets.QMessageBox.warning(
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Invoice view")
+        msg = _("Cannot show invoice %s of client %s") % (
+            invoice[CODE],
+            invoice[CLIENT_NAME],
+        )
+        reason = _("Reason is:")
+        QtUtil.warning(
             None,  # type: ignore
-            f"{QtWidgets.QApplication.applicationName()} - Invoice view",
+            f"{app_name} - {action}",
             f"""
-            <p>Cannot show invoice {invoice[CODE]} of client {invoice[CLIENT_NAME]}</p>
-            <p><strong>Reason is: {report.reason}</strong></p>
+            <p>{msg}</p>
+            <p><strong>{reason} {report.reason}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
 
     def _mark_invoice_as(self, status: InvoiceStatus, confirm: bool = False) -> None:
         invoice_table = self._invoice_table
         invoice = invoice_table.selected_invoice()
-        status_txt = status.name.lower()
+        status_txt = status.as_string().lower()
 
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Mark invoice as %s" % status_txt)
         if confirm:
-            reply = QtWidgets.QMessageBox.warning(
+            question = (
+                _("Do you really want to mark permanently this invoice as %s?")
+                % status_txt
+            )
+            reply = QtUtil.question(
                 self,  # noqa
-                f"{QtWidgets.QApplication.applicationName()} - Mark invoice as {status_txt}",
+                f"{app_name} - {action}",
                 f"""
-                <p>Do you really want to mark permanently this invoice as {status_txt}?</p>
+                <p>{question}</p>
                 <p><strong>{invoice[CODE]}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return
@@ -1241,14 +1290,18 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             invoice_table.select_invoice(invoice[ID])
             return
 
-        QtWidgets.QMessageBox.warning(
+        msg = _("Cannot mark invoice %(id)s as %(status)") % {
+            "id": invoice[ID],
+            "status": status_txt,
+        }
+        reason = _("Reason is:")
+        QtUtil.warning(
             None,  # type: ignore
-            f"{QtWidgets.QApplication.applicationName()} - Mark invoice as {status_txt}",
+            f"{app_name} - {action}",
             f"""
-            <p>Cannot mark invoice {invoice[ID]} as {status_txt}</p>
-            <p><strong>Reason is: {report.reason}</strong></p>
+            <p>{msg}</p>
+            <p><strong>{reason} {report.reason}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Close,
         )
 
     def _move_in_basket(self, invoice: InvoiceItem):
@@ -1259,14 +1312,20 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if report.status is CommandStatus.COMPLETED:
             self.basket_updated.emit(invoice[CLIENT_ID])
         else:
-            QtWidgets.QMessageBox.warning(
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("Move invoice in basket")
+            msg = _("Cannot move invoice %s in basket of client %s") % (
+                invoice[CODE],
+                invoice[CLIENT_NAME],
+            )
+            reason = _("Reason is:")
+            QtUtil.warning(
                 None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Move invoice in basket",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot move invoice {invoice[CODE]} in basket of client {invoice[CLIENT_NAME]}</p>
-                <p><strong>Reason is: {report.reason}</strong></p>
+                <p>{msg}</p>
+                <p><strong>{reason} {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     def _copy_in_basket(self, invoice: InvoiceItem):
@@ -1277,14 +1336,20 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         if report.status is CommandStatus.COMPLETED:
             self.basket_updated.emit(invoice[CLIENT_ID])
         else:
-            QtWidgets.QMessageBox.warning(
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("Copy invoice in basket")
+            msg = _("Cannot copy invoice %s in basket of client %s") % (
+                invoice[CODE],
+                invoice[CLIENT_NAME],
+            )
+            reason = _("Reason is:")
+            QtUtil.warning(
                 None,  # type: ignore
-                f"{QtWidgets.QApplication.applicationName()} - Copy invoice in basket",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot copy invoice {invoice[CODE]} in basket of client {invoice[CLIENT_NAME]}</p>
-                <p><strong>Reason is: {report.reason}</strong></p>
+                <p>{msg}</p>
+                <p><strong>{reason} {report.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
 
@@ -1418,7 +1483,7 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
     _is_vat_visible = True
     _client_filter = -1
     _period_filter = PeriodFilter.CURRENT_QUARTER.as_period()
-    _status_filter = "Not Cancelled"
+    _status_filter = _("Not cancelled")
     _statuses_filter = ["draft", "emitted", "reminded", "paid"]
     _are_all_invoices_visible = False
     _late_filter = False
@@ -1504,7 +1569,7 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
         InvoiceFilterProxyModel._period_filter = (
             PeriodFilter.CURRENT_QUARTER.as_period()
         )
-        InvoiceFilterProxyModel._status_filter = "Not Cancelled"
+        InvoiceFilterProxyModel._status_filter = _("Not cancelled")
         InvoiceFilterProxyModel._statuses_filter = [
             "draft",
             "emitted",
@@ -1566,8 +1631,8 @@ class InvoiceFilterProxyModel(QtCore.QSortFilterProxyModel):
             ok_period = period.start <= date_ <= period.end
 
         index = source_model.index(source_row, STATUS, source_parent)
-        status = source_model.data(index, QtCore.Qt.ItemDataRole.DisplayRole)
-        ok_status = status.lower() in self.statuses_filter()
+        status = source_model.data(index, InvoiceTableModel.UserRoles.StatusRole)
+        ok_status = status.name.lower() in self.statuses_filter()
 
         if self._late_filter:
             index = source_model.index(source_row, IS_LATE, source_parent)

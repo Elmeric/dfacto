@@ -6,14 +6,16 @@
 
 # pylint: disable=too-many-lines
 
+import gettext
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional, Type
 
 import jinja2 as jinja
 from babel.dates import format_date
+from babel.numbers import format_currency, format_percent
 
 from dfacto import settings as Config
 from dfacto.backend import crud, naming, schemas
@@ -22,6 +24,11 @@ from dfacto.backend.models import InvoiceStatus
 from dfacto.backend.util import DatetimeRange, Period, PeriodFilter
 
 from .base import DFactoModel
+
+if TYPE_CHECKING:
+
+    def _(_text: str) -> str:
+        ...
 
 
 @dataclass
@@ -753,7 +760,12 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
     @command
     def preview_invoice(
-        self, obj_id: int, *, invoice_id: int, mode: HtmlMode
+        self,
+        obj_id: int,
+        *,
+        invoice_id: int,
+        mode: HtmlMode,
+        translations: gettext.GNUTranslations,
     ) -> CommandResponse:
         # pylint: disable=too-many-return-statements
         # pylint: disable=line-too-long
@@ -812,8 +824,11 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 resources = Config.dfacto_settings.resources
                 template_dir = resources / "invoice_template"
             env = jinja.Environment(
-                loader=jinja.FileSystemLoader(template_dir.as_posix())
+                extensions=["jinja2.ext.i18n"],
+                loader=jinja.FileSystemLoader(template_dir.as_posix()),
             )
+            # pylint: disable-next=no-member
+            env.install_gettext_translations(translations, newstyle=True)  # type: ignore[attr-defined]
         except ValueError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -856,34 +871,35 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
         if mode is self.HtmlMode.REMIND:
             if status is InvoiceStatus.EMITTED:
-                return "Rappel", "is-bad"
+                return _("Reminder"), "is-bad"
             if status is InvoiceStatus.REMINDED:
-                return "Second Rappel", "is-bad"
+                return _("Second Reminder"), "is-bad"
             return "", "is-empty"
 
         if mode is self.HtmlMode.SHOW:
+            locale = Config.dfacto_settings.locale
             if status is InvoiceStatus.DRAFT:
-                return "DRAFT", "is-draft"
+                return _("DRAFT"), "is-draft"
             if status is InvoiceStatus.EMITTED:
                 changed_on = invoice.issued_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
-                return f"Emise le {date_}", "is-ok"
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
+                return _("Issued on %s") % date_, "is-ok"
             if status is InvoiceStatus.REMINDED:
                 changed_on = invoice.reminded_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
-                return f"Rappel le {date_}", "is-bad"
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
+                return _("Reminded on %s") % date_, "is-bad"
             if status is InvoiceStatus.PAID:
                 changed_on = invoice.paid_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
-                return f"Payée le {date_}", "is-ok"
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
+                return _("Paid on %s") % date_, "is-ok"
             if status is InvoiceStatus.CANCELLED:
                 changed_on = invoice.cancelled_on
                 assert changed_on is not None
-                date_ = format_date(changed_on.date(), format="long", locale="fr_FR")
-                return f"Annulée le {date_}", "is-bad"
+                date_ = format_date(changed_on.date(), format="long", locale=locale)
+                return _("Cancelled on %s") % date_, "is-bad"
 
         return "", ""
 
@@ -920,6 +936,15 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         )
         stamp, tag = self._get_stamp(invoice, mode)
 
+        locale = Config.dfacto_settings.locale
+        penalty_rate = format_percent(
+            float(company.penalty_rate) / 100, locale=locale, decimal_quantization=False
+        )
+        discount_rate = format_percent(
+            float(company.discount_rate) / 100,
+            locale=locale,
+            decimal_quantization=False,
+        )
         return {
             "company": {
                 "name": company.name,
@@ -928,6 +953,8 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 "email": company.email,
                 "siret": company.siret,
                 "rcs": company.rcs,
+                "penalty": penalty_rate,
+                "discount": discount_rate,
             },
             "client": {
                 "name": client_.name,
@@ -936,25 +963,41 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
             },
             "invoice": {
                 "code": invoice.code,
-                "date": format_date(date_.date(), format="long", locale="fr_FR"),
+                "date": format_date(date_.date(), format="long", locale=locale),
                 "due_date": None
                 if due_date is None
-                else format_date(due_date.date(), format="long", locale="fr_FR"),
-                "raw_amount": invoice.amount.raw,
-                "vat": invoice.amount.vat,
-                "net_amount": invoice.amount.net,
+                else format_date(due_date.date(), format="long", locale=locale),
+                "raw_amount": format_currency(
+                    invoice.amount.raw, "EUR", locale=Config.dfacto_settings.locale
+                ),
+                "vat": format_currency(
+                    invoice.amount.vat, "EUR", locale=Config.dfacto_settings.locale
+                ),
+                "net_amount": format_currency(
+                    invoice.amount.net, "EUR", locale=Config.dfacto_settings.locale
+                ),
                 "stamp_text": stamp,
                 "stamp_tag": tag,
                 "item_list": [
                     {
                         "service": {
                             "name": item.service.name,
-                            "unit_price": item.service.unit_price,
+                            "unit_price": format_currency(
+                                item.service.unit_price,
+                                "EUR",
+                                locale=Config.dfacto_settings.locale,
+                            ),
                         },
                         "quantity": item.quantity,
-                        "raw_amount": item.amount.raw,
-                        "vat": item.amount.vat,
-                        "net_amount": item.amount.net,
+                        "raw_amount": format_currency(
+                            item.amount.raw, "EUR", locale=Config.dfacto_settings.locale
+                        ),
+                        "vat": format_currency(
+                            item.amount.vat, "EUR", locale=Config.dfacto_settings.locale
+                        ),
+                        "net_amount": format_currency(
+                            item.amount.net, "EUR", locale=Config.dfacto_settings.locale
+                        ),
                     }
                     for item in invoice.items
                 ],

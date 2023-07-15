@@ -4,7 +4,6 @@
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
 
-from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 import PyQt6.QtCore as QtCore
@@ -50,10 +49,12 @@ class StatusLogEditor(QtWidgets.QDialog):
         self.intro_lbl.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.intro_lbl.setFixedWidth(400)
         self.intro_lbl.setWordWrap(True)
+        lbl1 = _("History of invoice %s") % invoice.code
+        lbl2 = _("Each date can be edited to fix datation errors")
         self.intro_lbl.setText(
             f"""
-            <p><strong>History of invoice {invoice.code}</strong</p>
-            <p><small>(Each date can be edited to fix datation errors)</small></p>
+            <p><strong>{lbl1}</strong</p>
+            <p><small>({lbl2})</small></p>
             """
         )
         intro_layout = QtWidgets.QHBoxLayout()
@@ -74,11 +75,11 @@ class StatusLogEditor(QtWidgets.QDialog):
         )
         self._date_editors: dict[InvoiceStatus, QtWidgets.QDateEdit] = dict()
         labels = {
-            InvoiceStatus.DRAFT: "Created on",
-            InvoiceStatus.EMITTED: "Issued on",
-            InvoiceStatus.REMINDED: "Reminded on",
-            InvoiceStatus.PAID: "Paid on",
-            InvoiceStatus.CANCELLED: "Cancelled on",
+            InvoiceStatus.DRAFT: _("Created on"),
+            InvoiceStatus.EMITTED: _("Issued on"),
+            InvoiceStatus.REMINDED: _("Reminded on"),
+            InvoiceStatus.PAID: _("Paid on"),
+            InvoiceStatus.CANCELLED: _("Cancelled on"),
         }
         self._previous_status: dict[InvoiceStatus, Optional[InvoiceStatus]] = {}
         prev_status = None

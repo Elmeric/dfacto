@@ -16,4 +16,4 @@ def get_current_company() -> schemas.Company:
         return company
 
     # Should not happen as a selected company is mandatory to start the dfacto main window
-    QtUtil.raise_fatal_error(f"No selected company - Reason is: {response.reason}")
+    QtUtil.raise_fatal_error(_("No selected company - Reason is: %s") % response.reason)

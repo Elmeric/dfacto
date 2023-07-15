@@ -37,13 +37,14 @@ class ClientSelector(QtUtil.QFramedWidget):
         self.active_icon = QtGui.QIcon(f"{resources}/client-active.png")
         self.inactive_icon = QtGui.QIcon(f"{resources}/client-inactive.png")
 
-        header_lbl = QtWidgets.QLabel("CLIENTS LIST")
+        header_lbl = QtWidgets.QLabel(_("CLIENTS LIST"))
         header_lbl.setMaximumHeight(32)
 
         small_icon_size = QtCore.QSize(24, 24)
         self.inactive_ckb = QtWidgets.QCheckBox("")
-        self.inactive_ckb.setToolTip("Include inactive accounts")
-        self.inactive_ckb.setStatusTip("Include inactive accounts")
+        tip = _("Include inactive accounts")
+        self.inactive_ckb.setToolTip(tip)
+        self.inactive_ckb.setStatusTip(tip)
         self.inactive_ckb.setIconSize(small_icon_size)
         self.inactive_ckb.setIcon(self.inactive_icon)
 
@@ -52,27 +53,29 @@ class ClientSelector(QtUtil.QFramedWidget):
         icon_size = QtCore.QSize(32, 32)
         self.new_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/add.png"), "")
         self.new_btn.setIconSize(icon_size)
-        self.new_btn.setToolTip("Create a new client")
-        self.new_btn.setStatusTip("Create a new client")
+        tip = _("Create a new client")
+        self.new_btn.setToolTip(tip)
+        self.new_btn.setStatusTip(tip)
         self.new_btn.setFlat(True)
         self.delete_btn = QtWidgets.QPushButton(
             QtGui.QIcon(f"{resources}/remove.png"), ""
         )
-        self.delete_btn.setToolTip("Delete the selected client (Delete)")
-        self.delete_btn.setStatusTip("Delete the selected client (Delete)")
+        tip = _("Delete the selected client (Delete)")
+        self.delete_btn.setToolTip(tip)
+        self.delete_btn.setStatusTip(tip)
         self.delete_btn.setIconSize(icon_size)
         self.delete_btn.setFlat(True)
         self.edit_btn = QtWidgets.QPushButton(QtGui.QIcon(f"{resources}/edit.png"), "")
+        tip = _("Edit the selected client")
         self.edit_btn.setIconSize(icon_size)
-        self.edit_btn.setToolTip("Edit the selected client")
-        self.edit_btn.setStatusTip("Edit the selected client")
+        self.edit_btn.setToolTip(tip)
+        self.edit_btn.setStatusTip(tip)
         self.edit_btn.setFlat(True)
         self.activate_btn = QtWidgets.QPushButton(self.active_icon, "")
         self.activate_btn.setIconSize(icon_size)
-        self.activate_btn.setToolTip("Toggle activation state for the selected client")
-        self.activate_btn.setStatusTip(
-            "Toggle activation state for the selected client"
-        )
+        tip = _("Toggle activation state for the selected client")
+        self.activate_btn.setToolTip(tip)
+        self.activate_btn.setStatusTip(tip)
         self.activate_btn.setFlat(True)
         self.activate_btn.setCheckable(True)
 
@@ -191,9 +194,9 @@ class ClientSelector(QtUtil.QFramedWidget):
             self._enable_buttons(self.has_visible_client)
             return
 
-        QtUtil.raise_fatal_error(
-            f"Cannot load the clients list - Reason is: {response.reason}"
-        )
+        msg = _("Cannot load the clients list")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     @QtCore.pyqtSlot(bool)
     def on_inactive_selection(self, checked: bool):
@@ -255,15 +258,16 @@ class ClientSelector(QtUtil.QFramedWidget):
         clients_lst = self.clients_lst
         row = clients_lst.currentRow()
 
-        reply = QtWidgets.QMessageBox.warning(
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Delete client")
+        question = _("Do you really want to delete this client permanently?")
+        reply = QtUtil.question(
             self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Delete client",
+            f"{app_name} - {action}",
             f"""
-            <p>Do you really want to delete this client permanently?</p>
+            <p>{question}</p>
             <p><strong>{client.name}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -288,19 +292,19 @@ class ClientSelector(QtUtil.QFramedWidget):
                 clients_lst.setFocus()
             return
 
+        msg = _("Cannot delete client")
+        reason = _("Reason is:")
         if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot delete client {client.name} - Reason is: {response.reason}"
-            )
+            QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
+
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
-                f"Dfacto - Delete client",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot delete client {client.name}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
+                <p>{msg} {client.name}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
 
     @QtCore.pyqtSlot()
@@ -311,15 +315,18 @@ class ClientSelector(QtUtil.QFramedWidget):
         row = clients_lst.currentRow()
 
         if client.is_active:
-            reply = QtWidgets.QMessageBox.warning(
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("De-activate client")
+            question = _(
+                "Do you really want to de-activate this client: its basket will be emptied?"
+            )
+            reply = QtUtil.question(
                 self,  # noqa
-                f"{QtWidgets.QApplication.applicationName()} - De-activate client",
+                f"{app_name} - {action}",
                 f"""
-                <p>Do you really want to de-activate this client: its basket will be emptied?</p>
+                <p>{question}</p>
                 <p><strong>{client.name}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 self.activate_btn.setChecked(True)
@@ -350,9 +357,9 @@ class ClientSelector(QtUtil.QFramedWidget):
                 self._select_first_visible_item(before=row - 1)
             return
 
-        QtUtil.raise_fatal_error(
-            f"Cannot {action} client {client.name} - Reason is: {response.reason}"
-        )
+        msg = _("Cannot %(action)s client") % {"action": action}
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} {client.name} - {reason} {response.reason}")
 
     def keyPressEvent(self, event: QtGui.QKeyEvent):
         key = event.key()
@@ -452,10 +459,9 @@ class ClientSelector(QtUtil.QFramedWidget):
             clients_lst.setFocus()
             return
 
-        QtUtil.raise_fatal_error(
-            f"Cannot update the selected client {old_name}"
-            f" - Reason is: {response.reason}"
-        )
+        msg = _("Cannot update the selected client")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} {old_name} - {reason} {response.reason}")
 
     def _add_client(self, client: Client) -> None:
         new_client = {
@@ -476,7 +482,6 @@ class ClientSelector(QtUtil.QFramedWidget):
             clients_lst.setFocus()
             return
 
-        QtUtil.raise_fatal_error(
-            f"Cannot create the new client {client.name}"
-            f" - Reason is: {response.reason}"
-        )
+        msg = _("Cannot create the new client")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} {client.name} - {reason} {response.reason}")

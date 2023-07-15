@@ -17,6 +17,9 @@ if TYPE_CHECKING:  # pragma: no cover
     from .client import Client
     from .item import Item
 
+    def _(_text: str) -> str:
+        ...
+
 
 class InvoiceStatus(enum.Enum):
     DRAFT = 1
@@ -24,6 +27,15 @@ class InvoiceStatus(enum.Enum):
     REMINDED = 3
     PAID = 4
     CANCELLED = 5
+
+    def as_string(self) -> str:
+        return {
+            InvoiceStatus.DRAFT: _("Draft"),
+            InvoiceStatus.EMITTED: _("Emitted"),
+            InvoiceStatus.REMINDED: _("Reminded"),
+            InvoiceStatus.PAID: _("Paid"),
+            InvoiceStatus.CANCELLED: _("Cancelled"),
+        }.get(self, "")
 
 
 class Invoice(BaseModel):

@@ -11,6 +11,7 @@ from typing import Any, Optional, cast
 import PyQt6.QtCore as QtCore
 import PyQt6.QtGui as QtGui
 import PyQt6.QtWidgets as QtWidgets
+from babel.numbers import format_currency
 
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
@@ -34,14 +35,14 @@ class BasketTableModel(QtCore.QAbstractTableModel):
     def __init__(self) -> None:
         super().__init__()
         self._headers = [
-            "Id",
-            "Service",
-            "Unit price",
-            "Quantity",
-            "Amount",
-            "VAT rate",
-            "VAT",
-            "Net amount",
+            _("Id"),
+            _("Service"),
+            _("Unit price"),
+            _("Quantity"),
+            _("Amount"),
+            _("VAT rate"),
+            _("VAT"),
+            _("Net amount"),
         ]
         self._basket: Optional[schemas.Basket] = None
         self._items: dict[int, BasketItem] = {}
@@ -68,23 +69,23 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.add_item(response.body)
             return self._update_basket(client_id)
 
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Add to basket")
+        msg = _("Cannot add service to basket of client")
+        reason = _("Reason is:")
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
-                f"Dfacto - Add to basket",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot add service to basket of client {self._basket.client.name}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
+                <p>{msg} {self._basket.client.name}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
         if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot add service to basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
+            QtUtil.raise_fatal_error(f"{msg} {client_id} - {reason} {response.reason}")
 
     def remove_item_from_basket(self, item_id: int) -> bool:
         client_id = self._basket.client_id
@@ -94,51 +95,50 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.remove_item(item_id)
             return self._update_basket(client_id)
 
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Remove item from basket")
+        msg = _("Cannot remove item from basket of client")
+        reason = _("Reason is:")
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
-                f"Dfacto - Remove item from basket",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot remove service from basket of client {self._basket.client.name}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
+                <p>{msg} {self._basket.client.name}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
         if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot remove item from the basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
+            QtUtil.raise_fatal_error(f"{msg} {client_id} - {reason} {response.reason}")
 
     def update_item_quantity_in_basket(self, item_id: int, quantity: int) -> bool:
         client_id = self._basket.client_id
         response = api.client.update_item_quantity(
             client_id, item_id=item_id, quantity=quantity
         )
-        # self.cmdReported.emit(cmdReport)
         if response.status is CommandStatus.COMPLETED:
             self.update_item(response.body)
             return self._update_basket(client_id)
 
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Update item quantity in basket")
+        msg = _("Cannot update item quantity in basket of client")
+        reason = _("Reason is:")
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
-                f"Dfacto - Update basket",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot update basket of client {self._basket.client.name}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
+                <p>{msg} {self._basket.client.name}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
         if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Cannot update item quantity in the basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
+            QtUtil.raise_fatal_error(f"{msg} {client_id} - {reason} {response.reason}")
 
     def update_service_in_basket(self, service_id: int) -> bool:
         client_id = self._basket.client_id
@@ -148,23 +148,23 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.update_item(response.body)
             return self._update_basket(client_id)
 
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Update service in basket")
+        msg = _("Cannot update service in basket of client")
+        reason = _("Reason is:")
         if response.status is CommandStatus.REJECTED:
-            QtWidgets.QMessageBox.warning(
+            QtUtil.warning(
                 None,  # type: ignore
-                f"Dfacto - Update basket",
+                f"{app_name} - {action}",
                 f"""
-                <p>Cannot update basket of client {self._basket.client.name}</p>
-                <p><strong>Reason is: {response.reason}</strong></p>
+                <p>{msg} {self._basket.client.name}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Close,
             )
             return False
 
         if response.status is CommandStatus.FAILED:
-            QtUtil.raise_fatal_error(
-                f"Service {service_id} not found in basket of client {client_id}"
-                f" - Reason is: {response.reason}"
-            )
+            QtUtil.raise_fatal_error(f"{msg} {client_id} - {reason} {response.reason}")
 
     def empty_basket(self) -> bool:
         client_id = self._basket.client_id
@@ -174,11 +174,9 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             self.clear_items()
             return self._update_basket(self._basket.client_id)
 
-        QtUtil.raise_fatal_error(
-            f"Cannot empty basket of client {client_id}"
-            f" - Reason is: {response.reason}"
-        )
-        return False
+        msg = _("Cannot empty basket of client")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} {client_id} - {reason} {response.reason}")
 
     def item_from_index(self, index: QtCore.QModelIndex) -> Optional[BasketItem]:
         item_id = self._item_id_from_index(index)
@@ -357,6 +355,12 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                     QtCore.Qt.ItemDataRole.DisplayRole,
                     QtCore.Qt.ItemDataRole.EditRole,
                 ):
+                    if column in (UNIT_PRICE, RAW_AMOUNT, VAT, NET_AMOUNT):
+                        return format_currency(
+                            item[column], "EUR", locale=Config.dfacto_settings.locale
+                        )
+                    if column == VAT_RATE:
+                        return f"{item[column]} %"
                     if 0 <= column < len(item):
                         return str(item[column])
 
@@ -364,7 +368,7 @@ class BasketTableModel(QtCore.QAbstractTableModel):
                     QtCore.Qt.ItemDataRole.StatusTipRole,
                     QtCore.Qt.ItemDataRole.ToolTipRole,
                 ):
-                    return "Select 'Quantity' field to edit"
+                    return _("Select 'Quantity' field to edit")
 
                 if role == QtCore.Qt.ItemDataRole.FontRole:
                     if column == SERVICE:
@@ -414,10 +418,9 @@ class BasketTableModel(QtCore.QAbstractTableModel):
             basket: schemas.Basket = response.body
             return basket
 
-        QtUtil.raise_fatal_error(
-            f"Cannot retrieve the basket of client {client_id}"
-            f" - Reason is: {response.reason}"
-        )
+        msg = _("Cannot retrieve the basket of client")
+        reason = _("Reason is:")
+        QtUtil.raise_fatal_error(f"{msg} {client_id} - {reason} {response.reason}")
 
     def _update_basket(self, client_id: int) -> bool:
         basket = self.get_basket_of_client(client_id)
@@ -443,7 +446,7 @@ class BasketViewer(QtUtil.QFramedWidget):
         ).scaledToHeight(24, QtCore.Qt.TransformationMode.SmoothTransformation)
         basket_pix = QtGui.QPixmap(f"{resources}/basket.png")
 
-        self.header_lbl = QtWidgets.QLabel("BASKET")
+        self.header_lbl = QtWidgets.QLabel(_("BASKET"))
         self.header_lbl.setMaximumHeight(32)
         self.client_pix = QtWidgets.QLabel()
         self.client_pix.setPixmap(self.active_pix)
@@ -454,8 +457,9 @@ class BasketViewer(QtUtil.QFramedWidget):
             QtGui.QIcon(f"{resources}/clear-basket.png"), ""
         )
         self.clear_btn.setIconSize(icon_size)
-        self.clear_btn.setToolTip("Remove all items from basket")
-        self.clear_btn.setStatusTip("Remove all items from basket")
+        tip = _("Remove all items from basket")
+        self.clear_btn.setToolTip(tip)
+        self.clear_btn.setStatusTip(tip)
         self.clear_btn.setFlat(True)
 
         self.basket_pix = QtWidgets.QLabel()
@@ -472,8 +476,9 @@ class BasketViewer(QtUtil.QFramedWidget):
             QtGui.QIcon(f"{resources}/invoice-add.png"), ""
         )
         self.invoicing_btn.setIconSize(icon_size)
-        self.invoicing_btn.setToolTip("Create invoice from basket")
-        self.invoicing_btn.setStatusTip("Create invoice from basket")
+        tip = _("Create invoice from basket")
+        self.invoicing_btn.setToolTip(tip)
+        self.invoicing_btn.setStatusTip(tip)
         self.invoicing_btn.setFlat(True)
 
         self._basket_table = BasketTable(basket_model)
@@ -535,7 +540,7 @@ class BasketViewer(QtUtil.QFramedWidget):
         self._current_client = client
 
         if client is None:
-            logger.info("No client exists, disable basket interactions")
+            logger.info(_("No client exists, disable basket interactions"))
             self.client_lbl.clear()
             self.client_pix.clear()
             self._basket_table.model().sourceModel().clear_items()
@@ -543,7 +548,7 @@ class BasketViewer(QtUtil.QFramedWidget):
             return
 
         # A client is selected
-        logger.info(f"Loading basket of client: %s", client.name)
+        logger.info(_("Loading basket of client: %s"), client.name)
         self.client_lbl.setText(f"{client.name}")
         self.client_pix.setPixmap(
             self.active_pix if client.is_active else self.inactive_pix
@@ -557,33 +562,37 @@ class BasketViewer(QtUtil.QFramedWidget):
     def update_summary(self, basket: schemas.Basket) -> None:
         nbsp = "\u00A0"
         if basket is None or len(basket.items) == 0:
-            item_count = "Basket is empty".replace(" ", nbsp)
+            item_count = _("Basket is empty").replace(" ", nbsp)
             total = 0
-            total_str = "\nNothing to invoice".replace(" ", nbsp)
+            total_str = _("Nothing to invoice").replace(" ", nbsp)
         else:
             count = len(basket.items)
             if count == 1:
-                item_count = f"<strong>1</strong>{nbsp}item{nbsp}in{nbsp}basket\n"
+                lbl1 = _(" item in basket").replace(" ", nbsp)
+                item_count = f"<strong>1</strong>{lbl1}"
             else:
-                item_count = f"<strong>{count}</strong>{nbsp}items{nbsp}in{nbsp}basket"
+                lbl1 = _(" items in basket").replace(" ", nbsp)
+                item_count = f"<strong>{count}</strong>{lbl1}"
             company = get_current_company()
             total = basket.amount.raw if company.no_vat else basket.amount.net
-            total_str = f"\nTotal{nbsp}to{nbsp}invoice:{nbsp}<strong>{total}</strong>"
+            lbl2 = _("Total to invoice: ").replace(" ", nbsp)
+            total_str = f"{lbl2}<strong>{total}</strong>"
 
-        self.summary_lbl.setText(f"{item_count}{total_str}")
+        self.summary_lbl.setText(f"{item_count}\n{total_str}")
         self._enable_buttons(total > 0)
 
     @QtCore.pyqtSlot()
     def clear_basket(self) -> None:
-        reply = QtWidgets.QMessageBox.warning(
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Clear basket")
+        question = _("Do you really want to empty the basket of this client?")
+        reply = QtUtil.question(
             self,  # noqa
-            f"{QtWidgets.QApplication.applicationName()} - Clear basket",
+            f"{app_name} - {action}",
             f"""
-            <p>Do you really want to empty the basket for this client?</p>
+            <p>{question}</p>
             <p><strong>{self._current_client.name}</strong></p>
             """,
-            QtWidgets.QMessageBox.StandardButton.Yes
-            | QtWidgets.QMessageBox.StandardButton.No,
         )
         if reply == QtWidgets.QMessageBox.StandardButton.No:
             return
@@ -603,9 +612,10 @@ class BasketViewer(QtUtil.QFramedWidget):
             self._enable_buttons(not success)
             return
 
+        msg = _("Cannot create invoice for client")
+        reason = _("Reason is:")
         QtUtil.raise_fatal_error(
-            f"Cannot create invoice for {self._current_client.name}"
-            f" - Reason is: {response.reason}"
+            f"{msg} {self._current_client.name} - {reason} {response.reason}"
         )
 
     @QtCore.pyqtSlot(int)
@@ -618,15 +628,18 @@ class BasketViewer(QtUtil.QFramedWidget):
         if current_client.id != client_id:
             basket = self._basket_table.source_model().get_basket_of_client(client_id)
             client = basket.client
-            reply = QtWidgets.QMessageBox.warning(
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("Basket update")
+            question = _(
+                "Basket content of the following client has changed. Do you want to see it?"
+            )
+            reply = QtUtil.question(
                 self,  # noqa
-                f"{QtWidgets.QApplication.applicationName()} - Basket update",
+                f"{app_name} - {action}",
                 f"""
-                <p>Basket content of the following client has changed. Do you want to see it?</p>
+                <p>{question}</p>
                 <p><strong>{client.name}</strong></p>
                 """,
-                QtWidgets.QMessageBox.StandardButton.Yes
-                | QtWidgets.QMessageBox.StandardButton.No,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 return
@@ -716,7 +729,7 @@ class BasketTable(QtWidgets.QTableView):
         self, _parent: QtCore.QModelIndex, first: int, last: int
     ) -> None:
         if last < 0:
-            # No rows was inserted
+            # No rows were inserted
             self.selection_changed.emit("")
             return
         proxy_model = self.model()
@@ -730,7 +743,7 @@ class BasketTable(QtWidgets.QTableView):
         self, _parent: QtCore.QModelIndex, first: int, last: int
     ) -> None:
         if last < 0:
-            # No rows was removed
+            # No rows were removed
             return
         self.select_first_item()
 
@@ -794,7 +807,7 @@ class BasketTableDelegate(QtWidgets.QStyledItemDelegate):
             editor.setFrame(False)
             editor.setMaximum(100)
             editor.setAccelerated(True)
-            price_tip = "Service quantity, from 1 to 100"
+            price_tip = _("Service quantity, from 1 to 100")
             editor.setToolTip(price_tip)
             editor.setStatusTip(price_tip)
             self.previous_quantity = None

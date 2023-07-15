@@ -1,6 +1,14 @@
 # Directly modelled on Donald Stufft's readme_renderer code:
 # https://github.com/pypa/readme_renderer/blob/master/readme_renderer/__about__.py
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+
+    def _(_text: str) -> str:
+        ...
+
+
 __all__ = [
     "__title__",
     "__summary__",
@@ -13,7 +21,8 @@ __all__ = [
 ]
 
 __title__ = "Dfacto"
-__summary__ = "Your invoicing assistant!"
+# pylint: disable-next=assignment-from-no-return
+__summary__ = _("Your invoicing assistant!")
 __uri__ = "https://github.com/Elmeric/dfacto"
 
 __version__ = "1.0.0"

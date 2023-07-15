@@ -48,6 +48,10 @@ __all__ = [
     "PathSelector",
     "SplashScreen",
     "StatusBar",
+    "information",
+    "warning",
+    "critical",
+    "question",
 ]
 
 # def autoLayoutWithLabel(
@@ -421,12 +425,76 @@ class UndeselectableSelectionModel(QtCore.QItemSelectionModel):
 
 
 def raise_fatal_error(msg: str) -> None:
-    QtWidgets.QMessageBox.critical(
+    critical(
         None,  # type: ignore
-        f"Dfacto - Database error",
-        f"{msg}"
-        f"\n\nTry to restart Dfacto\nIf the problem persists, contact your admin",
-        QtWidgets.QMessageBox.StandardButton.Close,
+        _("Dfacto - Database error"),
+        _("%s\n\nTry to restart Dfacto\nIf the problem persists, contact your admin")
+        % msg,
     )
     getMainWindow().close()
     raise BackendError(msg)
+
+
+def information(
+    parent: QtWidgets.QWidget,
+    title: str,
+    text: str,
+) -> None:
+    box = QtWidgets.QMessageBox(parent=parent)
+    box.setIcon(QtWidgets.QMessageBox.Icon.Information)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Close)
+    close_btn = box.button(QtWidgets.QMessageBox.StandardButton.Close)
+    close_btn.setText(_("Close"))
+    box.exec()
+
+
+def warning(
+    parent: QtWidgets.QWidget,
+    title: str,
+    text: str,
+) -> None:
+    box = QtWidgets.QMessageBox(parent=parent)
+    box.setIcon(QtWidgets.QMessageBox.Icon.Warning)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Close)
+    close_btn = box.button(QtWidgets.QMessageBox.StandardButton.Close)
+    close_btn.setText(_("Close"))
+    box.exec()
+
+
+def critical(
+    parent: QtWidgets.QWidget,
+    title: str,
+    text: str,
+) -> None:
+    box = QtWidgets.QMessageBox(parent=parent)
+    box.setIcon(QtWidgets.QMessageBox.Icon.Critical)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(QtWidgets.QMessageBox.StandardButton.Close)
+    close_btn = box.button(QtWidgets.QMessageBox.StandardButton.Close)
+    close_btn.setText(_("Close"))
+    box.exec()
+
+
+def question(
+    parent: QtWidgets.QWidget,
+    title: str,
+    text: str,
+) -> int:
+    box = QtWidgets.QMessageBox(parent=parent)
+    box.setIcon(QtWidgets.QMessageBox.Icon.Question)
+    box.setWindowTitle(title)
+    box.setText(text)
+    box.setStandardButtons(
+        QtWidgets.QMessageBox.StandardButton.Yes
+        | QtWidgets.QMessageBox.StandardButton.No
+    )
+    yes_btn = box.button(QtWidgets.QMessageBox.StandardButton.Yes)
+    yes_btn.setText(_("Yes"))
+    no_btn = box.button(QtWidgets.QMessageBox.StandardButton.No)
+    no_btn.setText(_("No"))
+    return box.exec()

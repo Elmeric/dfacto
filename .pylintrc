@@ -286,7 +286,7 @@ ignored-parents=
 max-args=5
 
 # Maximum number of attributes for a class (see R0902).
-max-attributes=7
+max-attributes=11
 
 # Maximum number of boolean expressions in an if statement (see R0916).
 max-bool-expr=5
@@ -423,7 +423,8 @@ disable=raw-checker-failed,
         suppressed-message,
         missing-class-docstring,
         missing-module-docstring,
-        missing-function-docstring
+        missing-function-docstring,
+        logging-fstring-interpolation
 
 
 # Enable the message, report, category or checker with the given id(s). You can
@@ -599,7 +600,7 @@ signature-mutators=
 
 # List of additional names supposed to be defined in builtins. Remember that
 # you should avoid defining new builtins when possible.
-additional-builtins=
+additional-builtins=_
 
 # Tells whether unused global variables should be treated as a violation.
 allow-global-unused-variables=yes
