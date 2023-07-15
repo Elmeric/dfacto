@@ -272,7 +272,10 @@ msgstr "Impossible d'ajouter un service au panier du client"
 #: src/dfacto/frontend/clientselector.py:296
 #: src/dfacto/frontend/clientselector.py:361
 #: src/dfacto/frontend/clientselector.py:463
-#: src/dfacto/frontend/clientselector.py:486
+#: src/dfacto/frontend/clientselector.py:486 src/dfacto/frontend/guimain.py:340
+#: src/dfacto/frontend/guimain.py:430 src/dfacto/frontend/guimain.py:453
+#: src/dfacto/frontend/guimain.py:629 src/dfacto/frontend/guimain.py:697
+#: src/dfacto/frontend/guimain.py:777
 #: src/dfacto/frontend/invoice_web_view.py:189
 #: src/dfacto/frontend/invoiceviewer.py:120
 #: src/dfacto/frontend/invoiceviewer.py:131
@@ -714,236 +717,169 @@ msgid "Loading database..."
 msgstr "Chargement de la base de données..."
 
 #: src/dfacto/frontend/guimain.py:339
+msgid "Edit company profile"
+msgstr "Modifier le profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:342
+msgid "Cannot edit your company profile"
+msgstr "Impossible de mettre à jour votre profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:368
 #, python-format
-msgid "Cannot edit your company profile - Reason is: %s"
-msgstr "Impossible de modifier le profil d'entreprise - La raison est : %s"
+msgid "Cannot update the %s company profile"
+msgstr "Impossible de mettre à jour le profil d'entreprise %s"
 
-#: src/dfacto/frontend/guimain.py:343 src/dfacto/frontend/guimain.py:370
-#: src/dfacto/frontend/guimain.py:425 src/dfacto/frontend/guimain.py:685
-#: src/dfacto/frontend/guimain.py:762
-msgid "Dfacto - Connection failed"
-msgstr "Dfacto - Échec de la connexion"
+#: src/dfacto/frontend/guimain.py:388
+msgid "Select company profile"
+msgstr "Choix d'un profil d'entreprise"
 
-#: src/dfacto/frontend/guimain.py:344
+#: src/dfacto/frontend/guimain.py:389
+msgid "No other company profiles available."
+msgstr "Pas d'autres profils d'entreprise disponibles."
+
+#: src/dfacto/frontend/guimain.py:390
+msgid "Use 'New company profile' to create one."
+msgstr "Utiliser 'Nouveau profil d'entreprise' pour en créer un."
+
+#: src/dfacto/frontend/guimain.py:428 src/dfacto/frontend/guimain.py:775
+msgid "Create new company profile"
+msgstr "Créer un nouveau profil d'entreprise"
+
+#: src/dfacto/frontend/guimain.py:429 src/dfacto/frontend/guimain.py:696
+#: src/dfacto/frontend/guimain.py:776
 #, python-format
-msgid ""
-"Cannot edit your company profile\n"
-"\n"
-"Reason is:\n"
-"%s"
-msgstr ""
-"Impossible de modifier votre profil d'entreprise\n"
-"\n"
-"La raison est :\n"
-"%s"
+msgid "Cannot create the %s company profile"
+msgstr "Impossible de créer un nouveau profil d'entreprise %s"
 
-#: src/dfacto/frontend/guimain.py:364
-#, python-format
-msgid "Cannot update the %s company profile - Reason is: %s"
-msgstr "Impossible de mettre à jour le profil d'entreprise %s - La raison est : %s"
-
-#: src/dfacto/frontend/guimain.py:371
-#, python-format
-msgid ""
-"Cannot update the %s company profile\n"
-"\n"
-"Reason is:\n"
-"%s"
-msgstr ""
-"Impossible de mettre à jour le profil d'entreprise %s\n"
-"\n"
-"La raison est :\n"
-"%s"
-
-#: src/dfacto/frontend/guimain.py:385
-msgid "Dfacto - Company profile selection"
-msgstr "Dfacto - Choix du profil d'entreprise"
-
-#: src/dfacto/frontend/guimain.py:386
-msgid ""
-"No other company profiles available.\n"
-"Use 'New company profile' to create one."
-msgstr ""
-"Pas d'autres profils d'entreprise disponibles.\n"
-"Utiliser 'Nouveau profil d'entreprise' pour en créer un."
-
-#: src/dfacto/frontend/guimain.py:419
-#, python-format
-msgid "Cannot create the %s company profile - Reason is: %s"
-msgstr "Impossible de créer un nouveau profil d'entreprise %s - La raison est : %s"
-
-#: src/dfacto/frontend/guimain.py:426
-#, python-format
-msgid ""
-"Cannot create the %s company profile\n"
-"\n"
-"Reason is:\n"
-"%s"
-msgstr ""
-"Impossible de créer un nouveau profil d'entreprise %s\n"
-"\n"
-"La raison est :\n"
-"%s"
-
-#: src/dfacto/frontend/guimain.py:435
+#: src/dfacto/frontend/guimain.py:446
 msgid "Selecting the company profile..."
 msgstr "Choix du profil d'entreprise"
 
-#: src/dfacto/frontend/guimain.py:436 src/dfacto/frontend/guimain.py:675
+#: src/dfacto/frontend/guimain.py:447 src/dfacto/frontend/guimain.py:692
 msgid "Connecting to database..."
 msgstr "Connexion à la base de donnée..."
 
-#: src/dfacto/frontend/guimain.py:442
+#: src/dfacto/frontend/guimain.py:452
 #, python-format
-msgid ""
-"Cannot select the %s company profile\n"
-"\n"
-"Reason is:\n"
-"%s"
-msgstr ""
-"Impossible de charger le profil d'entreprise %s\n"
-"\n"
-"La raison est :\n"
-"%s"
+msgid "Cannot select the %s company profile"
+msgstr "Impossible de charger le profil d'entreprise %s"
 
-#: src/dfacto/frontend/guimain.py:454
+#: src/dfacto/frontend/guimain.py:464
 #, python-format
 msgid "Connected to %s"
 msgstr "Connecté à %s"
 
-#: src/dfacto/frontend/guimain.py:455
+#: src/dfacto/frontend/guimain.py:465
 #, python-format
 msgid "Company profile %s is selected"
 msgstr "Le profil d'entreprise choisi est %s"
 
-#: src/dfacto/frontend/guimain.py:463 src/dfacto/frontend/guimain.py:482
+#: src/dfacto/frontend/guimain.py:473 src/dfacto/frontend/guimain.py:492
 msgid "No pending payments"
 msgstr "Pas de paiements en attente"
 
-#: src/dfacto/frontend/guimain.py:470 src/dfacto/frontend/guimain.py:489
+#: src/dfacto/frontend/guimain.py:480 src/dfacto/frontend/guimain.py:499
 #, python-format
 msgid "Pending payments: <strong>%s</strong>"
 msgstr "Paiements en attente : <strong>%s</strong>"
 
-#: src/dfacto/frontend/guimain.py:504 src/dfacto/frontend/guimain.py:522
+#: src/dfacto/frontend/guimain.py:514 src/dfacto/frontend/guimain.py:532
 msgid "Last quarter sales: "
 msgstr "Chiffre d'Affaire du dernier trimestre : "
 
-#: src/dfacto/frontend/guimain.py:505 src/dfacto/frontend/guimain.py:523
+#: src/dfacto/frontend/guimain.py:515 src/dfacto/frontend/guimain.py:533
 msgid "Current quarter sales: "
 msgstr "Chiffre d'Affaire du trimestre en cours : "
 
-#: src/dfacto/frontend/guimain.py:535
+#: src/dfacto/frontend/guimain.py:545
 msgid "Preferences..."
 msgstr "Préférences..."
 
-#: src/dfacto/frontend/guimain.py:546
+#: src/dfacto/frontend/guimain.py:556
 msgid "Designed and develop by"
 msgstr "Conçu et développé par"
 
-#: src/dfacto/frontend/guimain.py:547
+#: src/dfacto/frontend/guimain.py:557
 #, python-format
 msgid "Under %(license)s license"
 msgstr "Sous license %(license)s"
 
-#: src/dfacto/frontend/guimain.py:548
+#: src/dfacto/frontend/guimain.py:558
 msgid "Powered by"
 msgstr "Propulsé par"
 
-#: src/dfacto/frontend/guimain.py:549
+#: src/dfacto/frontend/guimain.py:559
 msgid "and"
 msgstr "et"
 
-#: src/dfacto/frontend/guimain.py:550
+#: src/dfacto/frontend/guimain.py:560
 msgid "Icons selection from"
 msgstr "Séléction d'icones issus de"
 
-#: src/dfacto/frontend/guimain.py:553
+#: src/dfacto/frontend/guimain.py:563
 #, python-format
 msgid "%(app_name)s - About"
 msgstr "%(app_name)s  - À propos"
 
-#: src/dfacto/frontend/guimain.py:619
+#: src/dfacto/frontend/guimain.py:627
 #, python-format
-msgid "%(app_name)s - Exit confirmation"
-msgstr "%(app_name)s - Confirmation"
+msgid "Exit confirmation"
+msgstr "Confirmer la sortie"
 
-#: src/dfacto/frontend/guimain.py:620
+#: src/dfacto/frontend/guimain.py:628
 #, python-format
-msgid "Cannot save the settings file (%s): quit anyway?"
-msgstr ""
-"Impossible de sauvegarder le fichier de péférences (%s) : quitter tout de"
+msgid "Cannot save the settings file: quit anyway?"
+msgstr "Impossible de sauvegarder le fichier de péférences : quitter tout de"
 " même ?"
 
-#: src/dfacto/frontend/guimain.py:669
+#: src/dfacto/frontend/guimain.py:686
 msgid "Selecting a company profile..."
 msgstr "Choix d'un profil d'entreprise"
 
-#: src/dfacto/frontend/guimain.py:672
+#: src/dfacto/frontend/guimain.py:689
 msgid "No company profile is selected: Dfacto is closing..."
 msgstr "Aucun profil d'entreprise choisi : Dfacto va s'arrêter..."
 
-#: src/dfacto/frontend/guimain.py:679
-#, python-format
-msgid "Cannot select the %s company profile - Reason is: %s"
-msgstr "Impossible de charger le profil d'entreprise %s - La raison est : %s"
+#: src/dfacto/frontend/guimain.py:695
+msgid "Connection failed"
+msgstr "Échec de la connexion"
 
-#: src/dfacto/frontend/guimain.py:686 src/dfacto/frontend/guimain.py:763
-#, python-format
-msgid ""
-"Cannot create the %(profile)s company profile\n"
-"\n"
-"Reason is:\n"
-"%(reason)s"
-msgstr ""
-"Impossible de créer le profil d'entreprise %(profile)s\n"
-"\n"
-"La raison est:\n"
-"%(reason)s"
-
-#: src/dfacto/frontend/guimain.py:691
+#: src/dfacto/frontend/guimain.py:709
 #, python-format
 msgid "Connected to %(database)s"
 msgstr "Connecté à %(database)s"
 
-#: src/dfacto/frontend/guimain.py:694
+#: src/dfacto/frontend/guimain.py:712
 #, python-format
 msgid "Company profile %(profile)s is selected"
 msgstr "Le profil d'entreprise choisi est %(profile)s"
 
-#: src/dfacto/frontend/guimain.py:757
-#, python-format
-msgid "Cannot create the %(profile)s company profile - Reason is: %(reason)s"
-msgstr ""
-"Impossible de créer le profil d'entreprise %(profile)s - La raison est : "
-"%(reason)s"
-
-#: src/dfacto/frontend/invoice_log_view.py:53
+#: src/dfacto/frontend/invoice_log_view.py:52
 #, python-format
 msgid "History of invoice %s"
 msgstr "Historique de la facture %s"
 
-#: src/dfacto/frontend/invoice_log_view.py:54
+#: src/dfacto/frontend/invoice_log_view.py:53
 msgid "Each date can be edited to fix datation errors"
 msgstr "Chaque date peut être modifiée pour corriger une erreur de datation"
 
-#: src/dfacto/frontend/invoice_log_view.py:79
+#: src/dfacto/frontend/invoice_log_view.py:78
 msgid "Created on"
 msgstr "Créée le"
 
-#: src/dfacto/frontend/invoice_log_view.py:80
+#: src/dfacto/frontend/invoice_log_view.py:79
 msgid "Issued on"
 msgstr "Émise le"
 
-#: src/dfacto/frontend/invoice_log_view.py:81
+#: src/dfacto/frontend/invoice_log_view.py:80
 msgid "Reminded on"
 msgstr "Relancée le"
 
-#: src/dfacto/frontend/invoice_log_view.py:82
+#: src/dfacto/frontend/invoice_log_view.py:81
 msgid "Paid on"
 msgstr "Payée le"
 
-#: src/dfacto/frontend/invoice_log_view.py:83
+#: src/dfacto/frontend/invoice_log_view.py:82
 msgid "Cancelled on"
 msgstr "Annulée le"
 
@@ -1356,10 +1292,4 @@ msgstr "Oui"
 #: src/dfacto/util/qtutil/__init__.py:499
 msgid "No"
 msgstr "Non"
-
-#~ msgid "Cannot mark invoice %s as"
-#~ msgstr "Impossible de marquer la facture %s comme"
-
-#~ msgid "A l'attention de :"
-#~ msgstr "For:"
 

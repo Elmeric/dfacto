@@ -334,15 +334,20 @@ class QtMainView(QtWidgets.QMainWindow):
     def do_edit_profile_action(self) -> None:
         # Retrieve the current company profile
         response = api.company.get_current()
+
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Edit company profile")
+        reason = _("Reason is:")
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                _("Cannot edit your company profile - Reason is: %s"), response.reason
-            )
+            msg = _("Cannot edit your company profile")
+            logger.warning(f"{msg} - {reason} {response.reason}")
             QtUtil.warning(
                 None,  # type: ignore
-                _("Dfacto - Connection failed"),
-                _("Cannot edit your company profile\n\nReason is:\n%s")
-                % response.reason,
+                f"{app_name} - {action}",
+                f"""
+                <p>{msg}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
+                """,
             )
             return
         current_profile = response.body
@@ -360,16 +365,15 @@ class QtMainView(QtWidgets.QMainWindow):
         # Update the company profile in the database (the Dfacto settings JSON file)
         response = api.company.update(current_profile.name, obj_in=company)
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                _("Cannot update the %s company profile - Reason is: %s"),
-                current_profile.name,
-                response.reason,
-            )
+            msg = _("Cannot update the %s company profile") % current_profile.name
+            logger.warning(f"{msg} - {reason} {response.reason}")
             QtUtil.warning(
                 None,  # type: ignore
-                _("Dfacto - Connection failed"),
-                _("Cannot update the %s company profile\n\nReason is:\n%s")
-                % (current_profile.name, response.reason),
+                f"{app_name} - {action}",
+                f"""
+                <p>{msg}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
+                """,
             )
             return
 
@@ -380,12 +384,17 @@ class QtMainView(QtWidgets.QMainWindow):
         companies = api.company.get_others().body
 
         if len(companies) <= 0:
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("Select company profile")
+            msg1 = _("No other company profiles available.")
+            msg2 = _("Use 'New company profile' to create one.")
             QtUtil.information(
                 None,  # type: ignore
-                _("Dfacto - Company profile selection"),
-                _(
-                    "No other company profiles available.\nUse 'New company profile' to create one."
-                ),
+                f"{app_name} - {action}",
+                f"""
+                <p>{msg1}</p>
+                <p>{msg2}</p>
+                """,
             )
             return
 
@@ -415,16 +424,18 @@ class QtMainView(QtWidgets.QMainWindow):
         # Add the new company profile to the database (the Dfacto settings JSON file)
         response = api.company.add(company)
         if response.status is not CommandStatus.COMPLETED:
-            logger.warning(
-                _("Cannot create the %s company profile - Reason is: %s"),
-                company.name,
-                response.reason,
-            )
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("Create new company profile")
+            msg = _("Cannot create the %s company profile") % company.name
+            reason = _("Reason is:")
+            logger.warning(f"{msg} - {reason} {response.reason}")
             QtUtil.warning(
                 None,  # type: ignore
-                _("Dfacto - Connection failed"),
-                _("Cannot create the %s company profile\n\nReason is:\n%s")
-                % (company.name, response.reason),
+                f"{app_name} - {action}",
+                f"""
+                <p>{msg}</p>
+                <p><strong>{reason} {response.reason}</strong></p>
+                """,
             )
             return
 
@@ -438,10 +449,9 @@ class QtMainView(QtWidgets.QMainWindow):
         response = api.company.select(company.name, is_new=is_new)
 
         if response.status is not CommandStatus.COMPLETED:
-            QtUtil.raise_fatal_error(
-                _("Cannot select the %s company profile\n\nReason is:\n%s")
-                % (company.name, response.reason)
-            )
+            msg = _("Cannot select the %s company profile") % company.name
+            reason = _("Reason is:")
+            QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
         self.company_btn.setText(company.name)
 
@@ -613,11 +623,17 @@ class QtMainView(QtWidgets.QMainWindow):
         try:
             Config.dfacto_settings.save()
         except SettingsError as e:
-            app_name = __about__.__title__
+            app_name = QtWidgets.QApplication.applicationName()
+            action = _("Exit confirmation")
+            question = _("Cannot save the settings file: quit anyway?")
+            reason = _("Reason is:")
             reply = QtUtil.question(
                 self,  # noqa
-                _("%(app_name)s - Exit confirmation") % {"app_name": app_name},
-                _("Cannot save the settings file (%s): quit anyway?") % e,
+                f"{app_name} - {action}",
+                f"""
+                <p>{question}</p>
+                <p><strong>{reason} {e}</strong></p>
+                """,
             )
             if reply == QtWidgets.QMessageBox.StandardButton.No:
                 # reject dialog close event
@@ -658,7 +674,8 @@ def qt_main(translations) -> int:
     app = QtWidgets.QApplication(sys.argv)
     app.setStyle(QtUtil.MyAppStyle())
     app.setStyleSheet("QSplitter::handle { background-color: gray }")
-    app.setApplicationName(__about__.__title__)
+    app_name = __about__.__title__
+    app.setApplicationName(app_name)
     app.setWindowIcon(QtGui.QIcon(f"{resources}/invoice-32.ico"))
     f = app.font()
     fSize = f.pointSize()
@@ -675,16 +692,17 @@ def qt_main(translations) -> int:
     logger.info(_("Connecting to database..."))
     response = api.company.select(company_profile.name, is_new=is_new)
     if response.status is not CommandStatus.COMPLETED:
-        logger.warning(
-            _("Cannot select the %s company profile - Reason is: %s"),
-            company_profile.name,
-            response.reason,
-        )
+        action = _("Connection failed")
+        msg = _("Cannot create the %s company profile") % company_profile.name
+        reason = _("Reason is:")
+        logger.warning(f"{msg} - {reason} {response.reason}")
         QtUtil.warning(
             None,  # type: ignore
-            _("Dfacto - Connection failed"),
-            _("Cannot create the %(profile)s company profile\n\nReason is:\n%(reason)s")
-            % {"profile": company_profile.name, "reason": response.reason},
+            f"{app_name} - {action}",
+            f"""
+            <p>{msg}</p>
+            <p><strong>{reason} {response.reason}</strong></p>
+            """,
         )
         return 1
     logger.info(
@@ -753,20 +771,19 @@ def _select_company_profile() -> tuple[Optional[schemas.Company], bool]:
     # Add the new company profile to the database (the Dfacto settings JSON file)
     response = api.company.add(new_company)
     if response.status is not CommandStatus.COMPLETED:
-        logger.warning(
-            _("Cannot create the %(profile)s company profile - Reason is: %(reason)s"),
-            {"profile": new_company.name, "reason": response.reason},
-        )
+        app_name = QtWidgets.QApplication.applicationName()
+        action = _("Create new company profile")
+        msg = _("Cannot create the %s company profile") % new_company.name
+        reason = _("Reason is:")
+        logger.warning(f"{msg} - {reason} {response.reason}")
         QtUtil.warning(
             None,  # type: ignore
-            _("Dfacto - Connection failed"),
-            _("Cannot create the %(profile)s company profile\n\nReason is:\n%(reason)s")
-            % {"profile": new_company.name, "reason": response.reason},
+            f"{app_name} - {action}",
+            f"""
+            <p>{msg}</p>
+            <p><strong>{reason} {response.reason}</strong></p>
+            """,
         )
         return None, False
 
     return response.body, True
-
-
-if __name__ == "__main__":
-    qt_main()
