@@ -5,6 +5,8 @@ to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [1.1.0] - 2023-07-18
+
 ### Fixed
 - ESC key do no more close the application if production mode
 
@@ -23,7 +25,8 @@ to [Semantic Versioning].
 - First release.
 
 
-[unreleased]: https://github.com/Elmeric/dfacto/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/Elmeric/dfacto/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/Elmeric/dfacto/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Elmeric/dfacto/compare/v0.0.1...v1.0.0
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
