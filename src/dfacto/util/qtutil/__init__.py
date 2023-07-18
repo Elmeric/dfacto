@@ -18,6 +18,7 @@ It provides:
     - A QSyntaxHighlighter that highlight all occurrences of a string pattern.
     - A basic textual filter input widget.
 """
+import sys
 from typing import Callable, Optional, Union
 
 import PyQt6.QtCore as QtCore
@@ -52,6 +53,7 @@ __all__ = [
     "warning",
     "critical",
     "question",
+    "select_locale",
 ]
 
 # def autoLayoutWithLabel(
@@ -498,3 +500,41 @@ def question(
     no_btn = box.button(QtWidgets.QMessageBox.StandardButton.No)
     no_btn.setText(_("No"))
     return box.exec()
+
+
+class LocaleSelector(QtWidgets.QDialog):
+    def __init__(self, icon: str, parent: QtWidgets.QWidget = None) -> None:
+        super().__init__(parent)
+
+        self.setWindowFlags(
+            QtCore.Qt.WindowType.Dialog
+            | QtCore.Qt.WindowType.MSWindowsFixedSizeDialogHint
+        )
+        self.setWindowTitle("Dfacto - Select you language")
+        self.setWindowIcon(QtGui.QIcon(icon))
+        self.setFixedWidth(300)
+
+        self.locale_cmb = QtWidgets.QComboBox()
+        self.locale_cmb.addItem("English", "en_US")
+        self.locale_cmb.addItem("Français", "fr_FR")
+
+        self.button_box = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.StandardButton.Ok,
+            QtCore.Qt.Orientation.Horizontal,
+            self,
+        )
+        self.button_box.accepted.connect(self.accept)
+
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.addWidget(self.locale_cmb)
+        main_layout.addWidget(self.button_box)
+
+        self.setLayout(main_layout)
+
+
+def select_locale(icon: str) -> str:
+    app = QtWidgets.QApplication([""])
+    dialog = LocaleSelector(icon)
+    dialog.show()
+    app.exec()
+    return dialog.locale_cmb.currentData()

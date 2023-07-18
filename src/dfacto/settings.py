@@ -81,7 +81,8 @@ class DfactoSettings(Settings):
     qt_scale_factor: Setting = Setting(default_value="1.0")
     font_size: Setting = Setting(default_value=2)
     # locale: Setting = Setting(default_value="en_US")
-    locale: Setting = Setting(default_value="fr_FR")
+    # locale: Setting = Setting(default_value="fr_FR")
+    locale: Setting = Setting(default_value=None)
 
     def __init__(self, app_name: str) -> None:
         # Retrieve or create the user directories for the application.

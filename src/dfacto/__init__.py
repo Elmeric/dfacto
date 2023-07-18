@@ -22,6 +22,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
 from dfacto.util.logutil import LogConfig
+from dfacto.util.qtutil import select_locale
+from dfacto.util.settings import SettingsError
 
 if TYPE_CHECKING:
 
@@ -68,12 +70,23 @@ def run_main() -> None:
     )
     log_config.init_logging()
 
-    # Load the language from settings and install the translations
+    # Select UI language: use locale defined in the settings or ask user if None
+    locale_ = dfacto_settings.locale
+    if locale_ is None:
+        locale_ = select_locale(f"{dfacto_settings.resources}/invoice-32.ico")
+        dfacto_settings.locale = locale_
+        try:
+            dfacto_settings.save()
+        except SettingsError as e:
+            logger.warning(
+                f"Cannot save the selected locale in settings file - Reason is: {e}"
+            )
+
+    # Load and install the translation for the selected locale
     if IS_FROZEN:
         locales_dir = Path(__file__).resolve().parent.parent / "locales"
     else:
         locales_dir = Path(__file__).resolve().parent.parent.parent / "locales"
-    locale_ = dfacto_settings.locale
     translations = gettext.translation(
         "dfacto",
         locales_dir,

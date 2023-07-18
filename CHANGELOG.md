@@ -6,13 +6,17 @@ to [Semantic Versioning].
 ## [Unreleased]
 
 ### Fixed
+- ESC key do no more close the application if production mode
 
 ### Changed
+- Ask for the UI language to use at startup if none set in the settings file
 
 ### Documentation
 
 ### Miscellaneous
 - Separate general initializations outside the gui modules
+- Refactor code to support strings internationalization and currency, date and number localization
+- Bump all dependencies to their latest version
 
 ## [1.0.0] - 2023-06-20
 

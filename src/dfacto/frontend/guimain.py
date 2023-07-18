@@ -21,6 +21,7 @@ from babel.numbers import format_currency
 import dfacto.__about__ as __about__
 
 # Models
+from dfacto import DEV_MODE
 from dfacto import settings as Config
 from dfacto.backend import api, schemas
 from dfacto.backend.api.command import CommandStatus
@@ -597,7 +598,7 @@ class QtMainView(QtWidgets.QMainWindow):
         Args:
             e: keyboard's key pressed event
         """
-        if e.key() == QtCore.Qt.Key.Key_Escape:
+        if e.key() == QtCore.Qt.Key.Key_Escape and DEV_MODE:
             self.close()
         else:
             super().keyPressEvent(e)
