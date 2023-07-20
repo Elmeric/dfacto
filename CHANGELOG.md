@@ -5,6 +5,8 @@ to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [1.1.1] - 2023-07-20
+
 ### Fixed
 - Fix wrong path to translation files in production mode
 
@@ -28,7 +30,8 @@ to [Semantic Versioning].
 - First release.
 
 
-[unreleased]: https://github.com/Elmeric/dfacto/compare/v1.1.0...HEAD
+[unreleased]: https://github.com/Elmeric/dfacto/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/Elmeric/dfacto/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Elmeric/dfacto/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Elmeric/dfacto/compare/v0.0.1...v1.0.0
 
