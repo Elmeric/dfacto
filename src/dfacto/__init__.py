@@ -83,10 +83,7 @@ def run_main() -> None:
             )
 
     # Load and install the translation for the selected locale
-    if IS_FROZEN:
-        locales_dir = Path(__file__).resolve().parent.parent / "locales"
-    else:
-        locales_dir = Path(__file__).resolve().parent.parent.parent / "locales"
+    locales_dir = Path(__file__).resolve().parent.parent.parent / "locales"
     translations = gettext.translation(
         "dfacto",
         locales_dir,
@@ -100,7 +97,10 @@ def run_main() -> None:
 
     app_name = __about__.__title__
     logger.info(_("%(app_name)s is starting..."), {"app_name": app_name})
-    logger.info(_("Using preferred locale: %(locale)s"), {"locale": locale_})
+    logger.info(
+        _("Using preferred locale: %(locale)s in %(dir)s"),
+        {"locale": locale_, "dir": locales_dir.as_posix()},
+    )
 
     # Log the running mode for information.
     if IS_FROZEN:

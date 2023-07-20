@@ -5,6 +5,9 @@ to [Semantic Versioning].
 
 ## [Unreleased]
 
+### Fixed
+- Fix wrong path to translation files in production mode
+
 ## [1.1.0] - 2023-07-18
 
 ### Fixed

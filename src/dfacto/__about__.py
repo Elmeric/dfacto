@@ -25,7 +25,7 @@ __title__ = "Dfacto"
 __summary__ = _("Your invoicing assistant!")
 __uri__ = "https://github.com/Elmeric/dfacto"
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 __author__ = "Eric Lemoine"
 __email__ = "erik.lemoine@gmail.com"
