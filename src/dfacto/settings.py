@@ -38,7 +38,7 @@ class DfactoSettings(Settings):
         last_profile: name of the last opened company profile.
         profiles: a mapping of profile names to profiles descripion already created.
         lastInvoiceNamingTemplate: key of the last selected invoice naming template.
-        lastDestinationNamingTemplate: key of the last selected invoice' destination
+        lastDestinationNamingTemplate: key of the last selected invoice destination
             naming template.
         default_company_folder: Path to the default folder where to find or store
             company profiles.
@@ -51,7 +51,7 @@ class DfactoSettings(Settings):
         font_size: The base font size to use in the Dfacto application.
 
     Attributes:
-        appDirs: A WinAppDirs NamedTuple containing the user app directories paths.
+        app_dirs: A WinAppDirs NamedTuple containing the user app directories paths.
         resources: Path to the UI resources directory (images, icons,..).
         templates: Path to the Jinja templates directory.
     """
@@ -60,7 +60,7 @@ class DfactoSettings(Settings):
     resources: Path
     templates: Path
 
-    _DEFAULT_LOGLEVEL = "DEBUG"
+    _DEFAULT_LOGLEVEL = "INFO"
 
     last_profile: Setting = Setting(default_value=None)
     profiles: Setting = Setting(default_value=None)

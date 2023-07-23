@@ -36,6 +36,7 @@ from .clientselector import ClientSelector
 from .companydialogs import AddCompanyDialog, SelectCompanyDialog
 from .invoiceviewer import InvoiceTableModel, InvoiceViewer
 from .serviceselector import ServiceSelector
+from .settingsview import SettingsView
 
 __all__ = ["qt_main"]
 
@@ -538,15 +539,14 @@ class QtMainView(QtWidgets.QMainWindow):
 
     @QtCore.pyqtSlot()
     def do_preferences_action(self) -> None:
-        # TODO: Create a settings dialog.
         """Show the Dfacto settings dialog.
 
         If dialog is accepted, the settings changes are saved.
         """
         self.show_status_message(_("Preferences..."))
-        # form = SettingsView(parent=self)
-        # if form.exec_():
-        #     Config.dfacto_settings.save()
+        form = SettingsView(parent=self)
+        if form.exec():
+            Config.dfacto_settings.save()
 
     @QtCore.pyqtSlot()
     def do_about_action(self) -> None:

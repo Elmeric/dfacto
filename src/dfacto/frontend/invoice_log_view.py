@@ -101,6 +101,12 @@ class StatusLogEditor(QtWidgets.QDialog):
             QtCore.Qt.Orientation.Horizontal,
             self,
         )
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText(
+            _("OK")
+        )
+        self.button_box.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        ).setText(_("Cancel"))
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 

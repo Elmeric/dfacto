@@ -932,7 +932,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         due_date = (
             None
             if invoice.status is InvoiceStatus.DRAFT and mode is self.HtmlMode.SHOW
-            else date_ + timedelta(days=30)
+            else date_ + timedelta(days=Config.dfacto_settings.due_date_delta)
         )
         stamp, tag = self._get_stamp(invoice, mode)
 
