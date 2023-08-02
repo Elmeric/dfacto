@@ -357,6 +357,7 @@ def mock_service_model(mock_dfacto_model, monkeypatch):
 
 @dataclasses.dataclass
 class TestData:
+    globals: list[models.Globals]
     vat_rates: list[models.VatRate]
     services: list[models.Service]
     clients: list[models.Client]
@@ -389,8 +390,8 @@ class TestData:
 
 @pytest.fixture
 def init_data(dbsession: Session) -> TestData:
-    # VAT rates (5 preset rates, 3 custom rates)
     init_db_data(dbsession)
+    # VAT rates (5 preset rates, 3 custom rates)
     for i in range(3):
         vat_rate = models.VatRate(
             name=f"Rate {i + 1}",
@@ -400,6 +401,10 @@ def init_data(dbsession: Session) -> TestData:
     dbsession.commit()
     vat_rates = cast(
         list[models.VatRate], dbsession.scalars(select(models.VatRate)).all()
+    )
+    # Globals
+    globals_ = cast(
+        list[models.Globals], dbsession.scalars(select(models.Globals)).all()
     )
     # Services
     for i in range(5):
@@ -430,7 +435,9 @@ def init_data(dbsession: Session) -> TestData:
     # Invoices (empty)
     for i in range(5):
         invoice = models.Invoice(
-            client_id=clients[i % 5].id, status=models.InvoiceStatus(i + 1)
+            client_id=clients[i % 5].id,
+            globals_id=1,
+            status=models.InvoiceStatus(i + 1),
         )
         dbsession.add(invoice)
         dbsession.flush([invoice])
@@ -474,6 +481,7 @@ def init_data(dbsession: Session) -> TestData:
     items = cast(list[models.Item], dbsession.scalars(select(models.Item)).all())
 
     return TestData(
+        globals=globals_,
         vat_rates=vat_rates,
         services=services,
         clients=clients,
@@ -519,8 +527,17 @@ class FakeORMBasket(FakeORMModel):
 
 
 @dataclasses.dataclass
+class FakeORMGlobals(FakeORMModel):
+    due_delta: int = 30
+    penalty_rate: Decimal = Decimal("12.0")
+    discount_rate: Decimal = Decimal("1.5")
+    is_current: bool = True
+
+
+@dataclasses.dataclass
 class FakeORMInvoice(FakeORMModel):
     client_id: int = 1
+    globals_id: int = 1
     status: models.InvoiceStatus = models.InvoiceStatus.DRAFT
 
 

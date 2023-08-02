@@ -10,7 +10,15 @@ from .base import Amount, BaseSchema
 from .basket import Basket, BasketCreate, BasketInDB, BasketUpdate
 from .client import Address, Client, ClientCreate, ClientInDB, ClientUpdate
 from .company import Company, CompanyCreate, CompanyInDB, CompanyUpdate
-from .invoice import Invoice, InvoiceCreate, InvoiceInDB, InvoiceUpdate, StatusLog
+from .invoice import (
+    Globals,
+    GlobalsCreate,
+    Invoice,
+    InvoiceCreate,
+    InvoiceInDB,
+    InvoiceUpdate,
+    StatusLog,
+)
 from .item import Item, ItemCreate, ItemInDB, ItemUpdate
 from .service import Service, ServiceCreate, ServiceInDB, ServiceKey, ServiceUpdate
 from .vat_rate import VatRate, VatRateCreate, VatRateInDB, VatRateUpdate
@@ -36,6 +44,9 @@ __all__ = [
     "Invoice",
     "InvoiceCreate",
     "InvoiceUpdate",
+    "StatusLog",
+    "Globals",
+    "GlobalsCreate",
     "Company",
     "CompanyCreate",
     "CompanyUpdate",

@@ -3,9 +3,9 @@
 #
 # This source code is licensed under the BSD-style license found in the
 # LICENSE file in the root directory of this source tree.
-
 import enum
 from datetime import datetime
+from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import ForeignKey
@@ -44,8 +44,10 @@ class Invoice(BaseModel):
 
     id: Mapped[intpk] = mapped_column(init=False)
     client_id: Mapped[int] = mapped_column(ForeignKey("client.id"))
+    globals_id: Mapped[int] = mapped_column(ForeignKey("globals.id"))
     status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
 
+    globals: Mapped["Globals"] = relationship(init=False)
     client: Mapped["Client"] = relationship(back_populates="invoices", init=False)
     items: Mapped[list["Item"]] = relationship(
         back_populates="invoice",
@@ -68,3 +70,14 @@ class StatusLog(BaseModel):
     status: Mapped[InvoiceStatus] = mapped_column(default=InvoiceStatus.DRAFT)
 
     invoice: Mapped["Invoice"] = relationship(back_populates="status_log", init=False)
+
+
+class Globals(BaseModel):
+    # pylint: disable=too-few-public-methods
+    __tablename__ = "globals"
+
+    id: Mapped[intpk] = mapped_column(init=False)
+    due_delta: Mapped[int]
+    penalty_rate: Mapped[Decimal]
+    discount_rate: Mapped[Decimal]
+    is_current: Mapped[bool] = mapped_column(default=True)

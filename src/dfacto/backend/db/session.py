@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import sqlite3 as sqlite
+from decimal import Decimal
 from pathlib import Path
 from typing import TypedDict
 
@@ -31,6 +32,17 @@ PRESET_RATES: list[PresetRate] = [
 ]
 
 
+class PresetGlobals(TypedDict):
+    due_delta: int
+    penalty_rate: Decimal
+    discount_rate: Decimal
+
+
+PRESET_GLOBALS: list[PresetGlobals] = [
+    {"due_delta": 30, "penalty_rate": Decimal("12.0"), "discount_rate": Decimal("1.5")},
+]
+
+
 def _set_sqlite_pragma(dbapi_connection, _connection_record):  # type: ignore
     if isinstance(dbapi_connection, sqlite.Connection):
         cursor = dbapi_connection.cursor()
@@ -46,7 +58,10 @@ def init_db_data(session: Session) -> None:
     if session.scalars(sa.select(models.VatRate)).first() is None:
         # No VAT rates in the database: add the presets and mark "taux zéro" as default.
         session.execute(sa.insert(models.VatRate), PRESET_RATES)
-        session.commit()
+    if session.scalars(sa.select(models.Globals)).first() is None:
+        # No invoices'globals in the database: add them.
+        session.execute(sa.insert(models.Globals), PRESET_GLOBALS)
+    session.commit()
 
 
 def _init_database(engine: sa.Engine) -> None:

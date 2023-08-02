@@ -24,6 +24,7 @@ from dfacto.backend.util import DatetimeRange, Period, PeriodFilter
 from dfacto.util import qtutil as QtUtil
 
 from . import get_current_company
+from .globals_editor import GlobalsEditor
 from .invoice_log_view import StatusLogEditor
 from .invoice_web_view import InvoiceWebViewer
 
@@ -336,7 +337,6 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
         row = self.rowCount()
         self.beginInsertRows(QtCore.QModelIndex(), row, row + len(invoices) - 1)
 
-        delta = Config.dfacto_settings.due_date_delta
         one_late = False
         pending_payments = schemas.Amount()
         last_quarter_sales = schemas.Amount()
@@ -351,6 +351,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
                 if status is InvoiceStatus.DRAFT
                 else invoice.issued_on
             )
+            delta = invoice.globals.due_delta
             is_late = False
             if status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
                 is_late = date_ + timedelta(days=delta) < datetime.now()
@@ -421,7 +422,7 @@ class InvoiceTableModel(QtCore.QAbstractTableModel):
             )
             is_late = False
             if invoice.status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
-                delta = Config.dfacto_settings.due_date_delta
+                delta = invoice.globals.due_delta
                 is_late = date_ + timedelta(days=delta) < datetime.now()
             self._invoices[invoice.id] = (
                 invoice.id,
@@ -618,14 +619,21 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             24, QtCore.Qt.TransformationMode.SmoothTransformation
         )
 
+        icon_size = QtCore.QSize(32, 32)
+        small_icon_size = QtCore.QSize(24, 24)
+
         self.header_lbl = QtWidgets.QLabel(_("INVOICES"))
         self.header_lbl.setMaximumHeight(32)
+        self.glob_btn = QtWidgets.QPushButton()
+        self.glob_btn.setFlat(True)
+        self.glob_btn.setIconSize(small_icon_size)
+        self.glob_btn.setIcon(QtGui.QIcon(f"{resources}/settings.png"))
+        tip = _("Edit invoices general information")
+        self.glob_btn.setToolTip(tip)
+        self.glob_btn.setStatusTip(tip)
         self.client_pix = QtWidgets.QLabel()
         self.client_pix.setPixmap(self.active_pix)
         self.client_lbl = QtWidgets.QLabel()
-
-        icon_size = QtCore.QSize(32, 32)
-        small_icon_size = QtCore.QSize(24, 24)
 
         self.all_btn = QtWidgets.QPushButton()
         self.all_btn.setCheckable(True)
@@ -752,6 +760,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
         header_layout.setSpacing(5)
         header_layout.addWidget(self.header_lbl)
         header_layout.addStretch()
+        header_layout.addWidget(self.glob_btn)
         header_layout.addWidget(self.client_pix)
         header_layout.addWidget(self.client_lbl)
         header.setLayout(header_layout)
@@ -828,6 +837,7 @@ class InvoiceViewer(QtUtil.QFramedWidget):
 
         self._invoice_table.selectionModel().currentChanged.connect(self.show_buttons)
 
+        self.glob_btn.clicked.connect(self.edit_globals)
         self.basket_btn.clicked.connect(self.basket_from_invoice)
         self.show_btn.clicked.connect(
             lambda: self._open_html_view(mode=api.client.HtmlMode.SHOW)
@@ -908,6 +918,31 @@ class InvoiceViewer(QtUtil.QFramedWidget):
             self._move_in_basket(invoice)
         else:
             self._copy_in_basket(invoice)
+
+    @QtCore.pyqtSlot()
+    def edit_globals(self) -> None:
+        response = api.client.get_current_globals()
+
+        if response.status is not CommandStatus.COMPLETED:
+            msg = _("Cannot retrieve invoices general information")
+            reason = _("Reason is:")
+            QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
+
+        globals_: schemas.Globals = response.body
+
+        a_dialog = GlobalsEditor(globals_)
+
+        if a_dialog.exec():
+            print(a_dialog.globals)
+            response = api.client.create_globals_revision(
+                a_dialog.globals, previous_globals_id=globals_.id
+            )
+            if response.status is CommandStatus.COMPLETED:
+                return
+
+            msg = _("Cannot create a new revision of invoices general information")
+            reason = _("Reason is:")
+            QtUtil.raise_fatal_error(f"{msg} - {reason} {response.reason}")
 
     @QtCore.pyqtSlot()
     def show_history(self) -> None:

@@ -28,7 +28,7 @@ class _InvoiceDefaultsBase(BaseSchema[models.Invoice]):
 
 @dataclass
 class InvoiceCreate(_InvoiceBase):
-    pass
+    globals_id: int
 
 
 @dataclass
@@ -63,10 +63,46 @@ class StatusLog(BaseSchema[models.StatusLog]):
 
 
 @dataclass
+class _GlobalsBase(BaseSchema[models.Globals]):
+    due_delta: int
+    penalty_rate: Decimal
+    discount_rate: Decimal
+
+
+@dataclass
+class GlobalsCreate(_GlobalsBase):
+    pass
+
+
+@dataclass
+class _GlobalsInDBBase(_GlobalsBase):
+    id: int
+
+
+@dataclass
+class Globals(_GlobalsInDBBase):
+    due_delta: int
+    penalty_rate: Decimal
+    discount_rate: Decimal
+    is_current: bool
+
+    @classmethod
+    def from_orm(cls, orm_obj: models.Globals) -> "Globals":
+        return cls(
+            id=orm_obj.id,
+            due_delta=orm_obj.due_delta,
+            penalty_rate=orm_obj.penalty_rate,
+            discount_rate=orm_obj.discount_rate,
+            is_current=orm_obj.is_current,
+        )
+
+
+@dataclass
 class Invoice(_InvoiceInDBBase):
     items: list[Item]
     status_log: dict[models.InvoiceStatus, StatusLog]
     client: Client
+    globals: Globals
 
     @property
     def code(self) -> str:
@@ -137,6 +173,7 @@ class Invoice(_InvoiceInDBBase):
                 log.status: StatusLog.from_orm(log) for log in orm_obj.status_log
             },
             client=Client.from_orm(orm_obj.client),
+            globals=Globals.from_orm(orm_obj.globals),
         )
 
 

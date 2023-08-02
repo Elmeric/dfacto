@@ -94,7 +94,7 @@ def test_crud_create(dbsession, init_data, mock_datetime_now, mock_date_today):
     client = init_data.clients[1]
 
     invoice = crud.invoice.create(
-        dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id)
+        dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id, globals_id=1)
     )
 
     assert invoice.id is not None
@@ -132,7 +132,7 @@ def test_crud_create_error(dbsession, init_data, mock_commit):
 
     with pytest.raises(crud.CrudError):
         _invoice = crud.invoice.create(
-            dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id)
+            dbsession, obj_in=schemas.InvoiceCreate(client_id=client.id, globals_id=1)
         )
     assert len(client.invoices) == initial_invoices_count
     assert (
@@ -161,7 +161,7 @@ def test_crud_invoice_from_basket(
     items_count = len(basket.items)
     assert items_count > 0
 
-    invoice = crud.invoice.invoice_from_basket(dbsession, client.basket)
+    invoice = crud.invoice.invoice_from_basket(dbsession, client.basket, globals_id=1)
 
     assert invoice.id is not None
     assert invoice.client_id == client.id
@@ -198,7 +198,9 @@ def test_crud_invoice_from_basket_error(dbsession, init_data, mock_commit):
     initial_log_count = len(dbsession.scalars(sa.select(models.StatusLog)).all())
 
     with pytest.raises(crud.CrudError):
-        _invoice = crud.invoice.invoice_from_basket(dbsession, client.basket)
+        _invoice = crud.invoice.invoice_from_basket(
+            dbsession, client.basket, globals_id=1
+        )
     assert len(client.invoices) == initial_invoices_count
     assert (
         len(

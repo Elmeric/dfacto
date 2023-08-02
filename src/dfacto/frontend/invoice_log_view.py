@@ -75,11 +75,11 @@ class StatusLogEditor(QtWidgets.QDialog):
         )
         self._date_editors: dict[InvoiceStatus, QtWidgets.QDateEdit] = dict()
         labels = {
-            InvoiceStatus.DRAFT: _("Created on"),
-            InvoiceStatus.EMITTED: _("Issued on"),
-            InvoiceStatus.REMINDED: _("Reminded on"),
-            InvoiceStatus.PAID: _("Paid on"),
-            InvoiceStatus.CANCELLED: _("Cancelled on"),
+            InvoiceStatus.DRAFT: _("Created on:"),
+            InvoiceStatus.EMITTED: _("Issued on:"),
+            InvoiceStatus.REMINDED: _("Reminded on:"),
+            InvoiceStatus.PAID: _("Paid on:"),
+            InvoiceStatus.CANCELLED: _("Cancelled on:"),
         }
         self._previous_status: dict[InvoiceStatus, Optional[InvoiceStatus]] = {}
         prev_status = None
@@ -93,7 +93,7 @@ class StatusLogEditor(QtWidgets.QDialog):
             if status in (InvoiceStatus.EMITTED, InvoiceStatus.REMINDED):
                 date_edit.setEnabled(False)
             date_edit.dateChanged.connect(self.check_date)
-            log_layout.addRow(f"<strong>{labels[status]}:</strong>", date_edit)
+            log_layout.addRow(f"<strong>{labels[status]}</strong>", date_edit)
 
         self.button_box = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok

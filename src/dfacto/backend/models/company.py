@@ -21,5 +21,3 @@ class Company:
     siret: str = ""
     rcs: str = ""
     no_vat: bool = False
-    penalty_rate: str = "12.00"
-    discount_rate: str = "1.50"

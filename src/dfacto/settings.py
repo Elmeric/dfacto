@@ -74,7 +74,6 @@ class DfactoSettings(Settings):
     # default_value="C:/Users/T0018179/MyApp/Git/home/portable/DFacto"
     # )
     default_company_folder = Setting(default_value="F:/Users/Documents/Dfacto")
-    due_date_delta = Setting(default_value=30)
     log_level: Setting = Setting(default_value=_DEFAULT_LOGLEVEL)
     window_position: Setting = Setting(default_value=(0, 0))
     window_size: Setting = Setting(default_value=(1600, 800))

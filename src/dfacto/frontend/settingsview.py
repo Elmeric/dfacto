@@ -72,17 +72,6 @@ class SettingsView(QtWidgets.QDialog):
             lambda path: self.default_dir_selector.setText(path)
         )
 
-        # due_lbl = QtWidgets.QLabel(_("Due date delta:"))
-        # self.due_spn = QtWidgets.QSpinBox()
-        # self.due_spn.setRange(0, 180)
-        # self.due_spn.setSingleStep(30)
-        # self.due_spn.setMaximumWidth(100)
-        # tip = _(
-        #     "Delta from invoice issue date, in days"
-        # )
-        # self.due_spn.setToolTip(tip)
-        # self.due_spn.setStatusTip(tip)
-
         info_lbl = QtWidgets.QLabel(
             _("(Change to these settings will be applied on next start)")
         )
@@ -142,8 +131,6 @@ class SettingsView(QtWidgets.QDialog):
 
         edit_layout = QtWidgets.QGridLayout()
         edit_layout.addWidget(self.default_dir_selector, 0, 0, 1, 3)
-        # edit_layout.addWidget(due_lbl, 1, 0)
-        # edit_layout.addWidget(self.due_spn, 1, 1, 1, 1)
         vertical_spacer = QtWidgets.QSpacerItem(
             20,
             40,
@@ -172,7 +159,6 @@ class SettingsView(QtWidgets.QDialog):
         self.setLayout(edit_layout)
 
         self.default_dir_selector.setText(Config.dfacto_settings.default_company_folder)
-        # self.due_spn.setValue(Config.dfacto_settings.due_date_delta)
         self.log_level_cmb.setCurrentText(Config.dfacto_settings.log_level)
         self.font_spn.setValue(Config.dfacto_settings.font_size)
         self.scale_spn.setValue(float(Config.dfacto_settings.qt_scale_factor))
@@ -181,7 +167,6 @@ class SettingsView(QtWidgets.QDialog):
     def accept(self):
         """Apply the new settings and leave the dialog"""
         Config.dfacto_settings.default_company_folder = self.default_dir_selector.text()
-        # Config.dfacto_settings.due_date_delta = self.due_spn.value()
         Config.dfacto_settings.qt_scale_factor = str(self.scale_spn.value())
         Config.dfacto_settings.log_level = self.log_level_cmb.currentText()
         Config.dfacto_settings.font_size = self.font_spn.value()
