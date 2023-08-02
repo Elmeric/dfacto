@@ -226,6 +226,18 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         body = [schemas.Invoice.from_orm(invoice) for invoice in invoices]
         return CommandResponse(CommandStatus.COMPLETED, body=body)
 
+    @command
+    def get_current_globals(self) -> CommandResponse:
+        try:
+            globals_ = crud.invoice.get_current_globals(self.session)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"GET-CURRENT-GLOBALS - SQL or database error: {exc}",
+            )
+        body = schemas.Globals.from_orm(globals_)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
+
     def rename(self, obj_id: int, name: str) -> CommandResponse:
         return self.update(obj_id, obj_in=schemas.ClientUpdate(name=name))
 
@@ -547,8 +559,16 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     @command
     def create_invoice(self, obj_id: int) -> CommandResponse:
         try:
+            globals_ = crud.invoice.get_current_globals(self.session)
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CREATE-INVOICE - SQL or database error: {exc}",
+            )
+
+        try:
             invoice = crud.invoice.create(
-                self.session, obj_in=schemas.InvoiceCreate(obj_id)
+                self.session, obj_in=schemas.InvoiceCreate(obj_id, globals_.id)
             )
         except crud.CrudError as exc:
             return CommandResponse(
@@ -564,6 +584,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
     ) -> CommandResponse:
         try:
             basket = crud.client.get_basket(self.session, obj_id)
+            globals_ = crud.invoice.get_current_globals(self.session)
         except crud.CrudError as exc:
             return CommandResponse(
                 CommandStatus.FAILED,
@@ -581,7 +602,7 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
 
         try:
             invoice = crud.invoice.invoice_from_basket(
-                self.session, basket, clear_basket=clear_basket
+                self.session, basket, globals_.id, clear_basket=clear_basket
             )
         except crud.CrudError as exc:
             return CommandResponse(
@@ -932,16 +953,18 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
         due_date = (
             None
             if invoice.status is InvoiceStatus.DRAFT and mode is self.HtmlMode.SHOW
-            else date_ + timedelta(days=Config.dfacto_settings.due_date_delta)
+            else date_ + timedelta(days=invoice.globals.due_delta)
         )
         stamp, tag = self._get_stamp(invoice, mode)
 
         locale = Config.dfacto_settings.locale
         penalty_rate = format_percent(
-            float(company.penalty_rate) / 100, locale=locale, decimal_quantization=False
+            invoice.globals.penalty_rate / 100,
+            locale=locale,
+            decimal_quantization=False,
         )
         discount_rate = format_percent(
-            float(company.discount_rate) / 100,
+            invoice.globals.discount_rate / 100,
             locale=locale,
             decimal_quantization=False,
         )
@@ -1115,6 +1138,26 @@ class ClientModel(DFactoModel[crud.CRUDClient, schemas.Client]):
                 f"of invoice {invoice_id} : {exc}",
             )
         body = schemas.Invoice.from_orm(invoice)
+        return CommandResponse(CommandStatus.COMPLETED, body=body)
+
+    @command
+    def create_globals_revision(
+        self,
+        obj_in: schemas.GlobalsCreate,
+        *,
+        previous_globals_id: int,
+    ) -> CommandResponse:
+        try:
+            globals_ = crud.invoice.create_globals_revision(
+                self.session, obj_in=obj_in, prev_id=previous_globals_id
+            )
+        except crud.CrudError as exc:
+            return CommandResponse(
+                CommandStatus.FAILED,
+                f"CREATE_REVISION-GLOBALS - Cannot create a new revision of "
+                f"invoices global prameters: {exc}",
+            )
+        body = schemas.Globals.from_orm(globals_)
         return CommandResponse(CommandStatus.COMPLETED, body=body)
 
 

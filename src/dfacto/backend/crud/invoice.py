@@ -48,11 +48,13 @@ class CRUDInvoice(
         self,
         dbsession: Session,
         basket: models.Basket,
+        globals_id: int,
         *,
         clear_basket: bool = True,
     ) -> models.Invoice:
         db_obj = self.model(
             client_id=basket.client_id,
+            globals_id=globals_id,
             status=models.InvoiceStatus.DRAFT,
         )
         item: models.Item
@@ -350,6 +352,40 @@ class CRUDInvoice(
         except SQLAlchemyError as exc:
             dbsession.rollback()
             raise CrudError() from exc
+
+    def get_current_globals(self, dbsession: Session) -> models.Globals:
+        try:
+            globals_ = dbsession.scalars(
+                # pylint: disable-next=singleton-comparison
+                select(models.Globals).where(models.Globals.is_current == True)
+            ).one()
+        except SQLAlchemyError as exc:
+            raise CrudError from exc
+        return globals_
+
+    def create_globals_revision(
+        self,
+        dbsession: Session,
+        *,
+        obj_in: schemas.GlobalsCreate,
+        prev_id: int,
+    ) -> models.Globals:
+        obj_in_data = obj_in.flatten()
+        obj_in_data["is_current"] = True
+        db_obj = models.Globals(**obj_in_data)
+        dbsession.add(db_obj)
+        dbsession.execute(
+            update(models.Globals)
+            .where(models.Globals.id == prev_id)
+            .values(is_current=False)
+        )
+        try:
+            dbsession.commit()
+        except SQLAlchemyError as exc:
+            dbsession.rollback()
+            raise CrudError() from exc
+        dbsession.refresh(db_obj)
+        return db_obj
 
 
 invoice = CRUDInvoice(models.Invoice)

@@ -16,6 +16,7 @@ from dfacto.backend.util import Period, PeriodFilter
 from tests.conftest import (
     FakeORMBasket,
     FakeORMClient,
+    FakeORMGlobals,
     FakeORMInvoice,
     FakeORMItem,
     FakeORMService,
@@ -128,6 +129,16 @@ def mock_client_model(mock_dfacto_model, monkeypatch):
 def mock_invoice_model(mock_dfacto_model, monkeypatch):
     state, methods_called = mock_dfacto_model
 
+    def _get_current_globals(_db):
+        methods_called.append("GET_CURRENT_GLOBALS")
+        exc = state["raises"]["GET_CURRENT_GLOBALS"]
+        if exc is crud.CrudError or exc is crud.CrudIntegrityError:
+            raise exc
+        elif exc:
+            raise crud.CrudError
+        else:
+            return state["globals_value"]
+
     def _create(_db, obj_in):
         methods_called.append("CREATE")
         exc = state["raises"]["CREATE"]
@@ -136,9 +147,9 @@ def mock_invoice_model(mock_dfacto_model, monkeypatch):
         elif exc:
             raise crud.CrudError
         else:
-            return FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+            return FakeORMInvoice(id=1)
 
-    def _invoice_from_basket(_db, basket, clear_basket):
+    def _invoice_from_basket(_db, basket, globals_id, clear_basket):
         methods_called.append("CREATE_FROM_BASKET")
         exc = state["raises"]["CREATE_FROM_BASKET"]
         if exc is crud.CrudError or exc is crud.CrudIntegrityError:
@@ -146,7 +157,7 @@ def mock_invoice_model(mock_dfacto_model, monkeypatch):
         elif exc:
             raise crud.CrudError
         else:
-            return FakeORMInvoice(id=1, status=InvoiceStatus.DRAFT)
+            return FakeORMInvoice(id=1)
 
     def _add_item(_db, invoice_, service, quantity):
         methods_called.append("ADD_TO_INVOICE")
@@ -188,6 +199,7 @@ def mock_invoice_model(mock_dfacto_model, monkeypatch):
         else:
             return state["return_value"]
 
+    monkeypatch.setattr(crud.invoice, "get_current_globals", _get_current_globals)
     monkeypatch.setattr(crud.invoice, "create", _create)
     monkeypatch.setattr(crud.invoice, "invoice_from_basket", _invoice_from_basket)
     monkeypatch.setattr(crud.invoice, "add_item", _add_item)
@@ -1447,11 +1459,23 @@ def test_cmd_clear_basket_clear_error(mock_client_model, mock_schema_from_orm):
 
 def test_cmd_create_invoice(mock_invoice_model, mock_schema_from_orm):
     state, methods_called = mock_invoice_model
-    state["raises"] = {"CREATE": False}
+    state["raises"] = {
+        "CREATE": False,
+        "GET_CURRENT_GLOBALS": False,
+    }
+    globals_ = FakeORMGlobals(
+        id=1,
+        due_delta=30,
+        penalty_rate=Decimal("12.0"),
+        discount_rate=Decimal("1.5"),
+        is_current=True,
+    )
+    state["globals_value"] = globals_
 
     response = api.client.create_invoice(obj_id=1)
 
-    assert len(methods_called) == 1
+    assert len(methods_called) == 2
+    assert "GET_CURRENT_GLOBALS" in methods_called
     assert "CREATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.body is not None
@@ -1459,12 +1483,23 @@ def test_cmd_create_invoice(mock_invoice_model, mock_schema_from_orm):
 
 def test_cmd_create_invoice_error(mock_invoice_model, mock_schema_from_orm):
     state, methods_called = mock_invoice_model
-    state["raises"] = {"CREATE": True}
+    state["raises"] = {
+        "CREATE": True,
+        "GET_CURRENT_GLOBALS": False,
+    }
+    globals_ = FakeORMGlobals(
+        id=1,
+        due_delta=30,
+        penalty_rate=Decimal("12.0"),
+        discount_rate=Decimal("1.5"),
+        is_current=True,
+    )
+    state["globals_value"] = globals_
 
     response = api.client.create_invoice(obj_id=1)
 
-    assert len(methods_called) == 1
-    assert "CREATE" in methods_called
+    assert len(methods_called) == 2
+    assert "GET_CURRENT_GLOBALS" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith(
         "CREATE-INVOICE - Cannot create an invoice for client 1"
@@ -1477,7 +1512,18 @@ def test_cmd_invoice_from_basket(
     clear, mock_client_model, mock_invoice_model, mock_schema_from_orm
 ):
     state, methods_called = mock_invoice_model
-    state["raises"] = {"READ": False, "CREATE_FROM_BASKET": False}
+    state["raises"] = {
+        "READ": False,
+        "CREATE_FROM_BASKET": False,
+        "GET_CURRENT_GLOBALS": False,
+    }
+    globals_ = FakeORMGlobals(
+        id=1,
+        due_delta=30,
+        penalty_rate=Decimal("12.0"),
+        discount_rate=Decimal("1.5"),
+        is_current=True,
+    )
     client = FakeORMClient(
         id=1,
         name="Name 1",
@@ -1488,11 +1534,13 @@ def test_cmd_invoice_from_basket(
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
+    state["globals_value"] = globals_
 
     response = api.client.invoice_from_basket(obj_id=1, clear_basket=clear)
 
-    assert len(methods_called) == 2
+    assert len(methods_called) == 3
     assert "GET_BASKET" in methods_called
+    assert "GET_CURRENT_GLOBALS" in methods_called
     assert "CREATE_FROM_BASKET" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.body is not None
@@ -1502,7 +1550,18 @@ def test_cmd_invoice_from_empty_basket(
     mock_client_model, mock_invoice_model, mock_schema_from_orm
 ):
     state, methods_called = mock_invoice_model
-    state["raises"] = {"READ": False, "CREATE": False}
+    state["raises"] = {
+        "READ": False,
+        "GET_CURRENT_GLOBALS": False,
+        "CREATE": False,
+    }
+    globals_ = FakeORMGlobals(
+        id=1,
+        due_delta=30,
+        penalty_rate=Decimal("12.0"),
+        discount_rate=Decimal("1.5"),
+        is_current=True,
+    )
     client = FakeORMClient(
         id=1,
         name="Name 1",
@@ -1512,12 +1571,14 @@ def test_cmd_invoice_from_empty_basket(
         email="name_1@domain.com",
     )
     state["read_value"] = client.basket
+    state["globals_value"] = globals_
     assert len(client.basket.items) == 0
 
     response = api.client.invoice_from_basket(obj_id=1, clear_basket=False)
 
-    assert len(methods_called) == 2
+    assert len(methods_called) == 4
     assert "GET_BASKET" in methods_called
+    assert "GET_CURRENT_GLOBALS" in methods_called  # Twice
     assert "CREATE" in methods_called
     assert response.status is CommandStatus.COMPLETED
     assert response.body is not None
@@ -1544,13 +1605,26 @@ def test_cmd_invoice_from_basket_unknown(
     mock_client_model, mock_invoice_model, mock_schema_from_orm
 ):
     state, methods_called = mock_invoice_model
-    state["raises"] = {"READ": False, "CREATE_FROM_BASKET": False}
+    state["raises"] = {
+        "READ": False,
+        "GET_CURRENT_GLOBALS": False,
+        "CREATE": False,
+    }
+    globals_ = FakeORMGlobals(
+        id=1,
+        due_delta=30,
+        penalty_rate=Decimal("12.0"),
+        discount_rate=Decimal("1.5"),
+        is_current=True,
+    )
     state["read_value"] = None
+    state["globals_value"] = globals_
 
     response = api.client.invoice_from_basket(obj_id=1)
 
-    assert len(methods_called) == 1
+    assert len(methods_called) == 2
     assert "GET_BASKET" in methods_called
+    assert "GET_CURRENT_GLOBALS" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason == "CREATE_FROM-BASKET - Basket of client 1 not found."
     assert response.body is None
@@ -1560,7 +1634,18 @@ def test_cmd_invoice_from_basket_create_error(
     mock_client_model, mock_invoice_model, mock_schema_from_orm
 ):
     state, methods_called = mock_invoice_model
-    state["raises"] = {"READ": False, "CREATE_FROM_BASKET": True}
+    state["raises"] = {
+        "READ": False,
+        "GET_CURRENT_GLOBALS": False,
+        "CREATE_FROM_BASKET": True,
+    }
+    globals_ = FakeORMGlobals(
+        id=1,
+        due_delta=30,
+        penalty_rate=Decimal("12.0"),
+        discount_rate=Decimal("1.5"),
+        is_current=True,
+    )
     client = FakeORMClient(
         id=1,
         name="Name 1",
@@ -1571,12 +1656,14 @@ def test_cmd_invoice_from_basket_create_error(
     )
     client.basket.items = ["item1", "item2"]
     state["read_value"] = client.basket
+    state["globals_value"] = globals_
 
     response = api.client.invoice_from_basket(obj_id=1)
 
-    assert len(methods_called) == 2
+    assert len(methods_called) == 3
     assert "GET_BASKET" in methods_called
     assert "CREATE_FROM_BASKET" in methods_called
+    assert "GET_CURRENT_GLOBALS" in methods_called
     assert response.status is CommandStatus.FAILED
     assert response.reason.startswith(
         "CREATE_FROM-BASKET - Cannot create invoice from basket of client 1"

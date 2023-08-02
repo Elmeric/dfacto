@@ -12,7 +12,7 @@ from .base_model import BaseModel, ModelType
 from .basket import Basket
 from .client import Client
 from .company import Company
-from .invoice import Invoice, InvoiceStatus, StatusLog
+from .invoice import Globals, Invoice, InvoiceStatus, StatusLog
 from .item import Item
 from .service import Service
 from .vat_rate import VatRate
@@ -27,6 +27,7 @@ __all__ = [
     "Item",
     "Invoice",
     "StatusLog",
+    "Globals",
     "InvoiceStatus",
     "Company",
 ]
