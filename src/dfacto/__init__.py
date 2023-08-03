@@ -6,7 +6,7 @@
 
 """Dfacto is a tool to manage invoices for your company.
 
-Requires Python >= 3.8
+Requires Python >= 3.9
 
 Usage:
     ''python -m dfacto''

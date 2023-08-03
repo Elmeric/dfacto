@@ -5,6 +5,16 @@ to [Semantic Versioning].
 
 ## [Unreleased]
 
+### Fixed
+- Old invoices are no more updated when editing the invoice global parameters
+
+### Changed
+- Add a settings editor
+- Add an invoice global parameters editor
+
+### Miscellaneous
+- Bump all dependencies to their latest version
+
 ## [1.1.1] - 2023-07-20
 
 ### Fixed

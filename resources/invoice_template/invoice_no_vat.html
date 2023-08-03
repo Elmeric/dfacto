@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <title>Facture {{ invoice.code }} du {{ invoice.date }} pour {{ client.name }}</title>
+    <title>{{ gettext("Invoice %(code)s issued on %(date)s for %(client)s", code=invoice.code, date=invoice.date, client=client.name) }}</title>
     <link rel="stylesheet" href="style.css" media="all" />
   </head>
   <body>
@@ -20,26 +20,26 @@
     <main>
       <div id="details" class="clearfix">
         <div id="client">
-          <div class="to">A l'attention de :</div>
+          <div class="to">{% trans %}For:{% endtrans %}</div>
           <h2 class="name">{{ client.name }}</h2>
           <div class="address">{{ client.address }}</div>
           <div class="email"><a href="mailto:{{ client.email }}">{{ client.email }}</a></div>
         </div>
         <div class="stamp {{ invoice.stamp_tag }}">{{ invoice.stamp_text }}</div>
         <div id="invoice">
-          <h1>Facture {{ invoice.code }}</h1>
-          <div class="date">Date d'émission : {{ invoice.date }}</div>
-          <div class="date">Date limite de paiement : {{ invoice.due_date }}</div>
+          <h1>{% trans %}Invoice{% endtrans %} {{ invoice.code }}</h1>
+          <div class="date">{% trans %}Issued on:{% endtrans %} {{ invoice.date }}</div>
+          <div class="date">{% trans %}Due date:{% endtrans %} {{ invoice.due_date }}</div>
         </div>
       </div>
       <table border="0" cellspacing="0" cellpadding="0">
         <thead>
           <tr>
             <th class="no">#</th>
-            <th class="desc">DESIGNATION</th>
-            <th class="unit">PRIX UNITAIRE</th>
-            <th class="qty">QUANTITE</th>
-            <th class="total">MONTANT HT</th>
+            <th class="desc">{% trans %}DESIGNATION{% endtrans %}</th>
+            <th class="unit">{% trans %}UNIT PRICE{% endtrans %}</th>
+            <th class="qty">{% trans %}QUANTITY{% endtrans %}</th>
+            <th class="total">{% trans %}RAW AMOUNT{% endtrans %}</th>
           </tr>
         </thead>
         <tbody>
@@ -56,20 +56,20 @@
         <tfoot>
           <tr>
             <td colspan="2"></td>
-            <td colspan="2">Net à payer</td>
-            <td>{{ invoice.raw_amount }}€</td>
+            <td colspan="2">{% trans %}Subtotal{% endtrans %}</td>
+            <td>{{ invoice.raw_amount }}</td>
           </tr>
         </tfoot>
       </table>
-      <div id="thanks">Merci !</div>
+      <div id="thanks">{% trans %}Thank you!{% endtrans %}</div>
       <div id="notices">
-        <div>NOTE :</div>
+        <div>{% trans %}NOTE:{% endtrans %}</div>
         <div class="notice">TVA non applicable, art. 293 B du CGI</div>
-        <div class="notice">Pénalités de retard au taux annuel de : 12,00 % - Escompte en cas de paiement anticipé : 1,50 %</div>
+        <div class="notice">{{ gettext("Late payment penalties at the annual rate of: %(penalty)s - Discount for early payment: %(discount)s", penalty=company.penalty, discount=company.discount) }}</div>
       </div>
     </main>
     <footer>
-      SIRET : {{ company.siret }} - RCS : {{ company.rcs }}
+      {% trans %}SIRET :{% endtrans %} {{ company.siret }} - {% trans %}RCS :{% endtrans %} {{ company.rcs }}
     </footer>
   </body>
 </html>
