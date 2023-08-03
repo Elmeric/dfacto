@@ -5,6 +5,8 @@ to [Semantic Versioning].
 
 ## [Unreleased]
 
+## [1.2.0] - 2023-08-03
+
 ### Fixed
 - Old invoices are no more updated when editing the invoice global parameters
 
@@ -40,7 +42,8 @@ to [Semantic Versioning].
 - First release.
 
 
-[unreleased]: https://github.com/Elmeric/dfacto/compare/v1.1.1...HEAD
+[unreleased]: https://github.com/Elmeric/dfacto/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/Elmeric/dfacto/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/Elmeric/dfacto/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/Elmeric/dfacto/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Elmeric/dfacto/compare/v0.0.1...v1.0.0
