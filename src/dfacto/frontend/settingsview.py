@@ -113,21 +113,23 @@ class SettingsView(QtWidgets.QDialog):
         self.scale_spn.valueChanged.connect(self.select_qt_scale_factor_from_float)
         self.scale_sld.valueChanged.connect(self.select_qt_scale_factor_from_int)
 
-        reset_btn = QtWidgets.QPushButton(_("Reset to defaults"))
-        reset_btn.clicked.connect(self.reset_to_defaults)
+        self.reset_btn = QtWidgets.QPushButton(_("Reset to defaults"))
+        self.reset_btn.clicked.connect(self.reset_to_defaults)
 
-        button_box = QtWidgets.QDialogButtonBox(
+        self.button_box = QtWidgets.QDialogButtonBox(
             QtWidgets.QDialogButtonBox.StandardButton.Ok
             | QtWidgets.QDialogButtonBox.StandardButton.Cancel,
             QtCore.Qt.Orientation.Horizontal,
             self,
         )
-        button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText(_("OK"))
-        button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Cancel).setText(
-            _("Cancel")
+        self.button_box.button(QtWidgets.QDialogButtonBox.StandardButton.Ok).setText(
+            _("OK")
         )
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
+        self.button_box.button(
+            QtWidgets.QDialogButtonBox.StandardButton.Cancel
+        ).setText(_("Cancel"))
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
 
         edit_layout = QtWidgets.QGridLayout()
         edit_layout.addWidget(self.default_dir_selector, 0, 0, 1, 3)
@@ -153,8 +155,8 @@ class SettingsView(QtWidgets.QDialog):
             QtWidgets.QSizePolicy.Policy.Expanding,
         )
         edit_layout.addItem(vertical_spacer, 7, 0, 1, 1)
-        edit_layout.addWidget(reset_btn, 8, 0, 1, 1)
-        edit_layout.addWidget(button_box, 9, 1, 1, 2)
+        edit_layout.addWidget(self.reset_btn, 8, 0, 1, 1)
+        edit_layout.addWidget(self.button_box, 9, 1, 1, 2)
 
         self.setLayout(edit_layout)
 

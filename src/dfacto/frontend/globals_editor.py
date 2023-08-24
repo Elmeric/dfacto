@@ -175,14 +175,12 @@ class GlobalsEditor(QtWidgets.QDialog):
 
         return due_delta >= 0 and penalty >= 0.0 and discount >= 0.0
 
-    @QtCore.pyqtSlot(str)
     def check_spn_text(self, spn: QtWidgets.QSpinBox, text: str) -> None:
         if text == spn.suffix():
             spn.setValue(0)
 
         self._enable_buttons(self.has_changed, self.is_valid)
 
-    @QtCore.pyqtSlot(str)
     def check_spn_value(self, _value: Union[int, float]) -> None:
         self._enable_buttons(self.has_changed, self.is_valid)
 

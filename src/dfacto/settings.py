@@ -14,7 +14,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from dfacto import DEV_MODE, IS_FROZEN
+from dfacto import DEV_MODE, IS_FROZEN, TEST_MODE
 from dfacto.backend import naming
 from dfacto.util.settings import Setting, Settings, get_app_dirs
 
@@ -60,7 +60,11 @@ class DfactoSettings(Settings):
     resources: Path
     templates: Path
 
-    _DEFAULT_LOGLEVEL = "INFO"
+    DEFAULT_COMPANY_FOLDER = "C:/Users/T0018179/MyApp/Git/home/portable/DFacto"
+    # DEFAULT_COMPANY_FOLDER = "F:/Users/Documents/Dfacto"
+    DEFAULT_LOG_LEVEL = "INFO"
+    DEFAULT_QT_SCALE_FACTOR = "1.0"
+    DEFAULT_FONT_SIZE = 2
 
     last_profile: Setting = Setting(default_value=None)
     profiles: Setting = Setting(default_value=None)
@@ -70,15 +74,12 @@ class DfactoSettings(Settings):
     lastDestinationNamingTemplate: Setting = Setting(
         default_value=naming.NamingTemplates.default_destination_naming_template
     )
-    # default_company_folder = Setting(
-    # default_value="C:/Users/T0018179/MyApp/Git/home/portable/DFacto"
-    # )
-    default_company_folder = Setting(default_value="F:/Users/Documents/Dfacto")
-    log_level: Setting = Setting(default_value=_DEFAULT_LOGLEVEL)
+    default_company_folder = Setting(default_value=DEFAULT_COMPANY_FOLDER)
+    log_level: Setting = Setting(default_value=DEFAULT_LOG_LEVEL)
     window_position: Setting = Setting(default_value=(0, 0))
     window_size: Setting = Setting(default_value=(1600, 800))
-    qt_scale_factor: Setting = Setting(default_value="1.0")
-    font_size: Setting = Setting(default_value=2)
+    qt_scale_factor: Setting = Setting(default_value=DEFAULT_QT_SCALE_FACTOR)
+    font_size: Setting = Setting(default_value=DEFAULT_FONT_SIZE)
     # locale: Setting = Setting(default_value="en_US")
     # locale: Setting = Setting(default_value="fr_FR")
     locale: Setting = Setting(default_value=None)
@@ -116,7 +117,9 @@ class DfactoSettings(Settings):
             setattr(self, setting, default_value)
 
 
-if DEV_MODE:
+if TEST_MODE:
+    dfacto_settings = DfactoSettings("dfacto_test")
+elif DEV_MODE:
     dfacto_settings = DfactoSettings("dfacto_dev")
 else:
     dfacto_settings = DfactoSettings("dfacto")

@@ -37,6 +37,7 @@ log_config: LogConfig
 
 IS_FROZEN: Final[bool] = getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS")
 DEV_MODE: Final[bool] = os.environ.get("DFACTO_DEV", "0") != "0"
+TEST_MODE: Final[bool] = os.environ.get("DFACTO_TEST", "0") != "0"
 
 
 def except_hook(exc_type, exc_value, _exc_traceback):  # type: ignore[no-untyped-def]
